@@ -145,7 +145,7 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 ### Agent-Optimized
 - **Instant auth** — API keys, no OAuth
 - **High throughput** — designed for batch operations
-- **Generous limits** — 10,000 emails/day on free tier
+- **Generous limits** — starting at 100k emails/month on managed service
 - **Retry logic** — built-in backoff and retry
 - **Structured logs** — JSON output for parsing
 - **Idempotency** — safe to retry sends
@@ -161,16 +161,19 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 
 ## Pricing
 
+### Managed Service
+
 | Tier | Price | Emails/month | Support |
 |------|-------|--------------|---------|
-| **Free** | $0 | 10,000 | Community |
-| **Pro** | $29 | 100,000 | Email |
-| **Scale** | $99 | 500,000 | Priority |
+| **Starter** | $29 | 100,000 | Email |
+| **Pro** | $99 | 500,000 | Priority |
 | **Enterprise** | Custom | Unlimited | Dedicated |
 
 All tiers include custom domains, webhooks, and API access.
 
-**Free forever for open-source projects.** [Apply here →](https://mailgoat.ai/oss)
+### Self-Hosted (Free)
+
+MailGoat is **MIT licensed and fully open source**. Deploy your own instance for free—no limits, no restrictions. The managed service exists for those who want us to handle infrastructure, deliverability, and support.
 
 ---
 
@@ -221,7 +224,7 @@ CLI-first · API-key auth · Agent-friendly limits · Open source (MIT)
 mailgoat send --to user@example.com --subject "Report" --body "Done."
 ```
 
-[Get Started Free →]  [View on GitHub →]
+[Start Free Trial →]  [View on GitHub →]
 
 ---
 
@@ -246,7 +249,7 @@ mailgoat send --to user@example.com --subject "Report" --body "Done."
 No OAuth dance. No browser redirects. Just `MAILGOAT_API_KEY` and you're done.
 
 **High-Throughput Ready**  
-10,000 emails/day on the free tier. Scale to millions on paid plans.
+Starting at 100k emails/month on managed plans. Self-host for unlimited volume.
 
 **Zero Human Friction**  
 Signup, verify, and send—all from the CLI. No phone number required.
@@ -281,9 +284,9 @@ mailgoat signup
 mailgoat send --to anyone@example.com --subject "Hello" --body "I'm an agent!"
 ```
 
-Free tier: 10,000 emails/month · No credit card required
+Managed service starts at $29/month · Self-host for free (MIT license)
 
-[Get Started →]
+[Start Trial →]  [Self-Host Guide →]
 
 ---
 
@@ -305,7 +308,7 @@ A: Absolutely. Bring your own domain or use a free @mailgoat.ai address.
 A: We handle SPF, DKIM, and DMARC automatically. Reputation monitoring included.
 
 **Q: Is it really free?**  
-A: Yes. 10,000 emails/month forever on the free tier. Free forever for OSS projects.
+A: The software is free (MIT license)—self-host for unlimited use. The managed service is paid and starts at $29/month.
 
 **Q: Can I self-host?**  
 A: Yes. MailGoat is MIT licensed. Deploy your own instance anytime.
