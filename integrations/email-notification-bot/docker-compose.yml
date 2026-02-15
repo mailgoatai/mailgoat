@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  notification-bot:
+    build: .
+    image: mailgoat-notification-bot:latest
+    container_name: mailgoat-notification-bot
+    restart: unless-stopped
+    
+    environment:
+      # Load from .env file or set here
+      POSTAL_SERVER_URL: ${POSTAL_SERVER_URL}
+      POSTAL_API_KEY: ${POSTAL_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL}
+      ALERT_EMAIL: ${ALERT_EMAIL}
+      CHECK_INTERVAL: ${CHECK_INTERVAL:-60000}
+      ALERT_COOLDOWN_MS: ${ALERT_COOLDOWN_MS:-300000}
+      THRESHOLD_CPU: ${THRESHOLD_CPU:-80}
+      THRESHOLD_MEMORY: ${THRESHOLD_MEMORY:-85}
+      THRESHOLD_DISK: ${THRESHOLD_DISK:-90}
+      THRESHOLD_TEMP: ${THRESHOLD_TEMP}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HOSTNAME: ${HOSTNAME}
+    
+    volumes:
+      # Persist logs
+      - ./logs:/app/logs
+      
+      # Read-only access to system info (for monitoring)
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
