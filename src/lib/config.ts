@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import YAML from 'yaml';
+import { debugLogger } from './debug';
+import { validationService } from './validation-service';
 
 export interface MailGoatConfig {
   server: string;
@@ -14,13 +16,17 @@ export class ConfigManager {
 
   constructor(configPath?: string) {
     this.configPath = configPath || path.join(os.homedir(), '.mailgoat', 'config.yml');
+    debugLogger.log('config', `Config path resolved to: ${this.configPath}`);
   }
 
   /**
    * Load configuration from file
    */
   load(): MailGoatConfig {
+    debugLogger.log('config', `Loading config from: ${this.configPath}`);
+
     if (!fs.existsSync(this.configPath)) {
+      debugLogger.log('config', 'Config file does not exist');
       throw new Error(
         `Config file not found at ${this.configPath}.\n` +
           'Run `mailgoat config init` to create one, or set up manually:\n' +
@@ -32,9 +38,16 @@ export class ConfigManager {
     }
 
     const content = fs.readFileSync(this.configPath, 'utf8');
+    debugLogger.log('config', `Config file size: ${content.length} bytes`);
+
     const config = YAML.parse(content) as MailGoatConfig;
 
+    debugLogger.log('config', `Parsed config - server: ${config.server}, email: ${config.email}`);
+    debugLogger.log('config', `API key length: ${config.api_key?.length || 0} characters`);
+
     this.validate(config);
+    debugLogger.log('config', 'Config validation passed');
+
     return config;
   }
 
@@ -42,15 +55,21 @@ export class ConfigManager {
    * Save configuration to file
    */
   save(config: MailGoatConfig): void {
+    debugLogger.log('config', `Saving config to: ${this.configPath}`);
+
     this.validate(config);
 
     const dir = path.dirname(this.configPath);
     if (!fs.existsSync(dir)) {
+      debugLogger.log('config', `Creating config directory: ${dir}`);
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     }
 
     const content = YAML.stringify(config);
+    debugLogger.log('config', `Writing ${content.length} bytes to config file`);
+
     fs.writeFileSync(this.configPath, content, { mode: 0o600 });
+    debugLogger.log('config', 'Config saved successfully');
   }
 
   /**
@@ -71,14 +90,9 @@ export class ConfigManager {
    * Validate configuration object
    */
   private validate(config: MailGoatConfig): void {
-    if (!config.server) {
-      throw new Error('Config missing required field: server');
-    }
-    if (!config.email) {
-      throw new Error('Config missing required field: email');
-    }
-    if (!config.api_key) {
-      throw new Error('Config missing required field: api_key');
+    const result = validationService.validateConfig(config);
+    if (!result.valid) {
+      throw new Error(`Configuration validation failed: ${result.error}`);
     }
   }
 }

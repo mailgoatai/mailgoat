@@ -1,4 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
+import { Agent as HttpAgent } from 'http';
+import { Agent as HttpsAgent } from 'https';
 import { MailGoatConfig } from './config';
 import { debugLogger } from './debug';
 
@@ -166,6 +168,23 @@ export class PostalClient {
       `Retry config: enabled=${this.enableRetry}, maxRetries=${this.maxRetries}, baseDelay=${this.baseDelay}ms`
     );
 
+    // Configure connection pooling for better performance
+    const httpAgent = new HttpAgent({
+      keepAlive: true,
+      maxSockets: 50,
+      maxFreeSockets: 10,
+      timeout: 30000,
+    });
+
+    const httpsAgent = new HttpsAgent({
+      keepAlive: true,
+      maxSockets: 50,
+      maxFreeSockets: 10,
+      timeout: 30000,
+    });
+
+    debugLogger.log('api', 'Connection pooling enabled: keepAlive=true, maxSockets=50');
+
     this.client = axios.create({
       baseURL,
       headers: {
@@ -173,6 +192,8 @@ export class PostalClient {
         'Content-Type': 'application/json',
       },
       timeout: 30000, // 30 second timeout
+      httpAgent,
+      httpsAgent,
     });
 
     // Add request interceptor for debug logging

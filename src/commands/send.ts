@@ -6,7 +6,8 @@ import chalk from 'chalk';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
-import { validateSendInputs } from '../lib/validators';
+import { validationService } from '../lib/validation-service';
+import { debugLogger } from '../lib/debug';
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
@@ -88,9 +89,15 @@ export function createSendCommand(): Command {
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
+      const operationId = `send-${Date.now()}`;
+      debugLogger.timeStart(operationId, 'Send email operation');
+
       try {
+        debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
         const configManager = new ConfigManager();
         const config = configManager.load();
+        debugLogger.timeEnd(`${operationId}-config`);
+
         const formatter = new Formatter(options.json);
 
         // Normalize inputs
@@ -103,7 +110,8 @@ export function createSendCommand(): Command {
           : undefined;
 
         // Validate inputs before processing
-        const validation = validateSendInputs({
+        debugLogger.timeStart(`${operationId}-validate`, 'Validate inputs');
+        const validation = validationService.validateSendOptions({
           to,
           cc,
           bcc,
@@ -112,16 +120,20 @@ export function createSendCommand(): Command {
           html: options.html ? options.body : undefined,
           from: options.from,
           tag: options.tag,
+          attachments: options.attach,
         });
 
         if (!validation.valid) {
           throw new Error(validation.error);
         }
+        debugLogger.timeEnd(`${operationId}-validate`);
 
         // Create client after validation
+        debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
         const client = new PostalClient(config, {
           enableRetry: options.retry !== false,
         });
+        debugLogger.timeEnd(`${operationId}-client`);
 
         // Prepare message params
         const messageParams: any = {
@@ -191,12 +203,19 @@ export function createSendCommand(): Command {
         }
 
         // Send message
+        debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
         const result = await client.sendMessage(messageParams);
+        debugLogger.timeEnd(`${operationId}-send`);
 
         // Output result
         const output = formatter.formatSendResponse(result);
         formatter.output(output);
+
+        debugLogger.timeEnd(operationId);
       } catch (error: any) {
+        debugLogger.timeEnd(operationId);
+        debugLogger.logError('main', error);
+
         const formatter = new Formatter(options.json);
         console.error(formatter.error(error.message));
         process.exit(1);

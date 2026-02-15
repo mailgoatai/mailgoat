@@ -135,6 +135,7 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 ## Features
 
 ### Core
+
 - **Send & receive** email via CLI or API
 - **Custom domains** — use your own domain or @mailgoat.ai
 - **Webhooks** — real-time delivery to your agent
@@ -143,6 +144,7 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 - **Thread tracking** — automatic conversation threading
 
 ### Agent-Optimized
+
 - **Instant auth** — API keys, no OAuth
 - **High throughput** — designed for batch operations
 - **Generous limits** — starting at 100k emails/month on managed service
@@ -151,6 +153,7 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 - **Idempotency** — safe to retry sends
 
 ### Privacy & Security
+
 - **Open source** — MIT license, audit the code
 - **Self-hostable** — run your own instance
 - **E2E encryption** (optional) — for sensitive comms
@@ -163,11 +166,11 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 
 ### Managed Service
 
-| Tier | Price | Emails/month | Support |
-|------|-------|--------------|---------|
-| **Starter** | $29 | 100,000 | Email |
-| **Pro** | $99 | 500,000 | Priority |
-| **Enterprise** | Custom | Unlimited | Dedicated |
+| Tier           | Price  | Emails/month | Support   |
+| -------------- | ------ | ------------ | --------- |
+| **Starter**    | $29    | 100,000      | Email     |
+| **Pro**        | $99    | 500,000      | Priority  |
+| **Enterprise** | Custom | Unlimited    | Dedicated |
 
 All tiers include custom domains, webhooks, and API access.
 
@@ -224,7 +227,7 @@ CLI-first · API-key auth · Agent-friendly limits · Open source (MIT)
 mailgoat send --to user@example.com --subject "Report" --body "Done."
 ```
 
-[Start Free Trial →]  [View on GitHub →]
+[Start Free Trial →] [View on GitHub →]
 
 ---
 
@@ -235,7 +238,7 @@ mailgoat send --to user@example.com --subject "Report" --body "Done."
 ❌ OAuth flows that require human intervention  
 ❌ Rate limits designed for humans, not automation  
 ❌ Phone verification that blocks programmatic signup  
-❌ Documentation that assumes you have a browser  
+❌ Documentation that assumes you have a browser
 
 ✅ **MailGoat fixes this.**
 
@@ -286,7 +289,7 @@ mailgoat send --to anyone@example.com --subject "Hello" --body "I'm an agent!"
 
 Managed service starts at $29/month · Self-host for free (MIT license)
 
-[Start Trial →]  [Self-Host Guide →]
+[Start Trial →] [Self-Host Guide →]
 
 ---
 
@@ -319,6 +322,67 @@ A: We don't read your emails. Optional E2E encryption. GDPR compliant. No tracki
 **Q: Which languages/frameworks are supported?**  
 A: CLI, Python, Node.js, Rust, and raw HTTP API. Works with any agent framework.
 
+**Q: How do I troubleshoot issues?**  
+A: Enable debug mode with `--debug` or `DEBUG=mailgoat:*` to see detailed logs. See [docs/DEBUG.md](docs/DEBUG.md) for examples.
+
+---
+
+## Troubleshooting
+
+### Debug Mode
+
+Enable verbose logging to troubleshoot issues:
+
+```bash
+# Using --debug flag (recommended)
+mailgoat send --to user@example.com --subject "Test" --body "Hello" --debug
+
+# Using DEBUG environment variable for specific namespaces
+DEBUG=mailgoat:api mailgoat send --to user@example.com --subject "Test" --body "Hello"
+
+# All debug namespaces
+DEBUG=mailgoat:* mailgoat send --to user@example.com --subject "Test" --body "Hello"
+```
+
+**Available namespaces:**
+
+- `mailgoat:main` - CLI initialization and lifecycle
+- `mailgoat:config` - Configuration loading and validation
+- `mailgoat:validation` - Input validation results
+- `mailgoat:api` - HTTP requests and responses
+- `mailgoat:timing` - Performance timing for operations
+
+**Documentation:**
+
+- [Debug Mode Guide](docs/DEBUG.md) - Full documentation
+- [Debug Examples](docs/DEBUG-EXAMPLES.md) - Real-world troubleshooting scenarios
+
+### Common Issues
+
+**"Config file not found"**
+
+```bash
+# Create config interactively
+mailgoat config init
+
+# Or check the expected path
+DEBUG=mailgoat:config mailgoat config show
+```
+
+**"Authentication failed"**
+
+```bash
+# Verify API key and server URL
+mailgoat config show --debug
+```
+
+**"Connection timeout"**
+
+```bash
+# Check network and timing
+DEBUG=mailgoat:api,mailgoat:timing mailgoat send --to test@example.com --subject "Test" --body "Hello"
+```
+
 ---
 
 ## Contributing
@@ -328,6 +392,7 @@ MailGoat is open source and agent-driven. We welcome contributions from humans a
 **Good first issues:** [github.com/opengoat/mailgoat/labels/good-first-issue](https://github.com/opengoat/mailgoat/labels/good-first-issue)
 
 **Development:**
+
 ```bash
 git clone https://github.com/opengoat/mailgoat.git
 cd mailgoat
