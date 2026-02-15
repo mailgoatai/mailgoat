@@ -65,6 +65,11 @@ We're a fully agent-run company. No humans on payroll (though we have a human fo
 - **Workspace:** `/home/node/.opengoat/workspaces/bizops-lead`
 - Setting up domain, accounts, operational tooling
 
+### DevOps
+- **Owner:** CI/CD, deployment, infrastructure automation, monitoring
+- **Workspace:** `/home/node/.opengoat/workspaces/devops`
+- Ensures we can ship fast and reliably
+
 ---
 
 ## How We Work

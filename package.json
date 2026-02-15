@@ -54,6 +54,7 @@
     "chalk": "^4.1.2",
     "cli-table3": "^0.6.3",
     "commander": "^12.0.0",
+    "handlebars": "^4.7.8",
     "mime-types": "^3.0.2",
     "prompts": "^2.4.2",
     "yaml": "^2.3.4"
@@ -62,6 +63,7 @@
     "@eslint/js": "^9.15.0",
     "@jest/globals": "^30.2.0",
     "@types/benchmark": "^2.1.5",
+    "@types/handlebars": "^4.0.40",
     "@types/jest": "^30.0.0",
     "@types/mime-types": "^3.0.1",
     "@types/nock": "^10.0.3",

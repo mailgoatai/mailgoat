@@ -5,6 +5,9 @@ import { createSendCommand } from './commands/send';
 import { createReadCommand } from './commands/read';
 import { createInboxCommand } from './commands/inbox';
 import { createConfigCommand } from './commands/config';
+import { createTemplateCommand } from './commands/template';
+import { createDeleteCommand } from './commands/delete';
+import { createSearchCommand } from './commands/search';
 import { debugLogger } from './lib/debug';
 
 const program = new Command();
@@ -33,6 +36,9 @@ program.addCommand(createSendCommand());
 program.addCommand(createReadCommand());
 program.addCommand(createInboxCommand());
 program.addCommand(createConfigCommand());
+program.addCommand(createTemplateCommand());
+program.addCommand(createDeleteCommand());
+program.addCommand(createSearchCommand());
 
 // Parse arguments
 program.parse(process.argv);

@@ -250,6 +250,117 @@ export class MockPostalServer {
   }
 
   /**
+   * Mock successful message deletion
+   */
+  mockDeleteSuccess(messageId: string): this {
+    this.scope.post('/api/v1/messages/delete').reply(200, {
+      status: 'success',
+      time: Date.now() / 1000,
+      data: {
+        success: true,
+        message_id: messageId,
+      },
+    });
+
+    return this;
+  }
+
+  /**
+   * Mock delete message - not found
+   */
+  mockDeleteNotFound(messageId: string): this {
+    this.scope.post('/api/v1/messages/delete').reply(404, {
+      status: 'error',
+      time: Date.now() / 1000,
+      data: {
+        code: 'MessageNotFound',
+        message: `Message ${messageId} not found`,
+      },
+    });
+
+    return this;
+  }
+
+  /**
+   * Mock delete with authentication error
+   */
+  mockDeleteAuthError(): this {
+    this.scope.post('/api/v1/messages/delete').reply(401, {
+      status: 'error',
+      time: Date.now() / 1000,
+      data: {
+        code: 'Unauthorized',
+        message: 'Invalid API key',
+      },
+    });
+
+    return this;
+  }
+
+  /**
+   * Mock delete with validation error
+   */
+  mockDeleteValidationError(code: string, message: string): this {
+    this.scope.post('/api/v1/messages/delete').reply(400, {
+      status: 'error',
+      time: Date.now() / 1000,
+      data: {
+        code,
+        message,
+      },
+    });
+
+    return this;
+  }
+
+  /**
+   * Mock delete with server error
+   */
+  mockDeleteServerError(): this {
+    this.scope.post('/api/v1/messages/delete').reply(500, {
+      status: 'error',
+      time: Date.now() / 1000,
+      data: {
+        code: 'InternalServerError',
+        message: 'Server error',
+      },
+    });
+
+    return this;
+  }
+
+  /**
+   * Mock delete with rate limit error
+   */
+  mockDeleteRateLimitError(): this {
+    this.scope
+      .post('/api/v1/messages/delete')
+      .reply(429, {
+        status: 'error',
+        time: Date.now() / 1000,
+        data: {
+          code: 'RateLimitExceeded',
+          message: 'Too many requests',
+        },
+      })
+      .persist(false);
+
+    return this;
+  }
+
+  /**
+   * Mock delete with network timeout
+   */
+  mockDeleteTimeout(): this {
+    this.scope.post('/api/v1/messages/delete').replyWithError({
+      code: 'ETIMEDOUT',
+      message: 'Connection timeout',
+    });
+
+    return this;
+  }
+
+  /**
    * Verify all mocked endpoints were called
    */
   verify(): void {

@@ -383,6 +383,20 @@ export class PostalClient {
   }
 
   /**
+   * Delete a message by ID
+   * POST /api/v1/messages/delete
+   */
+  async deleteMessage(messageId: string): Promise<{ success: boolean }> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.post('/api/v1/messages/delete', {
+        id: messageId,
+      });
+
+      return response.data;
+    }, `Delete message ${messageId}`);
+  }
+
+  /**
    * Categorize error and provide helpful message
    */
   private categorizeError(error: any): Error {

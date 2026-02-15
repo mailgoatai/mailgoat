@@ -8,6 +8,7 @@ import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { validationService } from '../lib/validation-service';
 import { debugLogger } from '../lib/debug';
+import { TemplateManager } from '../lib/template-manager';
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
@@ -77,15 +78,17 @@ export function createSendCommand(): Command {
 
   cmd
     .description('Send an email message')
-    .requiredOption('-t, --to <emails...>', 'Recipient email address(es)')
-    .requiredOption('-s, --subject <text>', 'Email subject')
-    .requiredOption('-b, --body <text>', 'Email body (plain text)')
+    .option('-t, --to <emails...>', 'Recipient email address(es) (required unless using template)')
+    .option('-s, --subject <text>', 'Email subject (required unless using template)')
+    .option('-b, --body <text>', 'Email body (plain text, required unless using template or --html)')
     .option('-f, --from <email>', 'Sender email (defaults to config email)')
     .option('--cc <emails...>', 'CC recipients')
     .option('--bcc <emails...>', 'BCC recipients')
     .option('--html', 'Treat body as HTML instead of plain text')
     .option('--tag <tag>', 'Custom tag for this message')
     .option('--attach <files...>', 'Attach files (can specify multiple)')
+    .option('--template <name>', 'Use email template')
+    .option('--var <key=value...>', 'Template variables (e.g., --var name=John --var age=30)')
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
@@ -100,14 +103,69 @@ export function createSendCommand(): Command {
 
         const formatter = new Formatter(options.json);
 
-        // Normalize inputs
-        const to = Array.isArray(options.to) ? options.to : [options.to];
-        const cc = options.cc ? (Array.isArray(options.cc) ? options.cc : [options.cc]) : undefined;
+        // Handle template if specified
+        let templateData: any = {};
+        if (options.template) {
+          debugLogger.timeStart(`${operationId}-template`, 'Load and render template');
+          const templateManager = new TemplateManager();
+          const template = templateManager.load(options.template);
+
+          // Parse variables
+          const variables = options.var
+            ? TemplateManager.parseVariables(
+                Array.isArray(options.var) ? options.var : [options.var]
+              )
+            : {};
+
+          // Render template
+          const rendered = templateManager.render(template, variables);
+          debugLogger.timeEnd(`${operationId}-template`);
+
+          // Use template values, but allow CLI options to override
+          templateData = {
+            subject: rendered.subject,
+            body: rendered.body,
+            html: rendered.html,
+            from: rendered.from,
+            cc: rendered.cc,
+            bcc: rendered.bcc,
+            tag: rendered.tag,
+          };
+
+          if (!options.json) {
+            console.log(chalk.cyan(`Using template: ${options.template}`));
+          }
+        }
+
+        // Check that required fields are present (either from template or CLI)
+        if (!options.to && !templateData.to) {
+          throw new Error('Recipient(s) required: use --to or template with default recipients');
+        }
+
+        if (!options.subject && !templateData.subject) {
+          throw new Error('Subject required: use --subject or template with subject');
+        }
+
+        if (!options.body && !templateData.body && !templateData.html) {
+          throw new Error('Body required: use --body, --html, or template with body');
+        }
+
+        // Normalize inputs (CLI options override template)
+        const to = options.to
+          ? Array.isArray(options.to)
+            ? options.to
+            : [options.to]
+          : templateData.to || [];
+        const cc = options.cc
+          ? Array.isArray(options.cc)
+            ? options.cc
+            : [options.cc]
+          : templateData.cc;
         const bcc = options.bcc
           ? Array.isArray(options.bcc)
             ? options.bcc
             : [options.bcc]
-          : undefined;
+          : templateData.bcc;
 
         // Validate inputs before processing
         debugLogger.timeStart(`${operationId}-validate`, 'Validate inputs');
@@ -135,18 +193,22 @@ export function createSendCommand(): Command {
         });
         debugLogger.timeEnd(`${operationId}-client`);
 
-        // Prepare message params
+        // Prepare message params (CLI options override template)
         const messageParams: any = {
           to,
-          subject: options.subject,
-          from: options.from,
+          subject: options.subject || templateData.subject,
+          from: options.from || templateData.from,
         };
 
         // Set body (plain or HTML)
         if (options.html) {
           messageParams.html_body = options.body;
-        } else {
+        } else if (options.body) {
           messageParams.plain_body = options.body;
+        } else if (templateData.html) {
+          messageParams.html_body = templateData.html;
+        } else if (templateData.body) {
+          messageParams.plain_body = templateData.body;
         }
 
         // Optional fields
@@ -156,8 +218,8 @@ export function createSendCommand(): Command {
         if (bcc) {
           messageParams.bcc = bcc;
         }
-        if (options.tag) {
-          messageParams.tag = options.tag;
+        if (options.tag || templateData.tag) {
+          messageParams.tag = options.tag || templateData.tag;
         }
 
         // Process attachments

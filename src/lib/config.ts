@@ -4,6 +4,7 @@ import * as os from 'os';
 import YAML from 'yaml';
 import { debugLogger } from './debug';
 import { validationService } from './validation-service';
+import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
 
 export interface MailGoatConfig {
   server: string;
@@ -20,10 +21,19 @@ export class ConfigManager {
   }
 
   /**
-   * Load configuration from file
+   * Load configuration from file (with caching)
    */
   load(): MailGoatConfig {
-    debugLogger.log('config', `Loading config from: ${this.configPath}`);
+    // Try to get from cache first
+    const cacheKey = CacheKeys.config(this.configPath);
+    const cached = cacheManager.get<MailGoatConfig>(cacheKey);
+
+    if (cached) {
+      debugLogger.log('config', `Loaded config from cache: ${this.configPath}`);
+      return cached;
+    }
+
+    debugLogger.log('config', `Loading config from file: ${this.configPath}`);
 
     if (!fs.existsSync(this.configPath)) {
       debugLogger.log('config', 'Config file does not exist');
@@ -48,6 +58,9 @@ export class ConfigManager {
     this.validate(config);
     debugLogger.log('config', 'Config validation passed');
 
+    // Cache the config for 5 minutes
+    cacheManager.set(cacheKey, config, CacheTTL.MEDIUM);
+
     return config;
   }
 
@@ -70,6 +83,11 @@ export class ConfigManager {
 
     fs.writeFileSync(this.configPath, content, { mode: 0o600 });
     debugLogger.log('config', 'Config saved successfully');
+
+    // Invalidate cache after saving
+    const cacheKey = CacheKeys.config(this.configPath);
+    cacheManager.invalidate(cacheKey);
+    debugLogger.log('config', 'Config cache invalidated');
   }
 
   /**
