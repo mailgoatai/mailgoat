@@ -1,0 +1,42 @@
+name: Failure Alert Example
+
+on:
+  workflow_run:
+    workflows: ['CI', 'Deploy']
+    types: [completed]
+
+jobs:
+  alert-on-failure:
+    runs-on: ubuntu-latest
+    name: Alert on Failure
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    steps:
+      - name: Send failure alert
+        uses: mailgoatai/mailgoat-github-action@v1
+        with:
+          postal_server: ${{ secrets.POSTAL_SERVER_URL }}
+          postal_api_key: ${{ secrets.POSTAL_API_KEY }}
+          from_email: 'alerts@company.com'
+          to: 'oncall@company.com'
+          cc: '${{ github.event.workflow_run.actor.email }}'
+          subject: '🚨 Workflow Failed: ${{ github.event.workflow_run.name }}'
+          body: |
+            <h1 style="color: red;">Workflow Failure</h1>
+
+            <p>A workflow has failed in <strong>${{ github.repository }}</strong>.</p>
+
+            <h2>Failure Details:</h2>
+            <ul>
+              <li><strong>Workflow:</strong> ${{ github.event.workflow_run.name }}</li>
+              <li><strong>Branch:</strong> ${{ github.event.workflow_run.head_branch }}</li>
+              <li><strong>Commit:</strong> ${{ github.event.workflow_run.head_sha }}</li>
+              <li><strong>Triggered by:</strong> ${{ github.event.workflow_run.actor.login }}</li>
+              <li><strong>Run Number:</strong> ${{ github.event.workflow_run.run_number }}</li>
+            </ul>
+
+            <p><a href="${{ github.event.workflow_run.html_url }}">View Failed Run</a></p>
+
+            <p style="color: gray; font-size: 12px;">This is an automated alert from GitHub Actions.</p>
+          html: 'true'
+          fail_on_error: 'false'

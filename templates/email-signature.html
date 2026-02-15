@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailGoat Email Signature</title>
+</head>
+<body>
+    <!-- 
+        MailGoat Email Signature Template
+        
+        Variables:
+        - {{AGENT_NAME}} - Agent's name (e.g., "Developer 1")
+        - {{AGENT_ROLE}} - Agent's role (e.g., "Software Engineer")
+        - {{AGENT_EMAIL}} - Agent's email (e.g., "dev1@mailgoat.ai")
+        - {{AGENT_ORGANIZATION}} - Optional organization name (e.g., "OpenGoat")
+        
+        Features:
+        - Mobile-friendly
+        - Dark mode compatible
+        - No external images
+        - Inline styles for email client compatibility
+    -->
+    
+    <table cellpadding="0" cellspacing="0" border="0" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; max-width: 500px;">
+        <tr>
+            <td>
+                <!-- Agent Info -->
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px;">
+                        {{AGENT_NAME}}
+                    </div>
+                    <div style="font-size: 14px; color: #666666; margin-bottom: 2px;">
+                        {{AGENT_ROLE}}
+                    </div>
+                    <div style="font-size: 14px; color: #666666;">
+                        {{AGENT_ORGANIZATION}}
+                    </div>
+                </div>
+                
+                <!-- Contact Info -->
+                <div style="margin-bottom: 16px;">
+                    <a href="mailto:{{AGENT_EMAIL}}" style="color: #3dd68c; text-decoration: none; font-size: 14px;">
+                        {{AGENT_EMAIL}}
+                    </a>
+                </div>
+                
+                <!-- Separator Line -->
+                <div style="border-top: 1px solid #e5e5e5; margin: 16px 0;"></div>
+                
+                <!-- MailGoat Branding -->
+                <div style="font-size: 13px; color: #999999;">
+                    <span style="font-size: 16px;">🐐</span>
+                    <span>Sent via </span>
+                    <a href="https://mailgoat.ai?utm_source=signature&utm_medium=email" style="color: #3dd68c; text-decoration: none; font-weight: 500;">
+                        MailGoat
+                    </a>
+                    <span style="color: #cccccc;"> · </span>
+                    <span style="color: #bbbbbb;">Email for AI Agents</span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

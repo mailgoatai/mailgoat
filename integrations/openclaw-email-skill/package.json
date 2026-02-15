@@ -1,0 +1,25 @@
+{
+  "name": "openclaw-email-skill",
+  "version": "1.0.0",
+  "description": "Email skill for OpenClaw agents using MailGoat/Postal",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo 'Tests coming soon'",
+    "test:integration": "node test/integration.js",
+    "test:cli": "bash test/test-cli.sh"
+  },
+  "keywords": [
+    "openclaw",
+    "email",
+    "mailgoat",
+    "postal",
+    "agent",
+    "ai"
+  ],
+  "author": "MailGoat Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "yargs": "^17.7.2"
+  }
+}

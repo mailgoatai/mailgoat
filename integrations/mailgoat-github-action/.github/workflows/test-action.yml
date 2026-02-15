@@ -1,0 +1,46 @@
+name: Test MailGoat Action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-email:
+    runs-on: ubuntu-latest
+    name: Test Email Send
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Send test email
+        id: send-email
+        uses: ./
+        with:
+          postal_server: ${{ secrets.POSTAL_SERVER_URL }}
+          postal_api_key: ${{ secrets.POSTAL_API_KEY }}
+          from_email: 'github-actions@mailgoat.ai'
+          to: 'test@mailgoat.ai'
+          subject: 'Test from GitHub Actions - ${{ github.workflow }}'
+          body: |
+            This is a test email from GitHub Actions.
+
+            Repository: ${{ github.repository }}
+            Workflow: ${{ github.workflow }}
+            Run: ${{ github.run_number }}
+            Commit: ${{ github.sha }}
+            Actor: ${{ github.actor }}
+          html: 'false'
+          fail_on_error: 'true'
+
+      - name: Check output
+        run: |
+          echo "Success: ${{ steps.send-email.outputs.success }}"
+          echo "Message ID: ${{ steps.send-email.outputs.message_id }}"
+
+          if [ "${{ steps.send-email.outputs.success }}" != "true" ]; then
+            echo "Email send failed!"
+            exit 1
+          fi

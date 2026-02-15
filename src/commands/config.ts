@@ -26,15 +26,15 @@ function validateServerUrl(url: string): boolean | string {
   if (!url) {
     return 'Server URL is required';
   }
-  
+
   // Remove protocol if provided
   const cleanUrl = url.replace(/^https?:\/\//, '');
-  
+
   // Basic validation: should have at least one dot and no spaces
   if (!cleanUrl.includes('.') || cleanUrl.includes(' ')) {
     return 'Invalid server URL format (e.g., postal.example.com)';
   }
-  
+
   return true;
 }
 
@@ -92,7 +92,7 @@ export function createConfigCommand(): Command {
           console.error(
             formatter.error(
               `Configuration already exists at ${configManager.getPath()}\n` +
-              'Use --force to overwrite'
+                'Use --force to overwrite'
             )
           );
           process.exit(1);
@@ -146,7 +146,7 @@ export function createConfigCommand(): Command {
         if (!options.skipTest) {
           console.log(chalk.cyan('\n🔌 Testing connection to Postal server...'));
           const connected = await testConnection(config);
-          
+
           if (connected) {
             console.log(chalk.green('✓ Connection successful'));
           } else {
@@ -157,7 +157,7 @@ export function createConfigCommand(): Command {
               message: 'Save configuration anyway?',
               initial: true,
             });
-            
+
             if (!proceed.value) {
               console.log(chalk.yellow('Configuration cancelled'));
               process.exit(0);
@@ -168,10 +168,14 @@ export function createConfigCommand(): Command {
         // Save configuration
         configManager.save(config);
 
-        console.log('\n' + chalk.green('✓ Configuration saved to ') + chalk.cyan(configManager.getPath()));
+        console.log(
+          '\n' + chalk.green('✓ Configuration saved to ') + chalk.cyan(configManager.getPath())
+        );
         console.log('\n' + chalk.bold('Next steps:'));
         console.log('  1. Send your first email:');
-        console.log(chalk.gray('     mailgoat send --to user@example.com --subject "Hello" --body "Test"'));
+        console.log(
+          chalk.gray('     mailgoat send --to user@example.com --subject "Hello" --body "Test"')
+        );
         console.log('\n  2. Check your inbox:');
         console.log(chalk.gray('     mailgoat inbox'));
         console.log('\n  3. Read a message:');

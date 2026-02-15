@@ -11,11 +11,14 @@ export function createReadCommand(): Command {
     .argument('<message-id>', 'Message ID to read')
     .option('--json', 'Output result as JSON')
     .option('--full', 'Include all expansions (headers, attachments, etc.)')
+    .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .action(async (messageId: string, options) => {
       try {
         const configManager = new ConfigManager();
         const config = configManager.load();
-        const client = new PostalClient(config);
+        const client = new PostalClient(config, {
+          enableRetry: options.retry !== false,
+        });
         const formatter = new Formatter(options.json);
 
         // Determine which expansions to request

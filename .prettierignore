@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.d.ts
+
+# Package files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Cache
+.cache/
+*.log
+
+# Generated files
+coverage/
+.nyc_output/
+
+# Documentation
+docs/
+CHANGELOG.md
+
+# Website
+website/
+
+# Examples
+examples/

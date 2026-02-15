@@ -1,0 +1,72 @@
+name: 'MailGoat Email Notification'
+description: 'Send emails from GitHub workflows using MailGoat/Postal'
+author: 'MailGoat Team'
+
+branding:
+  icon: 'mail'
+  color: 'blue'
+
+inputs:
+  # Postal Configuration
+  postal_server:
+    description: 'Postal server URL (e.g., https://postal.example.com)'
+    required: true
+
+  postal_api_key:
+    description: 'Postal API key (use secrets!)'
+    required: true
+
+  from_email:
+    description: 'From email address'
+    required: true
+
+  # Email Content
+  to:
+    description: 'Recipient email address(es) - comma-separated for multiple'
+    required: true
+
+  subject:
+    description: 'Email subject'
+    required: true
+
+  body:
+    description: 'Email body (plain text or HTML)'
+    required: true
+
+  # Optional Fields
+  cc:
+    description: 'CC email address(es) - comma-separated'
+    required: false
+
+  bcc:
+    description: 'BCC email address(es) - comma-separated'
+    required: false
+
+  reply_to:
+    description: 'Reply-to email address'
+    required: false
+
+  html:
+    description: 'Set to "true" if body is HTML'
+    required: false
+    default: 'false'
+
+  # Action Behavior
+  fail_on_error:
+    description: 'Fail workflow if email send fails'
+    required: false
+    default: 'true'
+
+outputs:
+  message_id:
+    description: 'Postal message ID'
+
+  success:
+    description: 'Whether email was sent successfully (true/false)'
+
+  error:
+    description: 'Error message if send failed'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

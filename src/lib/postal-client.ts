@@ -1,6 +1,12 @@
 import axios, { AxiosInstance } from 'axios';
 import { MailGoatConfig } from './config';
 
+export interface PostalClientOptions {
+  maxRetries?: number;
+  baseDelay?: number;
+  enableRetry?: boolean;
+}
+
 export interface SendMessageParams {
   to: string[];
   subject: string;
@@ -66,15 +72,21 @@ export interface MessageDetails {
 }
 
 /**
- * Client for Postal Legacy API
+ * Client for Postal Legacy API with retry logic and enhanced error handling
  * https://github.com/postalserver/postal
  */
 export class PostalClient {
   private client: AxiosInstance;
   private config: MailGoatConfig;
+  private maxRetries: number;
+  private baseDelay: number;
+  private enableRetry: boolean;
 
-  constructor(config: MailGoatConfig) {
+  constructor(config: MailGoatConfig, options: PostalClientOptions = {}) {
     this.config = config;
+    this.maxRetries = options.maxRetries ?? 3;
+    this.baseDelay = options.baseDelay ?? 1000;
+    this.enableRetry = options.enableRetry ?? true;
 
     // Build base URL (handle both with/without https://)
     let baseURL = config.server;
@@ -93,11 +105,100 @@ export class PostalClient {
   }
 
   /**
-   * Send an email message
+   * Retry a function with exponential backoff
+   * @param fn Function to retry
+   * @param operationName Name of operation for error messages
+   * @returns Result of the function
+   */
+  private async retryWithBackoff<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
+    if (!this.enableRetry) {
+      return fn();
+    }
+
+    let lastError: any;
+
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        lastError = error;
+
+        // Don't retry on certain errors
+        if (this.shouldNotRetry(error)) {
+          throw error;
+        }
+
+        // If this was the last attempt, throw
+        if (attempt === this.maxRetries - 1) {
+          throw this.enhanceError(error, operationName, attempt + 1);
+        }
+
+        // Calculate delay with exponential backoff
+        const delay = this.baseDelay * Math.pow(2, attempt);
+
+        // Log retry attempt (only in verbose mode - future enhancement)
+        // console.log(`Retrying ${operationName} after ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`);
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Determine if an error should not be retried
+   */
+  private shouldNotRetry(error: any): boolean {
+    // Don't retry on auth errors (401, 403)
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      return true;
+    }
+
+    // Don't retry on client errors (400-499, except 429 rate limit)
+    if (
+      error.response?.status >= 400 &&
+      error.response?.status < 500 &&
+      error.response?.status !== 429
+    ) {
+      return true;
+    }
+
+    // Don't retry on validation errors from Postal
+    const errorCode = error.response?.data?.data?.code;
+    const nonRetryableCodes = [
+      'NoRecipients',
+      'NoContent',
+      'TooManyToAddresses',
+      'TooManyCCAddresses',
+      'TooManyBCCAddresses',
+      'FromAddressMissing',
+      'UnauthenticatedFromAddress',
+      'MessageNotFound',
+    ];
+
+    if (errorCode && nonRetryableCodes.includes(errorCode)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Enhance error with helpful context and messages
+   */
+  private enhanceError(error: any, context: string, attempts: number): Error {
+    const enhanced = this.categorizeError(error);
+    enhanced.message = `${context} (after ${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}): ${enhanced.message}`;
+    return enhanced;
+  }
+
+  /**
+   * Send an email message with retry logic
    * POST /api/v1/send/message
    */
   async sendMessage(params: SendMessageParams): Promise<SendMessageResponse> {
-    try {
+    return this.retryWithBackoff(async () => {
       const response = await this.client.post('/api/v1/send/message', {
         to: params.to,
         cc: params.cc,
@@ -113,68 +214,129 @@ export class PostalClient {
       });
 
       return response.data.data;
-    } catch (error: any) {
-      this.handleError(error, 'Failed to send message');
-    }
+    }, 'Send message');
   }
 
   /**
-   * Get message details by ID
+   * Get message details by ID with retry logic
    * POST /api/v1/messages/message
    */
-  async getMessage(
-    messageId: string,
-    expansions?: string[]
-  ): Promise<MessageDetails> {
-    try {
+  async getMessage(messageId: string, expansions?: string[]): Promise<MessageDetails> {
+    return this.retryWithBackoff(async () => {
       const response = await this.client.post('/api/v1/messages/message', {
         id: messageId,
         _expansions: expansions || ['status', 'details', 'plain_body'],
       });
 
       return response.data.data;
-    } catch (error: any) {
-      this.handleError(error, `Failed to get message ${messageId}`);
-    }
+    }, `Get message ${messageId}`);
   }
 
   /**
-   * Get deliveries for a message
+   * Get deliveries for a message with retry logic
    * POST /api/v1/messages/deliveries
    */
   async getDeliveries(messageId: string): Promise<any[]> {
-    try {
+    return this.retryWithBackoff(async () => {
       const response = await this.client.post('/api/v1/messages/deliveries', {
         id: messageId,
       });
 
       return response.data.data;
-    } catch (error: any) {
-      this.handleError(error, `Failed to get deliveries for ${messageId}`);
-    }
+    }, `Get deliveries for ${messageId}`);
   }
 
   /**
-   * Handle API errors
+   * Categorize error and provide helpful message
    */
-  private handleError(error: any, context: string): never {
-    if (error.response) {
-      // Postal API error response
-      const data = error.response.data;
-      if (data.status === 'error') {
-        throw new Error(
-          `${context}: ${data.data.message || data.data.code || 'Unknown error'}`
-        );
-      }
-      throw new Error(
-        `${context}: HTTP ${error.response.status} - ${error.response.statusText}`
+  private categorizeError(error: any): Error {
+    // Network/connection errors
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      return new Error(
+        `Could not connect to Postal server at ${this.config.server}. ` +
+          `Check your network connection and server URL.`
       );
-    } else if (error.request) {
-      throw new Error(
-        `${context}: No response from server. Check your server URL and network connection.`
-      );
-    } else {
-      throw new Error(`${context}: ${error.message}`);
     }
+
+    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+      return new Error(
+        `Connection to Postal server timed out. ` +
+          `The server may be overloaded or your network is slow.`
+      );
+    }
+
+    if (!error.response) {
+      return new Error(
+        `No response from Postal server. Check your network connection and server URL.`
+      );
+    }
+
+    const status = error.response.status;
+    const data = error.response.data;
+
+    // Authentication errors (401, 403)
+    if (status === 401 || status === 403) {
+      return new Error(
+        `Authentication failed. Your API key is invalid or expired.\n` + `Run: mailgoat config init`
+      );
+    }
+
+    // Rate limiting (429)
+    if (status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || '60';
+      return new Error(
+        `Rate limit exceeded. Too many requests to Postal server.\n` +
+          `Wait ${retryAfter} seconds and try again.`
+      );
+    }
+
+    // Postal-specific validation errors
+    if (data?.status === 'error' && data?.data) {
+      const errorCode = data.data.code;
+      const errorMessage = data.data.message || errorCode;
+
+      switch (errorCode) {
+        case 'NoRecipients':
+          return new Error('No recipients specified. Add --to, --cc, or --bcc.');
+        case 'NoContent':
+          return new Error('Email has no content. Add --body or --html.');
+        case 'TooManyToAddresses':
+          return new Error('Too many recipients in To field (maximum 50).');
+        case 'TooManyCCAddresses':
+          return new Error('Too many recipients in CC field (maximum 50).');
+        case 'TooManyBCCAddresses':
+          return new Error('Too many recipients in BCC field (maximum 50).');
+        case 'FromAddressMissing':
+          return new Error('Sender email (From) is missing. Add --from or check config.');
+        case 'UnauthenticatedFromAddress':
+          return new Error(
+            `Sender email "${data.data.from || 'unknown'}" is not authorized.\n` +
+              `You can only send from domains configured in your Postal server.`
+          );
+        case 'MessageNotFound':
+          return new Error(`Message not found. Check the message ID and try again.`);
+        default:
+          return new Error(`Postal error: ${errorMessage}`);
+      }
+    }
+
+    // Server errors (500-599)
+    if (status >= 500) {
+      return new Error(
+        `Postal server error (HTTP ${status}). The server may be experiencing issues.\n` +
+          `Try again in a few minutes.`
+      );
+    }
+
+    // Client errors (400-499)
+    if (status >= 400) {
+      return new Error(
+        `Request error (HTTP ${status}): ${error.response.statusText}\n` +
+          `Check your request parameters.`
+      );
+    }
+
+    // Generic error
+    return new Error(`Unexpected error: ${error.message}`);
   }
 }

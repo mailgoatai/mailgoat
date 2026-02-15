@@ -23,11 +23,11 @@ export class ConfigManager {
     if (!fs.existsSync(this.configPath)) {
       throw new Error(
         `Config file not found at ${this.configPath}.\n` +
-        'Run `mailgoat config init` to create one, or set up manually:\n' +
-        '~/.mailgoat/config.yml:\n' +
-        '  server: postal.example.com\n' +
-        '  email: agent@example.com\n' +
-        '  api_key: your-api-key'
+          'Run `mailgoat config init` to create one, or set up manually:\n' +
+          '~/.mailgoat/config.yml:\n' +
+          '  server: postal.example.com\n' +
+          '  email: agent@example.com\n' +
+          '  api_key: your-api-key'
       );
     }
 

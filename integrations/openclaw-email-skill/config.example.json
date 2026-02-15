@@ -1,0 +1,11 @@
+{
+  "postal": {
+    "serverUrl": "https://postal.example.com",
+    "apiKey": "your_postal_api_key_here",
+    "fromEmail": "agent@example.com"
+  },
+  "defaults": {
+    "checkInterval": 60000,
+    "maxInboxResults": 50
+  }
+}

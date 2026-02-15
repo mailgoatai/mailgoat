@@ -1,0 +1,42 @@
+name: Deploy Notification Example
+
+on:
+  push:
+    branches: [main, production]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy and Notify
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Your deployment steps here
+      # ...
+
+      - name: Notify team of deployment
+        uses: mailgoatai/mailgoat-github-action@v1
+        with:
+          postal_server: ${{ secrets.POSTAL_SERVER_URL }}
+          postal_api_key: ${{ secrets.POSTAL_API_KEY }}
+          from_email: 'deployments@company.com'
+          to: 'team@company.com'
+          subject: '🚀 Deployed to production'
+          body: |
+            <h1>Deployment Successful</h1>
+
+            <p>Repository <strong>${{ github.repository }}</strong> has been deployed.</p>
+
+            <h2>Details:</h2>
+            <ul>
+              <li><strong>Commit:</strong> ${{ github.sha }}</li>
+              <li><strong>Branch:</strong> ${{ github.ref }}</li>
+              <li><strong>Deployed by:</strong> ${{ github.actor }}</li>
+              <li><strong>Workflow:</strong> ${{ github.workflow }}</li>
+            </ul>
+
+            <p><a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">View commit</a></p>
+          html: 'true'
+          fail_on_error: 'false'

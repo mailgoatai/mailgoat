@@ -1,0 +1,36 @@
+name: PR Review Notification Example
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  notify-reviewers:
+    runs-on: ubuntu-latest
+    name: Notify Reviewers
+
+    steps:
+      - name: Send review request
+        uses: mailgoatai/mailgoat-github-action@v1
+        with:
+          postal_server: ${{ secrets.POSTAL_SERVER_URL }}
+          postal_api_key: ${{ secrets.POSTAL_API_KEY }}
+          from_email: 'github@company.com'
+          to: 'tech-leads@company.com'
+          cc: '${{ github.event.pull_request.user.email }}'
+          subject: '📝 PR Ready for Review: ${{ github.event.pull_request.title }}'
+          body: |
+            <h1>Pull Request Ready for Review</h1>
+
+            <p><strong>${{ github.event.pull_request.user.login }}</strong> has opened a pull request.</p>
+
+            <h2>PR Details:</h2>
+            <ul>
+              <li><strong>Title:</strong> ${{ github.event.pull_request.title }}</li>
+              <li><strong>Repository:</strong> ${{ github.repository }}</li>
+              <li><strong>Branch:</strong> ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}</li>
+              <li><strong>Changes:</strong> +${{ github.event.pull_request.additions }} -${{ github.event.pull_request.deletions }}</li>
+            </ul>
+
+            <p><a href="${{ github.event.pull_request.html_url }}">Review Pull Request</a></p>
+          html: 'true'

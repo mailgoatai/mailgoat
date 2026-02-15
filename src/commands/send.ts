@@ -28,7 +28,7 @@ function prepareAttachment(filePath: string): AttachmentInfo {
 
   // Get file stats
   const stats = fs.statSync(filePath);
-  
+
   if (!stats.isFile()) {
     throw new Error(`Not a file: ${filePath}`);
   }
@@ -36,17 +36,15 @@ function prepareAttachment(filePath: string): AttachmentInfo {
   // Check size
   if (stats.size > MAX_ATTACHMENT_SIZE) {
     const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-    throw new Error(
-      `Attachment too large: ${filePath} (${sizeMB}MB). Maximum is 10MB per file.`
-    );
+    throw new Error(`Attachment too large: ${filePath} (${sizeMB}MB). Maximum is 10MB per file.`);
   }
 
   // Read file
   const content = fs.readFileSync(filePath);
-  
+
   // Encode to base64
   const base64Content = content.toString('base64');
-  
+
   // Detect MIME type
   const fileName = path.basename(filePath);
   const mimeType = mime.lookup(filePath) || 'application/octet-stream';
@@ -64,12 +62,12 @@ function prepareAttachment(filePath: string): AttachmentInfo {
  */
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 export function createSendCommand(): Command {
@@ -86,12 +84,15 @@ export function createSendCommand(): Command {
     .option('--html', 'Treat body as HTML instead of plain text')
     .option('--tag <tag>', 'Custom tag for this message')
     .option('--attach <files...>', 'Attach files (can specify multiple)')
+    .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
       try {
         const configManager = new ConfigManager();
         const config = configManager.load();
-        const client = new PostalClient(config);
+        const client = new PostalClient(config, {
+          enableRetry: options.retry !== false, // --no-retry sets this to false
+        });
         const formatter = new Formatter(options.json);
 
         // Prepare message params
@@ -124,9 +125,7 @@ export function createSendCommand(): Command {
           const attachments: AttachmentInfo[] = [];
           let totalSize = 0;
 
-          const attachFiles = Array.isArray(options.attach) 
-            ? options.attach 
-            : [options.attach];
+          const attachFiles = Array.isArray(options.attach) ? options.attach : [options.attach];
 
           for (const filePath of attachFiles) {
             const attachment = prepareAttachment(filePath);
@@ -136,7 +135,9 @@ export function createSendCommand(): Command {
             // Warn for large attachments
             if (attachment.size > MAX_ATTACHMENT_SIZE * 0.5 && !options.json) {
               console.warn(
-                chalk.yellow(`⚠ Warning: Large attachment ${attachment.name} (${formatBytes(attachment.size)})`)
+                chalk.yellow(
+                  `⚠ Warning: Large attachment ${attachment.name} (${formatBytes(attachment.size)})`
+                )
               );
             }
           }
@@ -154,7 +155,9 @@ export function createSendCommand(): Command {
           if (!options.json) {
             console.log(chalk.cyan(`📎 Attaching ${attachments.length} file(s):`));
             for (const att of attachments) {
-              console.log(chalk.cyan(`   • ${att.name} (${formatBytes(att.size)}, ${att.content_type})`));
+              console.log(
+                chalk.cyan(`   • ${att.name} (${formatBytes(att.size)}, ${att.content_type})`)
+              );
             }
           }
         }

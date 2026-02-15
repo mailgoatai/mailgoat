@@ -143,14 +143,10 @@ export class Formatter {
       lines.push('');
       lines.push(chalk.bold('Inspection:'));
       if (message.inspection.spam) {
-        lines.push(
-          `  ${chalk.red('SPAM')} (score: ${message.inspection.spam_score})`
-        );
+        lines.push(`  ${chalk.red('SPAM')} (score: ${message.inspection.spam_score})`);
       }
       if (message.inspection.threat) {
-        lines.push(
-          `  ${chalk.red('THREAT')}: ${message.inspection.threat_details}`
-        );
+        lines.push(`  ${chalk.red('THREAT')}: ${message.inspection.threat_details}`);
       }
       if (!message.inspection.spam && !message.inspection.threat) {
         lines.push(`  ${chalk.green('Clean')}`);
@@ -169,9 +165,7 @@ export class Formatter {
       lines.push('');
       lines.push(chalk.bold('Attachments:'));
       for (const att of message.attachments) {
-        lines.push(
-          `  • ${att.filename} (${att.content_type}, ${this.formatBytes(att.size)})`
-        );
+        lines.push(`  • ${att.filename} (${att.content_type}, ${this.formatBytes(att.size)})`);
       }
     }
 
@@ -188,6 +182,6 @@ export class Formatter {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 }

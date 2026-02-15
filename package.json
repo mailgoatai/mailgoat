@@ -11,7 +11,12 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
-    "test": "bash tests/test-runner.sh"
+    "test": "bash tests/test-runner.sh",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -44,10 +49,23 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@jest/globals": "^30.2.0",
+    "@types/jest": "^30.0.0",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^20.19.33",
     "@types/prompts": "^2.4.9",
-    "typescript": "^5.9.3"
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.15.0"
   },
   "engines": {
     "node": ">=18.0.0"

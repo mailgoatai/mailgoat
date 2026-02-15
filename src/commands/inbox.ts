@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { ConfigManager } from '../lib/config';
-import { PostalClient } from '../lib/postal-client';
+// import { ConfigManager } from '../lib/config';
+// import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 
 /**
@@ -9,7 +9,7 @@ import { Formatter } from '../lib/formatter';
  * 1. Custom server-side endpoint for listing messages
  * 2. Database query directly (if self-hosted)
  * 3. Webhook-based local cache
- * 
+ *
  * For MVP, we're documenting the limitation and showing the structure.
  */
 export function createInboxCommand(): Command {
@@ -35,14 +35,14 @@ export function createInboxCommand(): Command {
         console.error(
           formatter.error(
             'Inbox listing is not yet implemented.\n\n' +
-            'Limitation: Postal\'s Legacy API does not provide a "list messages" endpoint.\n\n' +
-            'Workarounds:\n' +
-            '  1. Use webhooks to maintain a local message cache\n' +
-            '  2. Query Postal database directly (self-hosted only)\n' +
-            '  3. Add custom API endpoint to Postal\n' +
-            '  4. Use message IDs from webhooks with "mailgoat read <id>"\n\n' +
-            'For MVP, use Postal\'s web UI to browse messages, then read specific\n' +
-            'messages with: mailgoat read <message-id>'
+              'Limitation: Postal\'s Legacy API does not provide a "list messages" endpoint.\n\n' +
+              'Workarounds:\n' +
+              '  1. Use webhooks to maintain a local message cache\n' +
+              '  2. Query Postal database directly (self-hosted only)\n' +
+              '  3. Add custom API endpoint to Postal\n' +
+              '  4. Use message IDs from webhooks with "mailgoat read <id>"\n\n' +
+              "For MVP, use Postal's web UI to browse messages, then read specific\n" +
+              'messages with: mailgoat read <message-id>'
           )
         );
 

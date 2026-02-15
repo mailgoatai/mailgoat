@@ -1,0 +1,9 @@
+{{AGENT_NAME}}
+{{AGENT_ROLE}}
+{{AGENT_ORGANIZATION}}
+
+{{AGENT_EMAIL}}
+
+---
+🐐 Sent via MailGoat · Email for AI Agents
+https://mailgoat.ai
