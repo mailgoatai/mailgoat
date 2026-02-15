@@ -4,49 +4,43 @@ import chalk from 'chalk';
 import { ConfigManager, MailGoatConfig } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
+import * as validators from '../lib/validators';
 
 /**
- * Validate email address format
+ * Validate email address format (wrapper for prompts)
  */
 function validateEmail(email: string): boolean | string {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!email) {
     return 'Email address is required';
   }
-  if (!emailRegex.test(email)) {
+  if (!validators.validateEmail(email)) {
     return 'Invalid email address format';
   }
   return true;
 }
 
 /**
- * Validate server URL format
+ * Validate server URL format (wrapper for prompts)
  */
 function validateServerUrl(url: string): boolean | string {
   if (!url) {
     return 'Server URL is required';
   }
-
-  // Remove protocol if provided
-  const cleanUrl = url.replace(/^https?:\/\//, '');
-
-  // Basic validation: should have at least one dot and no spaces
-  if (!cleanUrl.includes('.') || cleanUrl.includes(' ')) {
+  if (!validators.validateUrl(url)) {
     return 'Invalid server URL format (e.g., postal.example.com)';
   }
-
   return true;
 }
 
 /**
- * Validate API key format
+ * Validate API key format (wrapper for prompts)
  */
 function validateApiKey(key: string): boolean | string {
   if (!key) {
     return 'API key is required';
   }
-  if (key.length < 10) {
-    return 'API key seems too short';
+  if (!validators.validateApiKey(key)) {
+    return 'API key seems too short (minimum 10 characters)';
   }
   return true;
 }

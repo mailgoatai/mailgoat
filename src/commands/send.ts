@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
+import { validateSendInputs } from '../lib/validators';
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB
@@ -90,14 +91,41 @@ export function createSendCommand(): Command {
       try {
         const configManager = new ConfigManager();
         const config = configManager.load();
-        const client = new PostalClient(config, {
-          enableRetry: options.retry !== false, // --no-retry sets this to false
-        });
         const formatter = new Formatter(options.json);
+
+        // Normalize inputs
+        const to = Array.isArray(options.to) ? options.to : [options.to];
+        const cc = options.cc ? (Array.isArray(options.cc) ? options.cc : [options.cc]) : undefined;
+        const bcc = options.bcc
+          ? Array.isArray(options.bcc)
+            ? options.bcc
+            : [options.bcc]
+          : undefined;
+
+        // Validate inputs before processing
+        const validation = validateSendInputs({
+          to,
+          cc,
+          bcc,
+          subject: options.subject,
+          body: options.html ? undefined : options.body,
+          html: options.html ? options.body : undefined,
+          from: options.from,
+          tag: options.tag,
+        });
+
+        if (!validation.valid) {
+          throw new Error(validation.error);
+        }
+
+        // Create client after validation
+        const client = new PostalClient(config, {
+          enableRetry: options.retry !== false,
+        });
 
         // Prepare message params
         const messageParams: any = {
-          to: Array.isArray(options.to) ? options.to : [options.to],
+          to,
           subject: options.subject,
           from: options.from,
         };
@@ -110,11 +138,11 @@ export function createSendCommand(): Command {
         }
 
         // Optional fields
-        if (options.cc) {
-          messageParams.cc = Array.isArray(options.cc) ? options.cc : [options.cc];
+        if (cc) {
+          messageParams.cc = cc;
         }
-        if (options.bcc) {
-          messageParams.bcc = Array.isArray(options.bcc) ? options.bcc : [options.bcc];
+        if (bcc) {
+          messageParams.bcc = bcc;
         }
         if (options.tag) {
           messageParams.tag = options.tag;
