@@ -1,0 +1,21 @@
+{
+  "id": "msg_001",
+  "from": "user1@example.com",
+  "to": ["agent@example.com"],
+  "cc": [],
+  "bcc": [],
+  "subject": "Test Email 1",
+  "body": "This is a test email body.\n\nIt has multiple paragraphs.\n\nBest regards,\nTest User",
+  "html_body": null,
+  "received_at": "2026-02-15T12:00:00Z",
+  "sent_at": "2026-02-15T11:59:58Z",
+  "unread": true,
+  "has_attachments": false,
+  "attachments": [],
+  "headers": {
+    "Message-ID": "<test123@example.com>",
+    "Content-Type": "text/plain; charset=utf-8",
+    "MIME-Version": "1.0"
+  },
+  "size": 1024
+}

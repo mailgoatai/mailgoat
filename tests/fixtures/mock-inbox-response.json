@@ -1,0 +1,29 @@
+[
+  {
+    "id": "msg_001",
+    "from": "user1@example.com",
+    "to": ["agent@example.com"],
+    "subject": "Test Email 1",
+    "received_at": "2026-02-15T12:00:00Z",
+    "unread": true,
+    "has_attachments": false
+  },
+  {
+    "id": "msg_002",
+    "from": "user2@example.com",
+    "to": ["agent@example.com"],
+    "subject": "CMD: STATUS",
+    "received_at": "2026-02-15T11:30:00Z",
+    "unread": true,
+    "has_attachments": false
+  },
+  {
+    "id": "msg_003",
+    "from": "notifications@github.com",
+    "to": ["agent@example.com"],
+    "subject": "New issue opened",
+    "received_at": "2026-02-15T11:00:00Z",
+    "unread": false,
+    "has_attachments": true
+  }
+]

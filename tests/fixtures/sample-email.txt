@@ -1,0 +1,15 @@
+Subject: Sample Email for Testing
+From: test-agent@example.com
+To: recipient@example.com
+
+This is a sample email body for testing purposes.
+
+It includes:
+- Multiple paragraphs
+- Bullet points
+- Various formatting
+
+This can be used as test data for email processing scenarios.
+
+Best regards,
+Test Agent
