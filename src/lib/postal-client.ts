@@ -1,35 +1,101 @@
 import axios, { AxiosInstance } from 'axios';
 import { MailGoatConfig } from './config';
+import { debugLogger } from './debug';
 
+/**
+ * Configuration options for PostalClient retry behavior
+ * @public
+ */
 export interface PostalClientOptions {
+  /**
+   * Maximum number of retry attempts for failed requests
+   * @defaultValue 3
+   */
   maxRetries?: number;
+
+  /**
+   * Base delay in milliseconds between retries (exponentially increased)
+   * @defaultValue 1000
+   */
   baseDelay?: number;
+
+  /**
+   * Whether to enable automatic retry on transient failures
+   * @defaultValue true
+   */
   enableRetry?: boolean;
 }
 
+/**
+ * Parameters for sending an email message via Postal API
+ * @public
+ */
 export interface SendMessageParams {
+  /** Recipient email addresses (required) */
   to: string[];
+
+  /** Email subject line (required) */
   subject: string;
+
+  /** Plain text body content */
   plain_body?: string;
+
+  /** HTML body content */
   html_body?: string;
+
+  /** Sender email address (defaults to config email) */
   from?: string;
+
+  /** CC recipient email addresses */
   cc?: string[];
+
+  /** BCC recipient email addresses */
   bcc?: string[];
+
+  /** Reply-To email address */
   reply_to?: string;
+
+  /** Custom tag for message tracking */
   tag?: string;
+
+  /** Custom email headers */
   headers?: Record<string, string>;
+
+  /** File attachments (base64 encoded) */
   attachments?: Array<{
+    /** File name */
     name: string;
+    /** MIME content type */
     content_type: string;
-    data: string; // base64 encoded
+    /** Base64 encoded file data */
+    data: string;
   }>;
 }
 
+/**
+ * Response from Postal API after sending a message
+ * @public
+ */
 export interface SendMessageResponse {
+  /** Unique message identifier */
   message_id: string;
-  messages: Record<string, { id: number; token: string }>;
+
+  /** Per-recipient message details */
+  messages: Record<
+    string,
+    {
+      /** Internal message ID */
+      id: number;
+      /** Message token */
+      token: string;
+    }
+  >;
 }
 
+/**
+ * Detailed information about a message from Postal API
+ * @public
+ */
 export interface MessageDetails {
   id: number;
   token: string;
@@ -94,6 +160,12 @@ export class PostalClient {
       baseURL = `https://${baseURL}`;
     }
 
+    debugLogger.log('api', `Initializing PostalClient with server: ${baseURL}`);
+    debugLogger.log(
+      'api',
+      `Retry config: enabled=${this.enableRetry}, maxRetries=${this.maxRetries}, baseDelay=${this.baseDelay}ms`
+    );
+
     this.client = axios.create({
       baseURL,
       headers: {
@@ -102,6 +174,43 @@ export class PostalClient {
       },
       timeout: 30000, // 30 second timeout
     });
+
+    // Add request interceptor for debug logging
+    this.client.interceptors.request.use(
+      (config) => {
+        debugLogger.logRequest(
+          config.method?.toUpperCase() || 'UNKNOWN',
+          `${config.baseURL}${config.url}`,
+          config.headers,
+          config.data
+        );
+        return config;
+      },
+      (error) => {
+        debugLogger.logError('api', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Add response interceptor for debug logging
+    this.client.interceptors.response.use(
+      (response) => {
+        debugLogger.logResponse(response.status, response.statusText, response.data);
+        return response;
+      },
+      (error) => {
+        if (error.response) {
+          debugLogger.logResponse(
+            error.response.status,
+            error.response.statusText,
+            error.response.data
+          );
+        } else {
+          debugLogger.logError('api', error);
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   /**
@@ -112,6 +221,7 @@ export class PostalClient {
    */
   private async retryWithBackoff<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
     if (!this.enableRetry) {
+      debugLogger.log('api', `Retry disabled for: ${operationName}`);
       return fn();
     }
 
@@ -119,25 +229,30 @@ export class PostalClient {
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
+        debugLogger.log('api', `Attempt ${attempt + 1}/${this.maxRetries} for: ${operationName}`);
         return await fn();
       } catch (error: any) {
         lastError = error;
 
         // Don't retry on certain errors
         if (this.shouldNotRetry(error)) {
+          debugLogger.log('api', `Not retrying ${operationName}: error is non-retryable`);
           throw error;
         }
 
         // If this was the last attempt, throw
         if (attempt === this.maxRetries - 1) {
+          debugLogger.log('api', `Max retries reached for: ${operationName}`);
           throw this.enhanceError(error, operationName, attempt + 1);
         }
 
         // Calculate delay with exponential backoff
         const delay = this.baseDelay * Math.pow(2, attempt);
 
-        // Log retry attempt (only in verbose mode - future enhancement)
-        // console.log(`Retrying ${operationName} after ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`);
+        debugLogger.log(
+          'api',
+          `Retrying ${operationName} after ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`
+        );
 
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
