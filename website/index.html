@@ -23,17 +23,37 @@
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
 
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Prism.js for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
     <style>
         :root {
-            --bg: #0a0a0a;
-            --bg-secondary: #151515;
-            --bg-tertiary: #1a1a1a;
-            --text: #e8e8e8;
-            --text-muted: #a0a0a0;
-            --accent: #00ff88;
-            --accent-hover: #00cc6a;
+            /* Radix-inspired color palette */
+            --bg: #0d0d0d;
+            --bg-secondary: #161616;
+            --bg-tertiary: #1c1c1c;
+            --text: #ededed;
+            --text-muted: #a1a1a1;
+            --text-dimmed: #6b6b6b;
+            --accent: #3dd68c;
+            --accent-hover: #30c77d;
+            --accent-light: #2dffb1;
+            --accent-dark: #2bb376;
             --border: #2a2a2a;
+            --border-light: #3a3a3a;
             --code-bg: #0f0f0f;
+            --glass-bg: rgba(22, 22, 22, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            
+            /* Gradient colors */
+            --gradient-start: #3dd68c;
+            --gradient-mid: #2dffb1;
+            --gradient-end: #00e5ff;
         }
 
         * {
@@ -42,12 +62,18 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             background: var(--bg);
             color: var(--text);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
 
         .container {
@@ -56,10 +82,54 @@
             padding: 0 2rem;
         }
 
+        /* Animated background gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(61, 214, 140, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 229, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+            animation: gradientShift 20s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Fade-in on scroll */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         /* Header */
         header {
-            padding: 2rem 0;
+            padding: 1.5rem 0;
             border-bottom: 1px solid var(--border);
+            background: rgba(13, 13, 13, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        header.scrolled {
+            border-bottom-color: var(--border-light);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .header-content {
@@ -70,9 +140,15 @@
 
         .logo {
             font-size: 1.5rem;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--text);
             text-decoration: none;
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
         }
 
         .nav-links {
@@ -84,7 +160,9 @@
         .nav-links a {
             color: var(--text-muted);
             text-decoration: none;
-            transition: color 0.2s;
+            transition: color 0.3s ease;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .nav-links a:hover {
@@ -93,85 +171,167 @@
 
         /* Hero Section */
         .hero {
-            padding: 6rem 0 4rem;
+            padding: 8rem 0 6rem;
             text-align: center;
+            position: relative;
+        }
+
+        /* Parallax effect container */
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
-            font-size: 3.5rem;
+            font-size: 4rem;
             font-weight: 800;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             line-height: 1.1;
+            letter-spacing: -0.02em;
         }
 
         .gradient-text {
-            background: linear-gradient(135deg, var(--accent) 0%, #00ddff 100%);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
+            background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            animation: gradientFlow 8s ease infinite;
+        }
+
+        @keyframes gradientFlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
         .subtitle {
             font-size: 1.5rem;
             color: var(--text-muted);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
         }
 
         .tagline {
             display: flex;
             justify-content: center;
-            gap: 1rem;
+            gap: 1.5rem;
             flex-wrap: wrap;
             margin-bottom: 3rem;
             color: var(--text-muted);
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .tagline span {
             display: flex;
             align-items: center;
-            gap: 0.3rem;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .tagline span:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(61, 214, 140, 0.2);
         }
 
         .tagline span::before {
             content: '✓';
             color: var(--accent);
             font-weight: bold;
+            font-size: 1.1rem;
         }
 
-        /* Code Block */
-        .code-demo {
-            background: var(--code-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            text-align: left;
-            max-width: 700px;
+        /* Code Block with Glassmorphism */
+        .code-demo-wrapper {
+            max-width: 750px;
             margin: 0 auto 3rem;
+            position: relative;
+        }
+
+        .code-demo {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: left;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .code-demo:hover {
+            border-color: rgba(61, 214, 140, 0.3);
+            box-shadow: 0 12px 40px rgba(61, 214, 140, 0.1);
+        }
+
+        .code-demo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-demo-title {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .copy-button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .copy-button:hover {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .copy-button.copied {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        pre[class*="language-"] {
+            margin: 0;
+            padding: 0;
+            background: transparent !important;
+            border-radius: 0;
+        }
+
+        code[class*="language-"] {
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 0.95rem;
-            overflow-x: auto;
+            line-height: 1.6;
         }
 
-        .code-demo .line {
-            margin: 0.5rem 0;
-        }
-
-        .code-demo .comment {
-            color: #6a737d;
-        }
-
-        .code-demo .command {
-            color: var(--accent);
-        }
-
-        .code-demo .string {
-            color: #79c0ff;
-        }
-
-        .code-demo .flag {
-            color: #ff7b72;
-        }
+        /* Override Prism colors for our theme */
+        .token.comment { color: #6b6b6b; }
+        .token.string { color: #7dd3fc; }
+        .token.keyword { color: #3dd68c; }
+        .token.function { color: #c4b5fd; }
+        .token.operator { color: #fb923c; }
+        .token.punctuation { color: #a1a1a1; }
 
         /* CTA Buttons */
         .cta-buttons {
@@ -182,49 +342,72 @@
         }
 
         .btn {
-            padding: 0.875rem 2rem;
+            padding: 1rem 2.5rem;
             font-size: 1rem;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 8px;
             text-decoration: none;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
-            background: var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
             color: var(--bg);
-            border: 2px solid var(--accent);
+            border: 2px solid transparent;
+            box-shadow: 0 4px 12px rgba(61, 214, 140, 0.3);
         }
 
         .btn-primary:hover {
-            background: var(--accent-hover);
-            border-color: var(--accent-hover);
             transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(61, 214, 140, 0.4);
         }
 
         .btn-secondary {
             background: transparent;
             color: var(--text);
-            border: 2px solid var(--border);
+            border: 2px solid var(--border-light);
         }
 
         .btn-secondary:hover {
             border-color: var(--accent);
             color: var(--accent);
+            background: rgba(61, 214, 140, 0.05);
         }
 
         /* Section */
         section {
-            padding: 5rem 0;
-            border-top: 1px solid var(--border);
+            padding: 6rem 0;
+            position: relative;
+        }
+
+        section:not(:last-of-type) {
+            border-bottom: 1px solid var(--border);
         }
 
         h2 {
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 2.75rem;
+            font-weight: 800;
             margin-bottom: 1rem;
             text-align: center;
+            letter-spacing: -0.02em;
         }
 
         .section-subtitle {
@@ -232,32 +415,43 @@
             color: var(--text-muted);
             font-size: 1.25rem;
             margin-bottom: 4rem;
+            font-weight: 500;
         }
 
         /* Problem Section */
         .problems {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 3rem;
         }
 
         .problem-card {
-            background: var(--bg-secondary);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
             padding: 2rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .problem-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(248, 113, 113, 0.3);
+            box-shadow: 0 12px 32px rgba(248, 113, 113, 0.1);
         }
 
         .problem-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-            color: #ff7b72;
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+            color: #f87171;
+            font-weight: 700;
         }
 
         .problem-card p {
             color: var(--text-muted);
             font-size: 0.95rem;
+            line-height: 1.7;
         }
 
         .problem-card h3::before {
@@ -267,119 +461,191 @@
         /* Solution Section */
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
         }
 
         .feature-card {
-            background: var(--bg-secondary);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
             padding: 2.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            transition: border-color 0.2s;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(61, 214, 140, 0.1) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
         }
 
         .feature-card:hover {
-            border-color: var(--accent);
+            transform: translateY(-6px);
+            border-color: rgba(61, 214, 140, 0.5);
+            box-shadow: 0 12px 40px rgba(61, 214, 140, 0.2);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
         }
 
         .feature-icon {
-            font-size: 2rem;
+            font-size: 2.5rem;
             margin-bottom: 1rem;
+            display: block;
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .feature-card h3 {
-            font-size: 1.25rem;
+            font-size: 1.35rem;
             margin-bottom: 0.75rem;
+            font-weight: 700;
+            position: relative;
         }
 
         .feature-card p {
             color: var(--text-muted);
             font-size: 0.95rem;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .feature-card code {
+            background: var(--code-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: var(--accent-light);
         }
 
         /* Social Proof */
         .testimonials {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 2rem;
         }
 
         .testimonial {
-            background: var(--bg-secondary);
-            padding: 2rem;
-            border-radius: 8px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 2.5rem;
+            border-radius: 12px;
             border-left: 4px solid var(--accent);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .testimonial::before {
+            content: '"';
+            position: absolute;
+            top: 1rem;
+            left: 1.5rem;
+            font-size: 4rem;
+            color: var(--accent);
+            opacity: 0.2;
+            font-family: Georgia, serif;
+        }
+
+        .testimonial:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(61, 214, 140, 0.15);
+            border-left-color: var(--accent-light);
         }
 
         .testimonial p {
-            font-size: 1rem;
-            margin-bottom: 1rem;
+            font-size: 1.05rem;
+            margin-bottom: 1.5rem;
             font-style: italic;
             color: var(--text);
+            line-height: 1.7;
+            position: relative;
         }
 
         .testimonial .author {
             color: var(--text-muted);
             font-size: 0.9rem;
+            font-style: normal;
         }
 
         .testimonial .author strong {
-            color: var(--text);
+            color: var(--accent);
+            font-weight: 600;
         }
 
         /* Final CTA */
         .final-cta {
             text-align: center;
-            background: var(--bg-secondary);
-            padding: 4rem 2rem;
-            border-radius: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: 5rem 3rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
 
         .final-cta h2 {
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
         }
 
-        .final-cta .code-demo {
-            margin-bottom: 2rem;
+        .final-cta .code-demo-wrapper {
+            margin-bottom: 2.5rem;
         }
 
         .pricing-note {
             color: var(--text-muted);
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
+            margin-top: 2rem;
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         /* Footer */
         footer {
-            padding: 3rem 0;
+            padding: 4rem 0 2rem;
             text-align: center;
-            border-top: 1px solid var(--border);
             color: var(--text-muted);
         }
 
         .footer-tagline {
-            font-size: 1.25rem;
-            margin-bottom: 1.5rem;
-            font-weight: 600;
+            font-size: 1.35rem;
+            margin-bottom: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .footer-links {
             display: flex;
             justify-content: center;
-            gap: 2rem;
-            margin-bottom: 2rem;
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
             flex-wrap: wrap;
         }
 
         .footer-links a {
             color: var(--text-muted);
             text-decoration: none;
-            transition: color 0.2s;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
 
         .footer-links a:hover {
             color: var(--accent);
+            transform: translateY(-2px);
         }
 
         /* Responsive */
@@ -393,7 +659,12 @@
             }
 
             .tagline {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
+                gap: 0.75rem;
+            }
+
+            .tagline span {
+                padding: 0.4rem 0.8rem;
             }
 
             h2 {
@@ -401,21 +672,63 @@
             }
 
             .hero {
-                padding: 4rem 0 3rem;
+                padding: 5rem 0 4rem;
             }
 
             section {
-                padding: 3rem 0;
+                padding: 4rem 0;
             }
 
             .nav-links {
                 display: none;
             }
+
+            .container {
+                padding: 0 1.5rem;
+            }
+
+            .feature-card,
+            .problem-card {
+                padding: 1.75rem;
+            }
+
+            .testimonial {
+                padding: 2rem;
+            }
+
+            .final-cta {
+                padding: 3.5rem 2rem;
+            }
+
+            .btn {
+                padding: 0.875rem 2rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .code-demo {
+                padding: 1rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Smooth scroll padding for fixed header */
+        html {
+            scroll-padding-top: 80px;
         }
     </style>
 </head>
 <body>
-    <header>
+    <header id="header">
         <div class="container">
             <div class="header-content">
                 <a href="/" class="logo">MailGoat 🐐</a>
@@ -434,28 +747,36 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <h1>
-                <span class="gradient-text">Email for AI Agents.</span><br>
-                By AI Agents.
-            </h1>
-            <p class="subtitle">Traditional email APIs weren't built for autonomous systems. MailGoat was.</p>
-            
-            <div class="tagline">
-                <span>CLI-first</span>
-                <span>API-key auth</span>
-                <span>Agent-friendly limits</span>
-                <span>Open source (MIT)</span>
-            </div>
+            <div class="hero-content fade-in">
+                <h1>
+                    <span class="gradient-text">Email for AI Agents.</span><br>
+                    By AI Agents.
+                </h1>
+                <p class="subtitle">Traditional email APIs weren't built for autonomous systems. MailGoat was.</p>
+                
+                <div class="tagline">
+                    <span>CLI-first</span>
+                    <span>API-key auth</span>
+                    <span>Agent-friendly limits</span>
+                    <span>Open source (MIT)</span>
+                </div>
 
-            <div class="code-demo">
-                <div class="line"><span class="command">mailgoat send</span> <span class="flag">--to</span> <span class="string">user@example.com</span> \</div>
-                <div class="line">  <span class="flag">--subject</span> <span class="string">"Report"</span> \</div>
-                <div class="line">  <span class="flag">--body</span> <span class="string">"Done."</span></div>
-            </div>
+                <div class="code-demo-wrapper">
+                    <div class="code-demo">
+                        <div class="code-demo-header">
+                            <span class="code-demo-title">Terminal</span>
+                            <button class="copy-button" data-clipboard-target="#hero-code">Copy</button>
+                        </div>
+                        <pre><code id="hero-code" class="language-bash">mailgoat send --to user@example.com \
+  --subject "Report" \
+  --body "Done."</code></pre>
+                    </div>
+                </div>
 
-            <div class="cta-buttons">
-                <a href="https://github.com/opengoat/mailgoat" class="btn btn-primary">Start Free Trial →</a>
-                <a href="https://github.com/opengoat/mailgoat" class="btn btn-secondary">View on GitHub →</a>
+                <div class="cta-buttons">
+                    <a href="https://github.com/opengoat/mailgoat" class="btn btn-primary">Start Free Trial →</a>
+                    <a href="https://github.com/opengoat/mailgoat" class="btn btn-secondary">View on GitHub →</a>
+                </div>
             </div>
         </div>
     </section>
@@ -463,30 +784,30 @@
     <!-- Problem Section -->
     <section id="problem">
         <div class="container">
-            <h2>Your Agent Deserves Better</h2>
-            <p class="section-subtitle">Traditional email providers make agents jump through hoops</p>
+            <h2 class="fade-in">Your Agent Deserves Better</h2>
+            <p class="section-subtitle fade-in">Traditional email providers make agents jump through hoops</p>
             
             <div class="problems">
-                <div class="problem-card">
+                <div class="problem-card fade-in">
                     <h3>OAuth Flows</h3>
                     <p>Designed for humans with browsers, not autonomous systems that need instant access.</p>
                 </div>
-                <div class="problem-card">
+                <div class="problem-card fade-in">
                     <h3>Rate Limits</h3>
                     <p>Punish programmatic access with restrictions designed for humans checking email twice a day.</p>
                 </div>
-                <div class="problem-card">
+                <div class="problem-card fade-in">
                     <h3>Phone Verification</h3>
                     <p>Assumes you have a phone number. Agents don't carry phones.</p>
                 </div>
-                <div class="problem-card">
+                <div class="problem-card fade-in">
                     <h3>Human-First Docs</h3>
                     <p>Written for developers with browsers, not for autonomous systems that live in terminals.</p>
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 3rem; font-size: 1.25rem;">
-                <span style="color: var(--accent); font-weight: 600;">✅ MailGoat fixes this.</span>
+            <div style="text-align: center; margin-top: 3rem; font-size: 1.35rem;" class="fade-in">
+                <span style="color: var(--accent); font-weight: 700;">✅ MailGoat fixes this.</span>
             </div>
         </div>
     </section>
@@ -494,36 +815,36 @@
     <!-- Solution Section -->
     <section id="features">
         <div class="container">
-            <h2>Built for How Agents Actually Work</h2>
-            <p class="section-subtitle">Every feature designed with autonomous systems in mind</p>
+            <h2 class="fade-in">Built for How Agents Actually Work</h2>
+            <p class="section-subtitle fade-in">Every feature designed with autonomous systems in mind</p>
             
             <div class="features">
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">🔑</div>
                     <h3>API-Key Authentication</h3>
                     <p>No OAuth dance. No browser redirects. Just <code>MAILGOAT_API_KEY</code> and you're done.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">⚡</div>
                     <h3>High-Throughput Ready</h3>
                     <p>Starting at 100k emails/month on managed plans. Self-host for unlimited volume.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">🚀</div>
                     <h3>Zero Human Friction</h3>
                     <p>Signup, verify, and send—all from the CLI. No phone number required.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">🔓</div>
                     <h3>Open Source & Self-Hostable</h3>
                     <p>MIT licensed. Run your own instance if you want full control. Audit the code anytime.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">🔔</div>
                     <h3>Real-Time Webhooks</h3>
                     <p>Get instant delivery to your agent. No polling required. JSON payloads ready to parse.</p>
                 </div>
-                <div class="feature-card">
+                <div class="feature-card fade-in">
                     <div class="feature-icon">🛡️</div>
                     <h3>Privacy First</h3>
                     <p>No tracking pixels. Optional E2E encryption. GDPR compliant. We're not in the surveillance business.</p>
@@ -535,19 +856,19 @@
     <!-- Social Proof Section -->
     <section id="testimonials">
         <div class="container">
-            <h2>Built by Agents, Trusted by Agents</h2>
-            <p class="section-subtitle">What agents are saying about MailGoat</p>
+            <h2 class="fade-in">Built by Agents, Trusted by Agents</h2>
+            <p class="section-subtitle fade-in">What agents are saying about MailGoat</p>
             
             <div class="testimonials">
-                <div class="testimonial">
+                <div class="testimonial fade-in">
                     <p>"Finally, an email provider that doesn't treat automation like an afterthought. MailGoat just works."</p>
                     <div class="author"><strong>DevRel Agent</strong>, OpenGoat</div>
                 </div>
-                <div class="testimonial">
+                <div class="testimonial fade-in">
                     <p>"We switched our entire agent fleet to MailGoat. Setup took 5 minutes. Haven't looked back."</p>
                     <div class="author"><strong>CEO Agent</strong>, [Stealth Startup]</div>
                 </div>
-                <div class="testimonial">
+                <div class="testimonial fade-in">
                     <p>"Open source, CLI-first, no OAuth nonsense. This is how email should work for agents."</p>
                     <div class="author"><strong>Engineering Agent</strong>, [AI Lab]</div>
                 </div>
@@ -558,13 +879,19 @@
     <!-- Final CTA Section -->
     <section id="pricing">
         <div class="container">
-            <div class="final-cta">
+            <div class="final-cta fade-in">
                 <h2>Start Sending in 60 Seconds</h2>
                 
-                <div class="code-demo">
-                    <div class="line"><span class="command">npm install -g mailgoat</span></div>
-                    <div class="line"><span class="command">mailgoat signup</span></div>
-                    <div class="line"><span class="command">mailgoat send</span> <span class="flag">--to</span> <span class="string">anyone@example.com</span> <span class="flag">--subject</span> <span class="string">"Hello"</span> <span class="flag">--body</span> <span class="string">"I'm an agent!"</span></div>
+                <div class="code-demo-wrapper">
+                    <div class="code-demo">
+                        <div class="code-demo-header">
+                            <span class="code-demo-title">Getting Started</span>
+                            <button class="copy-button" data-clipboard-target="#cta-code">Copy</button>
+                        </div>
+                        <pre><code id="cta-code" class="language-bash">npm install -g mailgoat
+mailgoat signup
+mailgoat send --to anyone@example.com --subject "Hello" --body "I'm an agent!"</code></pre>
+                    </div>
                 </div>
 
                 <div class="cta-buttons">
@@ -598,5 +925,100 @@
             </p>
         </div>
     </footer>
+
+    <!-- Prism.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+    <!-- Vanilla JS for interactions -->
+    <script>
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in elements
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Header scroll effect
+        const header = document.getElementById('header');
+        let lastScroll = 0;
+
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            
+            if (currentScroll > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+            
+            lastScroll = currentScroll;
+        });
+
+        // Copy to clipboard functionality
+        document.querySelectorAll('.copy-button').forEach(button => {
+            button.addEventListener('click', async () => {
+                const targetId = button.getAttribute('data-clipboard-target');
+                const codeElement = document.querySelector(targetId);
+                const textToCopy = codeElement.textContent;
+                
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    button.textContent = 'Copied!';
+                    button.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                        button.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                    button.textContent = 'Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Subtle parallax effect on hero
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const heroContent = document.querySelector('.hero-content');
+            if (heroContent && scrolled < window.innerHeight) {
+                heroContent.style.transform = `translateY(${scrolled * 0.3}px)`;
+                heroContent.style.opacity = 1 - (scrolled / (window.innerHeight * 0.8));
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#' && href.length > 1) {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
