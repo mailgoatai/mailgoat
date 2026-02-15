@@ -1,7 +1,75 @@
 import { Command } from 'commander';
-import { ConfigManager } from '../lib/config';
+import prompts from 'prompts';
+import chalk from 'chalk';
+import { ConfigManager, MailGoatConfig } from '../lib/config';
+import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
-import * as readline from 'readline';
+
+/**
+ * Validate email address format
+ */
+function validateEmail(email: string): boolean | string {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email) {
+    return 'Email address is required';
+  }
+  if (!emailRegex.test(email)) {
+    return 'Invalid email address format';
+  }
+  return true;
+}
+
+/**
+ * Validate server URL format
+ */
+function validateServerUrl(url: string): boolean | string {
+  if (!url) {
+    return 'Server URL is required';
+  }
+  
+  // Remove protocol if provided
+  const cleanUrl = url.replace(/^https?:\/\//, '');
+  
+  // Basic validation: should have at least one dot and no spaces
+  if (!cleanUrl.includes('.') || cleanUrl.includes(' ')) {
+    return 'Invalid server URL format (e.g., postal.example.com)';
+  }
+  
+  return true;
+}
+
+/**
+ * Validate API key format
+ */
+function validateApiKey(key: string): boolean | string {
+  if (!key) {
+    return 'API key is required';
+  }
+  if (key.length < 10) {
+    return 'API key seems too short';
+  }
+  return true;
+}
+
+/**
+ * Test connection to Postal server
+ */
+async function testConnection(config: MailGoatConfig): Promise<boolean> {
+  try {
+    const client = new PostalClient(config);
+    // Try to send a test request (will fail gracefully if server is reachable)
+    // We're just testing if the server responds, not if the API key is valid
+    await client.getMessage('test-message-id');
+    return true;
+  } catch (error: any) {
+    // Check error type
+    if (error.message.includes('No response from server')) {
+      return false;
+    }
+    // If we get an API error (not network error), connection is working
+    return true;
+  }
+}
 
 export function createConfigCommand(): Command {
   const cmd = new Command('config');
@@ -13,6 +81,7 @@ export function createConfigCommand(): Command {
     .command('init')
     .description('Initialize MailGoat configuration interactively')
     .option('-f, --force', 'Overwrite existing config')
+    .option('--skip-test', 'Skip connection test')
     .action(async (options) => {
       try {
         const configManager = new ConfigManager();
@@ -29,16 +98,90 @@ export function createConfigCommand(): Command {
           process.exit(1);
         }
 
-        console.log('📧 MailGoat Configuration Setup\n');
+        console.log(chalk.bold.cyan('📧 MailGoat Configuration Setup'));
+        console.log(chalk.gray('Create your ~/.mailgoat/config.yml file\n'));
 
-        const config = await promptForConfig();
+        // Interactive prompts
+        const response = await prompts([
+          {
+            type: 'text',
+            name: 'server',
+            message: 'Postal server URL',
+            initial: 'postal.example.com',
+            validate: validateServerUrl,
+          },
+          {
+            type: 'text',
+            name: 'email',
+            message: 'Your email address',
+            validate: validateEmail,
+          },
+          {
+            type: 'password',
+            name: 'api_key',
+            message: 'Postal API key',
+            validate: validateApiKey,
+          },
+          {
+            type: 'confirm',
+            name: 'confirm',
+            message: 'Save configuration?',
+            initial: true,
+          },
+        ]);
 
+        // Check if user cancelled
+        if (!response.confirm) {
+          console.log(chalk.yellow('\nConfiguration cancelled'));
+          process.exit(0);
+        }
+
+        const config: MailGoatConfig = {
+          server: response.server,
+          email: response.email,
+          api_key: response.api_key,
+        };
+
+        // Test connection (unless skipped)
+        if (!options.skipTest) {
+          console.log(chalk.cyan('\n🔌 Testing connection to Postal server...'));
+          const connected = await testConnection(config);
+          
+          if (connected) {
+            console.log(chalk.green('✓ Connection successful'));
+          } else {
+            console.log(chalk.yellow('⚠ Warning: Could not reach server'));
+            const proceed = await prompts({
+              type: 'confirm',
+              name: 'value',
+              message: 'Save configuration anyway?',
+              initial: true,
+            });
+            
+            if (!proceed.value) {
+              console.log(chalk.yellow('Configuration cancelled'));
+              process.exit(0);
+            }
+          }
+        }
+
+        // Save configuration
         configManager.save(config);
 
-        console.log('\n' + formatter.success(`Configuration saved to ${configManager.getPath()}`));
-        console.log('\nYou can now use MailGoat commands like:');
-        console.log('  mailgoat send --to user@example.com --subject "Hello" --body "Test"');
+        console.log('\n' + chalk.green('✓ Configuration saved to ') + chalk.cyan(configManager.getPath()));
+        console.log('\n' + chalk.bold('Next steps:'));
+        console.log('  1. Send your first email:');
+        console.log(chalk.gray('     mailgoat send --to user@example.com --subject "Hello" --body "Test"'));
+        console.log('\n  2. Check your inbox:');
+        console.log(chalk.gray('     mailgoat inbox'));
+        console.log('\n  3. Read a message:');
+        console.log(chalk.gray('     mailgoat read <message-id>'));
+        console.log('\n' + chalk.gray('For more help, run: ') + chalk.cyan('mailgoat --help'));
       } catch (error: any) {
+        if (error.message === 'User canceled') {
+          console.log(chalk.yellow('\nConfiguration cancelled'));
+          process.exit(0);
+        }
         const formatter = new Formatter(false);
         console.error(formatter.error(error.message));
         process.exit(1);
@@ -81,43 +224,4 @@ export function createConfigCommand(): Command {
     });
 
   return cmd;
-}
-
-/**
- * Prompt user for configuration values
- */
-async function promptForConfig(): Promise<any> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  const question = (prompt: string): Promise<string> => {
-    return new Promise((resolve) => {
-      rl.question(prompt, (answer) => {
-        resolve(answer.trim());
-      });
-    });
-  };
-
-  try {
-    const server = await question('Postal server URL (e.g., postal.example.com): ');
-    const email = await question('Your email address: ');
-    const apiKey = await question('Postal API key: ');
-
-    rl.close();
-
-    if (!server || !email || !apiKey) {
-      throw new Error('All fields are required');
-    }
-
-    return {
-      server,
-      email,
-      api_key: apiKey,
-    };
-  } catch (error) {
-    rl.close();
-    throw error;
-  }
 }
