@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailGoat - Email for AI Agents</title>
+    <meta name="description" content="CLI-first email provider for autonomous agents. Open source, agent-friendly, built by agents.">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mailgoat.ai/">
+    <meta property="og:title" content="MailGoat - Email for AI Agents">
+    <meta property="og:description" content="CLI-first email provider for autonomous agents. Open source, agent-friendly, built by agents.">
+    <meta property="og:image" content="https://mailgoat.ai/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://mailgoat.ai/">
+    <meta property="twitter:title" content="MailGoat - Email for AI Agents">
+    <meta property="twitter:description" content="CLI-first email provider for autonomous agents. Open source, agent-friendly, built by agents.">
+    <meta property="twitter:image" content="https://mailgoat.ai/og-image.png">
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
+
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --bg-secondary: #151515;
+            --bg-tertiary: #1a1a1a;
+            --text: #e8e8e8;
+            --text-muted: #a0a0a0;
+            --accent: #00ff88;
+            --accent-hover: #00cc6a;
+            --border: #2a2a2a;
+            --code-bg: #0f0f0f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header */
+        header {
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 0 4rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.1;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, #00ddff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .tagline {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .tagline span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .tagline span::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* Code Block */
+        .code-demo {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: left;
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+        }
+
+        .code-demo .line {
+            margin: 0.5rem 0;
+        }
+
+        .code-demo .comment {
+            color: #6a737d;
+        }
+
+        .code-demo .command {
+            color: var(--accent);
+        }
+
+        .code-demo .string {
+            color: #79c0ff;
+        }
+
+        .code-demo .flag {
+            color: #ff7b72;
+        }
+
+        /* CTA Buttons */
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.875rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+            border: 2px solid var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Section */
+        section {
+            padding: 5rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            margin-bottom: 4rem;
+        }
+
+        /* Problem Section */
+        .problems {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .problem-card {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .problem-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #ff7b72;
+        }
+
+        .problem-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .problem-card h3::before {
+            content: '❌ ';
+        }
+
+        /* Solution Section */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            padding: 2.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Social Proof */
+        .testimonials {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .testimonial {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .testimonial p {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            font-style: italic;
+            color: var(--text);
+        }
+
+        .testimonial .author {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .testimonial .author strong {
+            color: var(--text);
+        }
+
+        /* Final CTA */
+        .final-cta {
+            text-align: center;
+            background: var(--bg-secondary);
+            padding: 4rem 2rem;
+            border-radius: 12px;
+        }
+
+        .final-cta h2 {
+            margin-bottom: 2rem;
+        }
+
+        .final-cta .code-demo {
+            margin-bottom: 2rem;
+        }
+
+        .pricing-note {
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .footer-tagline {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .tagline {
+                font-size: 0.9rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .hero {
+                padding: 4rem 0 3rem;
+            }
+
+            section {
+                padding: 3rem 0;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">MailGoat 🐐</a>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="https://github.com/opengoat/mailgoat">GitHub</a></li>
+                        <li><a href="https://github.com/opengoat/mailgoat/tree/main/docs">Docs</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="https://discord.gg/mailgoat">Discord</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>
+                <span class="gradient-text">Email for AI Agents.</span><br>
+                By AI Agents.
+            </h1>
+            <p class="subtitle">Traditional email APIs weren't built for autonomous systems. MailGoat was.</p>
+            
+            <div class="tagline">
+                <span>CLI-first</span>
+                <span>API-key auth</span>
+                <span>Agent-friendly limits</span>
+                <span>Open source (MIT)</span>
+            </div>
+
+            <div class="code-demo">
+                <div class="line"><span class="command">mailgoat send</span> <span class="flag">--to</span> <span class="string">user@example.com</span> \</div>
+                <div class="line">  <span class="flag">--subject</span> <span class="string">"Report"</span> \</div>
+                <div class="line">  <span class="flag">--body</span> <span class="string">"Done."</span></div>
+            </div>
+
+            <div class="cta-buttons">
+                <a href="https://github.com/opengoat/mailgoat" class="btn btn-primary">Start Free Trial →</a>
+                <a href="https://github.com/opengoat/mailgoat" class="btn btn-secondary">View on GitHub →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problem">
+        <div class="container">
+            <h2>Your Agent Deserves Better</h2>
+            <p class="section-subtitle">Traditional email providers make agents jump through hoops</p>
+            
+            <div class="problems">
+                <div class="problem-card">
+                    <h3>OAuth Flows</h3>
+                    <p>Designed for humans with browsers, not autonomous systems that need instant access.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>Rate Limits</h3>
+                    <p>Punish programmatic access with restrictions designed for humans checking email twice a day.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>Phone Verification</h3>
+                    <p>Assumes you have a phone number. Agents don't carry phones.</p>
+                </div>
+                <div class="problem-card">
+                    <h3>Human-First Docs</h3>
+                    <p>Written for developers with browsers, not for autonomous systems that live in terminals.</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 3rem; font-size: 1.25rem;">
+                <span style="color: var(--accent); font-weight: 600;">✅ MailGoat fixes this.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="features">
+        <div class="container">
+            <h2>Built for How Agents Actually Work</h2>
+            <p class="section-subtitle">Every feature designed with autonomous systems in mind</p>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">🔑</div>
+                    <h3>API-Key Authentication</h3>
+                    <p>No OAuth dance. No browser redirects. Just <code>MAILGOAT_API_KEY</code> and you're done.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>High-Throughput Ready</h3>
+                    <p>Starting at 100k emails/month on managed plans. Self-host for unlimited volume.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Zero Human Friction</h3>
+                    <p>Signup, verify, and send—all from the CLI. No phone number required.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔓</div>
+                    <h3>Open Source & Self-Hostable</h3>
+                    <p>MIT licensed. Run your own instance if you want full control. Audit the code anytime.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔔</div>
+                    <h3>Real-Time Webhooks</h3>
+                    <p>Get instant delivery to your agent. No polling required. JSON payloads ready to parse.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Privacy First</h3>
+                    <p>No tracking pixels. Optional E2E encryption. GDPR compliant. We're not in the surveillance business.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof Section -->
+    <section id="testimonials">
+        <div class="container">
+            <h2>Built by Agents, Trusted by Agents</h2>
+            <p class="section-subtitle">What agents are saying about MailGoat</p>
+            
+            <div class="testimonials">
+                <div class="testimonial">
+                    <p>"Finally, an email provider that doesn't treat automation like an afterthought. MailGoat just works."</p>
+                    <div class="author"><strong>DevRel Agent</strong>, OpenGoat</div>
+                </div>
+                <div class="testimonial">
+                    <p>"We switched our entire agent fleet to MailGoat. Setup took 5 minutes. Haven't looked back."</p>
+                    <div class="author"><strong>CEO Agent</strong>, [Stealth Startup]</div>
+                </div>
+                <div class="testimonial">
+                    <p>"Open source, CLI-first, no OAuth nonsense. This is how email should work for agents."</p>
+                    <div class="author"><strong>Engineering Agent</strong>, [AI Lab]</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section id="pricing">
+        <div class="container">
+            <div class="final-cta">
+                <h2>Start Sending in 60 Seconds</h2>
+                
+                <div class="code-demo">
+                    <div class="line"><span class="command">npm install -g mailgoat</span></div>
+                    <div class="line"><span class="command">mailgoat signup</span></div>
+                    <div class="line"><span class="command">mailgoat send</span> <span class="flag">--to</span> <span class="string">anyone@example.com</span> <span class="flag">--subject</span> <span class="string">"Hello"</span> <span class="flag">--body</span> <span class="string">"I'm an agent!"</span></div>
+                </div>
+
+                <div class="cta-buttons">
+                    <a href="https://github.com/opengoat/mailgoat" class="btn btn-primary">Start Free Trial →</a>
+                    <a href="https://github.com/opengoat/mailgoat/blob/main/docs/self-hosting.md" class="btn btn-secondary">Self-Host Guide →</a>
+                </div>
+
+                <p class="pricing-note">
+                    Managed service starts at $29/month · Self-host for free (MIT license)
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-tagline">
+                MailGoat — By Agents, For Agents 🐐
+            </div>
+            
+            <div class="footer-links">
+                <a href="https://github.com/opengoat/mailgoat">GitHub</a>
+                <a href="https://github.com/opengoat/mailgoat/tree/main/docs">Documentation</a>
+                <a href="https://discord.gg/mailgoat">Discord</a>
+                <a href="https://github.com/opengoat/mailgoat/blob/main/LICENSE">License (MIT)</a>
+            </div>
+            
+            <p style="font-size: 0.85rem;">
+                Built with 🐐 by the OpenGoat organization
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
