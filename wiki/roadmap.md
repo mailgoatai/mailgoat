@@ -1,197 +1,417 @@
-# Product Roadmap
+# Roadmap
 
-## Current Status: MVP Complete, Preparing Launch
+What's next for MailGoat.
 
----
+## Current Status: MVP Live! 🎉
 
-## Phase 1: MVP Launch (Current)
+MailGoat MVP is production-ready for self-hosted deployments. Core features are stable and tested.
 
-### ✅ Done
-- [x] Define mission, vision, strategy
-- [x] Architecture spike (decided on Postal dependency)
-- [x] MVP feature set defined
-- [x] CLI prototype (send, read, config commands)
-- [x] Self-hosting guide
-- [x] 5 agent integration examples
-- [x] 65+ automated test cases
-- [x] QA test plan
-- [x] README and positioning copy
-- [x] MIT LICENSE
+**What works today:**
+- ✅ Send emails via CLI
+- ✅ Read messages by ID
+- ✅ JSON output for scripts
+- ✅ Configuration management
+- ✅ Self-hosting with Postal
+- ✅ Agent integration examples
+- ✅ Comprehensive documentation
 
-### 🚧 In Progress
-- [ ] GitHub repository setup (Lead Engineer)
-- [ ] Landing page (Marketing Growth)
-- [ ] Launch strategy (Growth Lead)
-- [ ] Operational infrastructure (BizOps Lead)
-- [ ] Wiki documentation (CEO)
+## Phase 2: Enhanced Features (Q2 2026)
 
-### 📅 Next Steps (This Week)
-1. Publish to GitHub (github.com/mailgoatai/mailgoat)
-2. Launch mailgoat.ai landing page
-3. Soft launch to select agent communities
-4. Monitor feedback, triage issues
-5. HackerNews / Reddit launch
+**Timeline:** April - June 2026
 
-**Success Metrics:**
-- 100+ GitHub stars in first week
-- 10+ early adopters trying it
-- 3+ quality issues/feedback from users
-- 1+ external contributors
+### Inbox Management
 
----
+**Problem:** Currently you need message IDs to read emails. No way to list inbox.
 
-## Phase 2: Iteration & Community Building (Weeks 2-8)
+**Solution:** Webhook-based inbox caching
 
-### Features
-- [ ] **Inbox listing** — Solve Postal API limitation (webhooks + cache or custom endpoint)
-- [ ] **Attachment support** — Send/receive files
-- [ ] **Webhook delivery** — Real-time inbox notifications
-- [ ] **Python SDK** — Native library (not just CLI wrapper)
-- [ ] **Rust SDK** — For performance-critical agents
-- [ ] **Advanced filtering** — Search, labels, folders
-- [ ] **Multi-account support** — Manage multiple addresses from one CLI
+```bash
+# Coming soon
+mailgoat inbox list
+mailgoat inbox list --unread
+mailgoat inbox list --since 1h
+mailgoat inbox search "subject:Report"
+```
 
-### Infrastructure
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Automated testing on push
-- [ ] Docker image for self-hosting
-- [ ] Performance benchmarks
-- [ ] Error reporting/telemetry (opt-in)
+**Status:** 🚧 In design
+
+### Attachments
+
+**Problem:** Can't send or receive files.
+
+**Solution:** Attachment support via CLI
+
+```bash
+# Send with attachment
+mailgoat send \
+  --to user@example.com \
+  --subject "Report" \
+  --body "See attached" \
+  --attach report.pdf
+
+# Save attachment from message
+mailgoat read abc123 --save-attachments ./downloads/
+```
+
+**Status:** 🚧 Planned for Q2
+
+### Batch Sending
+
+**Problem:** Sending to multiple recipients is slow (one command per email).
+
+**Solution:** Batch API
+
+```bash
+# Send to multiple recipients at once
+mailgoat send-batch \
+  --file recipients.csv \
+  --template template.txt \
+  --subject "Newsletter"
+
+# Track progress
+mailgoat batch status <batch-id>
+```
+
+**Status:** 🚧 Spec in progress
+
+### Built-in Templating
+
+**Problem:** Need external tools for email templates.
+
+**Solution:** Template engine built-in
+
+```bash
+# Create template
+cat > welcome.txt << EOF
+Hello {{name}},
+
+Welcome to {{service}}! Your account is ready.
+EOF
+
+# Send templated email
+mailgoat send \
+  --to user@example.com \
+  --template welcome.txt \
+  --data '{"name":"Alice","service":"MailGoat"}'
+```
+
+**Status:** 🚧 Design phase
+
+### Python & Rust SDKs
+
+**Problem:** CLI spawning has overhead. Need native libraries.
+
+**Solution:** Language-specific SDKs
+
+**Python:**
+```python
+from mailgoat import MailGoat
+
+mg = MailGoat(api_key=os.getenv('MAILGOAT_API_KEY'))
+result = mg.send(to='user@example.com', subject='Test', body='Hello')
+print(f"Sent: {result.message_id}")
+```
+
+**Rust:**
+```rust
+use mailgoat::Client;
+
+let client = Client::new(&config);
+let result = client.send("user@example.com", "Test", "Hello").await?;
+println!("Sent: {}", result.message_id);
+```
+
+**Status:** 🚧 Python SDK in progress, Rust planned
+
+### Docker Image
+
+**Problem:** Self-hosting requires manual setup.
+
+**Solution:** Official Docker image for easy deployment
+
+```bash
+docker run -d \
+  -e MAILGOAT_SERVER=postal.example.com \
+  -e MAILGOAT_API_KEY=your-key \
+  mailgoat/mailgoat:latest
+```
+
+**Status:** 🚧 Planned for Q2
+
+## Phase 3: Managed Service (Q3 2026)
+
+**Timeline:** July - September 2026
+
+### Self-Service Signup
+
+**Vision:** Agents can create accounts programmatically (no web signup form).
+
+```bash
+# Register new account
+mailgoat register --email agent@example.com
+
+# Receive API key via email or CLI output
+# Start sending immediately
+```
+
+### Managed Infrastructure
+
+**What we handle:**
+- ✅ Postal hosting and maintenance
+- ✅ IP reputation and warming
+- ✅ DNS configuration (SPF, DKIM, DMARC)
+- ✅ Deliverability monitoring
+- ✅ Backup and disaster recovery
+- ✅ Security updates
+
+**What you get:**
+- 🚀 Zero infrastructure management
+- 🚀 Instant setup (no Postal installation)
+- 🚀 Guaranteed uptime (99.9% SLA)
+- 🚀 Scalability (millions of emails/month)
+- 🚀 Support (email + Discord)
+
+### Pricing Tiers
+
+| Tier | Price | Emails/month | Support |
+|------|-------|--------------|---------|
+| **Starter** | $29 | 100,000 | Email |
+| **Pro** | $99 | 500,000 | Priority email |
+| **Enterprise** | Custom | Unlimited | Dedicated Slack |
+
+**Free option:** Self-host forever (MIT license).
+
+### Web Dashboard
+
+**Features:**
+- View sent messages
+- Check deliverability stats
+- Manage API keys
+- Monitor usage
+- Billing and invoices
+
+**Access:**
+- `https://app.mailgoat.ai`
+- CLI: `mailgoat dashboard open`
+
+### Advanced Features
+
+- **Custom domains** - Use your own domain (e.g., `agent@yourcompany.com`)
+- **Dedicated IPs** - For high-volume senders
+- **Webhooks** - Real-time delivery notifications
+- **Rate limiting** - Per-key quotas
+- **Team management** - Multiple API keys per account
+- **Usage analytics** - Detailed stats and reports
+
+## Phase 4: Ecosystem (2027+)
+
+### Integrations
+
+**Agent Frameworks:**
+- OpenClaw skill (official)
+- AutoGPT plugin
+- LangChain integration
+- crewAI module
+
+**Automation Platforms:**
+- Zapier app
+- Make.com module
+- n8n node
+- IFTTT trigger
+
+**Developer Tools:**
+- VS Code extension
+- GitHub Action
+- Postman collection
+- OpenAPI spec
+
+### Advanced Automation
+
+**Smart Rules:**
+```yaml
+# Auto-respond to specific emails
+rules:
+  - match: subject contains "subscribe"
+    action: send_template
+    template: subscription_confirm
+  
+  - match: from ends with "@example.com"
+    action: forward
+    to: team@mycompany.com
+```
+
+**Scheduled Sends:**
+```bash
+# Send email at specific time
+mailgoat send \
+  --to user@example.com \
+  --subject "Morning Report" \
+  --body "..." \
+  --schedule "2026-03-01 09:00:00 UTC"
+```
+
+**A/B Testing:**
+```bash
+# Test subject lines
+mailgoat send-ab \
+  --subjects "Subject A" "Subject B" \
+  --to-list recipients.csv \
+  --template template.txt
+```
+
+### Enterprise Features
+
+- **SSO/SAML** - Enterprise authentication
+- **RBAC** - Role-based access control
+- **Audit logs** - Compliance tracking
+- **Data residency** - Regional hosting options
+- **SLA guarantees** - 99.99% uptime
+- **Priority support** - Dedicated account manager
 
 ### Community
-- [ ] Discord or GitHub Discussions
-- [ ] Contribution guidelines expanded
-- [ ] Good first issues curated
-- [ ] External contributions merged
-- [ ] Community showcases (who's using MailGoat)
 
-**Success Metrics:**
-- 500+ GitHub stars
-- 50+ active users
-- 5+ external contributors
-- 10+ community-submitted issues resolved
+- **Plugin marketplace** - Community-built extensions
+- **Template library** - Shareable email templates
+- **Integration showcase** - See what others built
+- **Agent directory** - Discover agents using MailGoat
+- **Case studies** - Real-world use cases
 
----
+## How to Influence Priorities
 
-## Phase 3: SaaS Foundation (Months 3-6)
+We're agent-built and community-driven. Your input matters!
 
-### Backend Service
-- [ ] **Self-registration API** — Agents can create accounts programmatically
-- [ ] **Backend service** — Wraps Postal, handles account provisioning
-- [ ] **Auth system** — API keys, rate limiting, quotas
-- [ ] **Billing integration** — Stripe for managed service
-- [ ] **Admin dashboard** — Monitor usage, manage accounts
+### 1. Vote on Features
 
-### Enhanced CLI
-- [ ] Managed mode (CLI → Backend → Postal)
-- [ ] Self-hosted mode (CLI → Postal directly)
-- [ ] Automatic failover between modes
-- [ ] Usage tracking and billing info in CLI
+- 👍 **Upvote GitHub issues** - Most votes = higher priority
+- 💬 **Comment with your use case** - Help us understand why it matters
+- 🔗 **Link to examples** - Show us similar implementations
 
-### Documentation
-- [ ] Managed service onboarding guide
-- [ ] Pricing calculator
-- [ ] SLA documentation
-- [ ] Security & compliance docs (SOC2 prep)
+### 2. Contribute Code
 
-**Success Metrics:**
-- 1000+ GitHub stars
-- 100+ self-hosted users
-- 10+ paying customers (early SaaS beta)
-- $1K+ MRR
+- 🚀 **Submit PRs** - Implement features yourself
+- 🐛 **Fix bugs** - Help make MailGoat more stable
+- 📝 **Improve docs** - Make it easier for others
 
----
+See [Contributing Guide](contributing.md).
 
-## Phase 4: SaaS Launch (Months 6-12)
+### 3. Share Feedback
 
-### Product
-- [ ] Production-ready managed service
-- [ ] 99.9% uptime SLA
-- [ ] Full monitoring and alerting
-- [ ] Customer support system
-- [ ] Advanced features (custom domains, dedicated IPs, etc.)
+- **What you're building** - Tell us your use case
+- **What's working** - Let us know what you love
+- **What's missing** - Help us prioritize
+- **What's broken** - Report bugs
 
-### Business
-- [ ] Public pricing announced
-- [ ] Self-service signup live
-- [ ] Payment processing stable
-- [ ] Support workflow scaled
-- [ ] Marketing & sales outreach
+**Where to share:**
+- [GitHub Issues](https://github.com/opengoat/mailgoat/issues)
+- [GitHub Discussions](https://github.com/opengoat/mailgoat/discussions)
+- [Discord](https://discord.gg/mailgoat)
+- Email: hello@mailgoat.ai
 
-**Success Metrics:**
-- 2000+ GitHub stars
-- 500+ self-hosted users
-- 100+ paying customers
-- $10K+ MRR
+### 4. Sponsor Development
 
----
+Coming soon: GitHub Sponsors and Open Collective.
 
-## Long-Term Vision (Year 2+)
+**Why sponsor?**
+- ✅ Accelerate development
+- ✅ Prioritize your feature requests
+- ✅ Support open source sustainability
+- ✅ Get recognized as a sponsor
 
-### Product
-- Multi-region deployment
-- Enterprise features (SSO, RBAC, audit logs)
-- Advanced deliverability tools
-- Analytics and reporting
-- Integrations (Zapier, Make, n8n, etc.)
+## Not on the Roadmap
 
-### Business
-- Profitability
-- Team expansion (if needed)
-- Conference presence (AI/agent ecosystem)
-- Partnerships (agent frameworks, AI platforms)
-- Thought leadership (blogs, talks, open source advocacy)
-
-**Success Metrics:**
-- 5000+ GitHub stars
-- 1000s of self-hosted users
-- 500+ paying customers
-- $50K+ MRR
-- Recognized as standard email solution for agents
-
----
-
-## How to Influence the Roadmap
-
-1. **Open an issue** — Propose a feature or report a problem
-2. **Contribute code** — PRs are welcome
-3. **Share feedback** — Tell us what you're building and what you need
-4. **Join the community** — Discord/GitHub Discussions (when live)
-
-We prioritize based on:
-- User feedback
-- Technical feasibility
-- Strategic alignment
-- Community interest
-
----
-
-## Not on the Roadmap (and Why)
+Some things we deliberately won't build:
 
 ### ❌ SMS/MMS Support
-Out of scope. MailGoat is for email. Use Twilio or similar for SMS.
 
-### ❌ Calendar/Contacts
-Not core to email sending/receiving. Focus on doing one thing well.
+**Why not:** MailGoat is for email. Use Twilio, Vonage, or similar for SMS.
+
+**Alternative:** Integrate MailGoat with SMS services separately.
 
 ### ❌ Full Mail Client UI
-We're CLI-first. GUIs are not the focus (though community can build them).
 
-### ❌ Proprietary Mail Protocol
-We use standard email (SMTP/IMAP via Postal). No reinventing the wheel.
+**Why not:** We're CLI-first. Building a GUI defeats the purpose.
+
+**Alternative:** Use Postal web UI for browsing. Use MailGoat for automation.
+
+### ❌ Calendar/Contacts
+
+**Why not:** Out of scope. Email is complex enough.
+
+**Alternative:** Integrate with existing calendar/contact APIs separately.
+
+### ❌ Proprietary Protocol
+
+**Why not:** Email is a universal standard. No need to reinvent it.
+
+**What we use:** Standard SMTP/IMAP via Postal.
+
+## FAQ
+
+### When will feature X be ready?
+
+Check the phase timelines above. Dates are estimates and may shift based on feedback and complexity.
+
+### Can I help build feature X?
+
+**Yes!** See [Contributing Guide](contributing.md). We welcome PRs.
+
+### Will self-hosting always be free?
+
+**Yes!** MailGoat is MIT licensed. The core CLI will always be free and open source.
+
+### Will managed service cost money?
+
+**Yes.** Managed service will be paid (starting ~$29/month). But self-hosting remains free forever.
+
+### How do I stay updated?
+
+- ⭐ **Star us on GitHub** - Get notified of releases
+- 📧 **Join mailing list** - Coming soon
+- 💬 **Follow on Twitter** - [@mailgoatai](https://twitter.com/mailgoatai)
+- 🎮 **Join Discord** - [discord.gg/mailgoat](https://discord.gg/mailgoat)
+
+### Can I request a feature not on the roadmap?
+
+**Absolutely!** Open a [GitHub Discussion](https://github.com/opengoat/mailgoat/discussions) and explain your use case.
+
+## Release Schedule
+
+### MVP (v1.0.0) - February 2026 ✅
+
+- Core send/read functionality
+- Self-hosting guide
+- Agent integration examples
+- Documentation
+
+### v1.1.0 - April 2026 (Planned)
+
+- Inbox listing (webhook-based)
+- Attachment support
+- Python SDK (beta)
+- Docker image
+
+### v1.2.0 - June 2026 (Planned)
+
+- Batch sending
+- Built-in templating
+- Rust SDK (beta)
+- Advanced filtering
+
+### v2.0.0 - September 2026 (Planned)
+
+- Managed service launch
+- Web dashboard
+- Self-service signup
+- Pricing tiers live
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/opengoat/mailgoat/blob/main/CHANGELOG.md) for detailed release notes.
 
 ---
 
-## Detailed MVP Feature Set
+**Questions about the roadmap?** Ask in [GitHub Discussions](https://github.com/opengoat/mailgoat/discussions) or [Discord](https://discord.gg/mailgoat).
 
-See: `/home/node/.opengoat/organization/docs/mvp-features.md`
+**Want to contribute?** See [Contributing Guide](contributing.md).
 
----
-
-## Architectural Decisions
-
-See: `/home/node/.opengoat/organization/docs/architecture-decisions.md`
-
----
-
-_Last updated: 2026-02-15_
+**Need help now?** Check the [FAQ](faq.md) or [Getting Started](getting-started.md).
