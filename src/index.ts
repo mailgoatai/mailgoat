@@ -8,6 +8,7 @@ import { createConfigCommand } from './commands/config';
 import { createTemplateCommand } from './commands/template';
 import { createDeleteCommand } from './commands/delete';
 import { createSearchCommand } from './commands/search';
+import { createHealthCommand } from './commands/health';
 import { debugLogger } from './lib/debug';
 
 const program = new Command();
@@ -39,6 +40,7 @@ program.addCommand(createConfigCommand());
 program.addCommand(createTemplateCommand());
 program.addCommand(createDeleteCommand());
 program.addCommand(createSearchCommand());
+program.addCommand(createHealthCommand());
 
 // Parse arguments
 program.parse(process.argv);
