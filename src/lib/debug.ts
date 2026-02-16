@@ -10,7 +10,7 @@
 
 import chalk from 'chalk';
 
-export type DebugNamespace = 'api' | 'config' | 'validation' | 'main' | 'timing' | '*';
+export type DebugNamespace = 'api' | 'config' | 'validation' | 'main' | 'timing' | 'cache' | '*';
 
 interface TimingData {
   start: number;
