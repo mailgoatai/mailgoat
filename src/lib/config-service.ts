@@ -8,7 +8,7 @@
  * - Backward compatible with ConfigManager
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import YAML from 'yaml';
@@ -75,7 +75,7 @@ export class ConfigService {
    * Load configuration with hierarchical resolution
    * Priority: Environment variables > Profile > Default config
    */
-  load(options: ConfigOptions = {}): MailGoatConfig {
+  async load(options: ConfigOptions = {}): Promise<MailGoatConfig> {
     const { profile, skipEnv = false, skipCache = false } = options;
 
     // Check cache first (unless skipped)
@@ -94,10 +94,10 @@ export class ConfigService {
     let config: MailGoatConfig;
 
     if (profile) {
-      config = this.loadProfile(profile);
+      config = await this.loadProfile(profile);
       config.profile = profile;
     } else {
-      config = this.loadDefault();
+      config = await this.loadDefault();
     }
 
     // Apply environment variable overrides
@@ -121,26 +121,26 @@ export class ConfigService {
    * Save configuration
    * If profile is specified, saves to profile; otherwise to default config
    */
-  save(config: MailGoatConfig, profileName?: string): void {
+  async save(config: MailGoatConfig, profileName?: string): Promise<void> {
     this.validate(config);
 
-    const targetPath = profileName
-      ? this.getProfilePath(profileName)
-      : this.defaultConfigPath;
+    const targetPath = profileName ? this.getProfilePath(profileName) : this.defaultConfigPath;
 
     debugLogger.log('config', `Saving config to: ${targetPath}`);
 
     // Ensure directory exists
     const dir = path.dirname(targetPath);
-    if (!fs.existsSync(dir)) {
+    try {
+      await fs.access(dir);
+    } catch {
       debugLogger.log('config', `Creating directory: ${dir}`);
-      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      await fs.mkdir(dir, { recursive: true, mode: 0o700 });
     }
 
     // Add metadata if saving to profile
-    const configToSave: any = { ...config };
+    const configToSave: ProfileConfig = { ...config };
     if (profileName) {
-      const existingMetadata = this.getProfileMetadata(profileName);
+      const existingMetadata = await this.getProfileMetadata(profileName);
       configToSave.metadata = {
         name: profileName,
         description: existingMetadata?.description,
@@ -151,7 +151,7 @@ export class ConfigService {
 
     // Write to file
     const content = YAML.stringify(configToSave);
-    fs.writeFileSync(targetPath, content, { mode: 0o600 });
+    await fs.writeFile(targetPath, content, { mode: 0o600 });
     debugLogger.log('config', 'Config saved successfully');
 
     // Invalidate cache
@@ -162,32 +162,37 @@ export class ConfigService {
   /**
    * Load default configuration
    */
-  private loadDefault(): MailGoatConfig {
-    if (!fs.existsSync(this.defaultConfigPath)) {
+  private async loadDefault(): Promise<MailGoatConfig> {
+    try {
+      await fs.access(this.defaultConfigPath);
+    } catch {
       throw new Error(
         `Default config not found at ${this.defaultConfigPath}\n` +
           'Run `mailgoat config init` to create one.'
       );
     }
 
-    const content = fs.readFileSync(this.defaultConfigPath, 'utf8');
+    const content = await fs.readFile(this.defaultConfigPath, 'utf8');
     return YAML.parse(content) as MailGoatConfig;
   }
 
   /**
    * Load profile configuration
    */
-  private loadProfile(profileName: string): MailGoatConfig {
+  private async loadProfile(profileName: string): Promise<MailGoatConfig> {
     const profilePath = this.getProfilePath(profileName);
 
-    if (!fs.existsSync(profilePath)) {
+    try {
+      await fs.access(profilePath);
+    } catch {
+      const profiles = await this.listProfiles();
       throw new Error(
         `Profile "${profileName}" not found at ${profilePath}\n` +
-          `Available profiles: ${this.listProfiles().join(', ') || '(none)'}`
+          `Available profiles: ${profiles.join(', ') || '(none)'}`
       );
     }
 
-    const content = fs.readFileSync(profilePath, 'utf8');
+    const content = await fs.readFile(profilePath, 'utf8');
     const profileConfig = YAML.parse(content) as ProfileConfig;
 
     // Extract config without metadata
@@ -229,12 +234,14 @@ export class ConfigService {
   /**
    * List available profiles
    */
-  listProfiles(): string[] {
-    if (!fs.existsSync(this.profilesDir)) {
+  async listProfiles(): Promise<string[]> {
+    try {
+      await fs.access(this.profilesDir);
+    } catch {
       return [];
     }
 
-    const files = fs.readdirSync(this.profilesDir);
+    const files = await fs.readdir(this.profilesDir);
     return files
       .filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'))
       .map((file) => path.basename(file, path.extname(file)))
@@ -244,15 +251,17 @@ export class ConfigService {
   /**
    * Get profile metadata
    */
-  getProfileMetadata(profileName: string): ProfileMetadata | null {
+  async getProfileMetadata(profileName: string): Promise<ProfileMetadata | null> {
     const profilePath = this.getProfilePath(profileName);
 
-    if (!fs.existsSync(profilePath)) {
+    try {
+      await fs.access(profilePath);
+    } catch {
       return null;
     }
 
     try {
-      const content = fs.readFileSync(profilePath, 'utf8');
+      const content = await fs.readFile(profilePath, 'utf8');
       const profileConfig = YAML.parse(content) as ProfileConfig;
       return profileConfig.metadata || null;
     } catch (error) {
@@ -264,21 +273,25 @@ export class ConfigService {
   /**
    * Create a new profile from current default config or provided config
    */
-  createProfile(
+  async createProfile(
     profileName: string,
     config?: MailGoatConfig,
     description?: string
-  ): void {
+  ): Promise<void> {
     this.validateProfileName(profileName);
 
     const profilePath = this.getProfilePath(profileName);
 
-    if (fs.existsSync(profilePath)) {
+    try {
+      await fs.access(profilePath);
       throw new Error(`Profile "${profileName}" already exists`);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('already exists')) throw err;
+      // File doesn't exist, continue
     }
 
     // Use provided config or copy from default
-    const profileConfig = config || this.loadDefault();
+    const profileConfig = config || (await this.loadDefault());
 
     // Add metadata
     const configWithMetadata = {
@@ -292,13 +305,15 @@ export class ConfigService {
     };
 
     // Ensure profiles directory exists
-    if (!fs.existsSync(this.profilesDir)) {
-      fs.mkdirSync(this.profilesDir, { recursive: true, mode: 0o700 });
+    try {
+      await fs.access(this.profilesDir);
+    } catch {
+      await fs.mkdir(this.profilesDir, { recursive: true, mode: 0o700 });
     }
 
     // Save profile
     const content = YAML.stringify(configWithMetadata);
-    fs.writeFileSync(profilePath, content, { mode: 0o600 });
+    await fs.writeFile(profilePath, content, { mode: 0o600 });
 
     debugLogger.log('config', `Profile "${profileName}" created at ${profilePath}`);
   }
@@ -306,16 +321,18 @@ export class ConfigService {
   /**
    * Delete a profile
    */
-  deleteProfile(profileName: string): void {
+  async deleteProfile(profileName: string): Promise<void> {
     this.validateProfileName(profileName);
 
     const profilePath = this.getProfilePath(profileName);
 
-    if (!fs.existsSync(profilePath)) {
+    try {
+      await fs.access(profilePath);
+    } catch {
       throw new Error(`Profile "${profileName}" does not exist`);
     }
 
-    fs.unlinkSync(profilePath);
+    await fs.unlink(profilePath);
     debugLogger.log('config', `Profile "${profileName}" deleted`);
 
     // Invalidate cache
@@ -326,14 +343,14 @@ export class ConfigService {
   /**
    * Copy profile to another name
    */
-  copyProfile(sourceName: string, targetName: string): void {
+  async copyProfile(sourceName: string, targetName: string): Promise<void> {
     this.validateProfileName(sourceName);
     this.validateProfileName(targetName);
 
-    const sourceConfig = this.loadProfile(sourceName);
-    const sourceMetadata = this.getProfileMetadata(sourceName);
+    const sourceConfig = await this.loadProfile(sourceName);
+    const sourceMetadata = await this.getProfileMetadata(sourceName);
 
-    this.createProfile(
+    await this.createProfile(
       targetName,
       sourceConfig,
       sourceMetadata?.description ? `Copy of ${sourceMetadata.description}` : undefined
@@ -345,16 +362,26 @@ export class ConfigService {
   /**
    * Check if profile exists
    */
-  profileExists(profileName: string): boolean {
+  async profileExists(profileName: string): Promise<boolean> {
     const profilePath = this.getProfilePath(profileName);
-    return fs.existsSync(profilePath);
+    try {
+      await fs.access(profilePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Check if default config exists
    */
-  defaultConfigExists(): boolean {
-    return fs.existsSync(this.defaultConfigPath);
+  async defaultConfigExists(): Promise<boolean> {
+    try {
+      await fs.access(this.defaultConfigPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -384,9 +411,7 @@ export class ConfigService {
 
     // Only allow alphanumeric, dash, underscore
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw new Error(
-        'Profile name must contain only letters, numbers, dashes, and underscores'
-      );
+      throw new Error('Profile name must contain only letters, numbers, dashes, and underscores');
     }
 
     if (name.length > 50) {
