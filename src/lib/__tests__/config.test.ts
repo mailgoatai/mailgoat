@@ -70,7 +70,7 @@ api_key: test_key_123
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(configYaml);
 
-      const config = manager.load();
+      const config = await manager.load();
 
       expect(config.server).toBe('https://postal.example.com');
       expect(config.email).toBe('user@example.com');

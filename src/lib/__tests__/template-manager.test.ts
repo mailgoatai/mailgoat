@@ -34,7 +34,7 @@ describe('TemplateManager', () => {
     });
   });
 
-  describe('save', () => {
+  describe('create', () => {
     it('should save template to file', () => {
       const template = {
         name: 'welcome',
@@ -44,7 +44,7 @@ describe('TemplateManager', () => {
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      manager.save(template);
+      manager.create(template);
 
       expect(mockedFs.mkdirSync).toHaveBeenCalledWith(
         mockTemplatesDir,
@@ -67,7 +67,7 @@ describe('TemplateManager', () => {
       ];
 
       invalidTemplates.forEach((template) => {
-        expect(() => manager.save(template)).toThrow();
+        expect(() => manager.create(template)).toThrow();
       });
     });
 
@@ -82,7 +82,7 @@ describe('TemplateManager', () => {
         };
 
         mockedFs.existsSync.mockReturnValue(false);
-        expect(() => manager.save(template)).not.toThrow();
+        expect(() => manager.create(template)).not.toThrow();
       });
     });
 
@@ -95,7 +95,7 @@ describe('TemplateManager', () => {
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      manager.save(template);
+      manager.create(template);
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         expect.any(String),
@@ -113,7 +113,7 @@ describe('TemplateManager', () => {
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      manager.save(template);
+      manager.create(template);
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled();
     });
@@ -203,9 +203,7 @@ subject: Test
 
       manager.delete('welcome');
 
-      expect(mockedFs.unlinkSync).toHaveBeenCalledWith(
-        path.join(mockTemplatesDir, 'welcome.yml')
-      );
+      expect(mockedFs.unlinkSync).toHaveBeenCalledWith(path.join(mockTemplatesDir, 'welcome.yml'));
     });
 
     it('should throw error if template does not exist', () => {
@@ -339,7 +337,7 @@ subject: Test
       const template = {
         name: 'invoice',
         subject: 'Invoice #{{invoiceNumber}}',
-        body: 'Dear {{customerName}}, your invoice for ${{amount}} is ready.',
+        body: 'Dear {{customerName}}, your invoice for ' + '${{amount}}' + ' is ready.',
         from: 'billing@example.com',
         tag: 'invoice',
       };
@@ -347,17 +345,17 @@ subject: Test
       mockedFs.existsSync.mockReturnValue(false);
 
       // Save
-      manager.save(template);
+      manager.create(template);
 
       // Mock load
-      const savedYaml = `
-name: invoice
-subject: 'Invoice #{{invoiceNumber}}'
-body: 'Dear {{customerName}}, your invoice for ${{amount}} is ready.'
-from: billing@example.com
-tag: invoice
-created_at: '2024-01-01T00:00:00.000Z'
-`;
+      const savedYaml = [
+        'name: invoice',
+        "subject: 'Invoice #{{invoiceNumber}}'",
+        "body: 'Dear {{customerName}}, your invoice for ${{amount}} is ready.'",
+        'from: billing@example.com',
+        'tag: invoice',
+        "created_at: '2024-01-01T00:00:00.000Z'",
+      ].join('\n');
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(savedYaml);
@@ -411,7 +409,7 @@ created_at: '2024-01-01T00:00:00.000Z'
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(() => manager.save(template)).not.toThrow();
+      expect(() => manager.create(template)).not.toThrow();
     });
   });
 });

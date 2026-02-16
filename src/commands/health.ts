@@ -4,7 +4,7 @@
  */
 
 import { Command } from 'commander';
-import * as fs from 'fs/promises';
+import * as fs from 'fs';
 import * as os from 'os';
 import chalk from 'chalk';
 import { ConfigManager } from '../lib/config';

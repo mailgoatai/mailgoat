@@ -221,21 +221,27 @@ describe('ValidationService', () => {
 
   describe('validateRecipientCount', () => {
     it('should accept valid recipient counts', () => {
-      const result = service.validateRecipientCount(50, 100);
+      const result = service.validateRecipientCount(50, 'to');
       expect(result.valid).toBe(true);
     });
 
     it('should reject when exceeding limit', () => {
-      const result = service.validateRecipientCount(150, 100);
+      const result = service.validateRecipientCount(150, 'to');
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('exceeds maximum');
+      expect(result.error).toContain('Too many');
       expect(result.error).toContain('150');
-      expect(result.error).toContain('100');
     });
 
-    it('should use default limit of 100', () => {
-      const result = service.validateRecipientCount(150);
+    it('should reject CC recipients exceeding limit', () => {
+      const result = service.validateRecipientCount(150, 'cc');
       expect(result.valid).toBe(false);
+      expect(result.error).toContain('CC');
+    });
+
+    it('should reject BCC recipients exceeding limit', () => {
+      const result = service.validateRecipientCount(150, 'bcc');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('BCC');
     });
   });
 

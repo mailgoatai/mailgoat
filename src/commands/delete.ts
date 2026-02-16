@@ -15,7 +15,7 @@ import { debugLogger } from '../lib/debug';
  * Parse time duration string (e.g., "30d", "2w", "6h")
  * Returns milliseconds
  */
-function parseDuration(duration: string): number {
+function _parseDuration(duration: string): number {
   const match = duration.match(/^(\d+)([hdwmy])$/);
 
   if (!match) {
