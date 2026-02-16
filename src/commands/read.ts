@@ -15,7 +15,7 @@ export function createReadCommand(): Command {
     .action(async (messageId: string, options) => {
       try {
         const configManager = new ConfigManager();
-        const config = configManager.load();
+        const config = await configManager.load();
         const client = new PostalClient(config, {
           enableRetry: options.retry !== false,
         });

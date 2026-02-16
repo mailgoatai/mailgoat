@@ -82,7 +82,7 @@ export function createConfigCommand(): Command {
         const formatter = new Formatter(false);
 
         // Check if config exists
-        if (configManager.exists() && !options.force) {
+        if ((await configManager.exists()) && !options.force) {
           console.error(
             formatter.error(
               `Configuration already exists at ${configManager.getPath()}\n` +
@@ -160,7 +160,7 @@ export function createConfigCommand(): Command {
         }
 
         // Save configuration
-        configManager.save(config);
+        await configManager.save(config);
 
         console.log(
           '\n' + chalk.green('✓ Configuration saved to ') + chalk.cyan(configManager.getPath())
@@ -194,7 +194,7 @@ export function createConfigCommand(): Command {
     .action(async (options) => {
       try {
         const configManager = new ConfigManager();
-        const config = configManager.load();
+        const config = await configManager.load();
         const formatter = new Formatter(options.json);
 
         if (options.json) {

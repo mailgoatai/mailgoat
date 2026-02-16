@@ -4,7 +4,7 @@
  */
 
 import { Command } from 'commander';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as os from 'os';
 import chalk from 'chalk';
 import { ConfigManager } from '../lib/config';
@@ -39,7 +39,7 @@ async function checkConfig(configManager: ConfigManager): Promise<HealthCheckRes
   const start = Date.now();
 
   try {
-    if (!configManager.exists()) {
+    if (!(await configManager.exists())) {
       return {
         name: 'config',
         status: 'fail',
@@ -52,7 +52,7 @@ async function checkConfig(configManager: ConfigManager): Promise<HealthCheckRes
       };
     }
 
-    const config = configManager.load();
+    const config = await configManager.load();
 
     // Validate required fields
     if (!config.server || !config.email || !config.api_key) {
@@ -341,7 +341,7 @@ async function performHealthChecks(verbose: boolean): Promise<HealthReport> {
   checks.push(templatesCheck);
 
   // Load config for network checks
-  const config = configManager.load();
+  const config = await configManager.load();
   const client = new PostalClient(config, {
     enableRetry: false, // Don't retry for health checks
   });

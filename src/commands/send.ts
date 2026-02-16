@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import mime from 'mime-types';
 import chalk from 'chalk';
@@ -23,14 +23,16 @@ interface AttachmentInfo {
 /**
  * Read and prepare attachment for sending
  */
-function prepareAttachment(filePath: string): AttachmentInfo {
+async function prepareAttachment(filePath: string): Promise<AttachmentInfo> {
   // Check file exists
-  if (!fs.existsSync(filePath)) {
+  try {
+    await fs.access(filePath);
+  } catch {
     throw new Error(`Attachment file not found: ${filePath}`);
   }
 
   // Get file stats
-  const stats = fs.statSync(filePath);
+  const stats = await fs.stat(filePath);
 
   if (!stats.isFile()) {
     throw new Error(`Not a file: ${filePath}`);
@@ -43,7 +45,7 @@ function prepareAttachment(filePath: string): AttachmentInfo {
   }
 
   // Read file
-  const content = fs.readFileSync(filePath);
+  const content = await fs.readFile(filePath);
 
   // Encode to base64
   const base64Content = content.toString('base64');
@@ -98,7 +100,7 @@ export function createSendCommand(): Command {
       try {
         debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
         const configManager = new ConfigManager();
-        const config = configManager.load();
+        const config = await configManager.load();
         debugLogger.timeEnd(`${operationId}-config`);
 
         const formatter = new Formatter(options.json);
@@ -230,7 +232,7 @@ export function createSendCommand(): Command {
           const attachFiles = Array.isArray(options.attach) ? options.attach : [options.attach];
 
           for (const filePath of attachFiles) {
-            const attachment = prepareAttachment(filePath);
+            const attachment = await prepareAttachment(filePath);
             attachments.push(attachment);
             totalSize += attachment.size;
 

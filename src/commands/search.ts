@@ -73,7 +73,7 @@ export function createSearchCommand(): Command {
 
       try {
         const configManager = new ConfigManager();
-        const config = configManager.load();
+        const config = await configManager.load();
         const formatter = new Formatter(options.json);
 
         // Validate at least one filter

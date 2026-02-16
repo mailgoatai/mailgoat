@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import YAML from 'yaml';
@@ -23,7 +23,7 @@ export class ConfigManager {
   /**
    * Load configuration from file (with caching)
    */
-  load(): MailGoatConfig {
+  async load(): Promise<MailGoatConfig> {
     // Try to get from cache first
     const cacheKey = CacheKeys.config(this.configPath);
     const cached = cacheManager.get<MailGoatConfig>(cacheKey);
@@ -35,7 +35,9 @@ export class ConfigManager {
 
     debugLogger.log('config', `Loading config from file: ${this.configPath}`);
 
-    if (!fs.existsSync(this.configPath)) {
+    try {
+      await fs.access(this.configPath);
+    } catch {
       debugLogger.log('config', 'Config file does not exist');
       throw new Error(
         `Config file not found at ${this.configPath}.\n` +
@@ -47,7 +49,7 @@ export class ConfigManager {
       );
     }
 
-    const content = fs.readFileSync(this.configPath, 'utf8');
+    const content = await fs.readFile(this.configPath, 'utf8');
     debugLogger.log('config', `Config file size: ${content.length} bytes`);
 
     const config = YAML.parse(content) as MailGoatConfig;
@@ -67,21 +69,23 @@ export class ConfigManager {
   /**
    * Save configuration to file
    */
-  save(config: MailGoatConfig): void {
+  async save(config: MailGoatConfig): Promise<void> {
     debugLogger.log('config', `Saving config to: ${this.configPath}`);
 
     this.validate(config);
 
     const dir = path.dirname(this.configPath);
-    if (!fs.existsSync(dir)) {
+    try {
+      await fs.access(dir);
+    } catch {
       debugLogger.log('config', `Creating config directory: ${dir}`);
-      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      await fs.mkdir(dir, { recursive: true, mode: 0o700 });
     }
 
     const content = YAML.stringify(config);
     debugLogger.log('config', `Writing ${content.length} bytes to config file`);
 
-    fs.writeFileSync(this.configPath, content, { mode: 0o600 });
+    await fs.writeFile(this.configPath, content, { mode: 0o600 });
     debugLogger.log('config', 'Config saved successfully');
 
     // Invalidate cache after saving
@@ -93,8 +97,13 @@ export class ConfigManager {
   /**
    * Check if config file exists
    */
-  exists(): boolean {
-    return fs.existsSync(this.configPath);
+  async exists(): Promise<boolean> {
+    try {
+      await fs.access(this.configPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

@@ -3,7 +3,7 @@
  * Handles email template storage, loading, and variable substitution
  */
 
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import Handlebars from 'handlebars';
@@ -43,10 +43,12 @@ export class TemplateManager {
   /**
    * Ensure templates directory exists
    */
-  private ensureTemplatesDir(): void {
-    if (!fs.existsSync(this.templatesDir)) {
+  private async ensureTemplatesDir(): Promise<void> {
+    try {
+      await fs.access(this.templatesDir);
+    } catch {
       debugLogger.log('config', `Creating templates directory: ${this.templatesDir}`);
-      fs.mkdirSync(this.templatesDir, { recursive: true, mode: 0o700 });
+      await fs.mkdir(this.templatesDir, { recursive: true, mode: 0o700 });
     }
   }
 

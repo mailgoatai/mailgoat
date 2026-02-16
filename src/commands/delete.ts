@@ -80,7 +80,7 @@ export function createDeleteCommand(): Command {
 
       try {
         const configManager = new ConfigManager();
-        const config = configManager.load();
+        const config = await configManager.load();
         const formatter = new Formatter(options.json);
         const client = new PostalClient(config);
 
