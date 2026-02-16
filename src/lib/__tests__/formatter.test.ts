@@ -115,13 +115,17 @@ describe('Formatter', () => {
     const mockMessages: MessageDetails[] = [
       {
         id: 1,
+        token: 'test-token-1',
         details: {
           message_id: 'msg_1',
           mail_from: 'sender1@example.com',
           rcpt_to: 'recipient@example.com',
           subject: 'Test Subject 1',
           timestamp: 1704067200, // Jan 1, 2024
+          direction: 'outgoing',
           size: 1024,
+          bounce: false,
+          received_with_ssl: true,
         },
         status: {
           status: 'Sent',
@@ -131,13 +135,17 @@ describe('Formatter', () => {
       },
       {
         id: 2,
+        token: 'test-token-2',
         details: {
           message_id: 'msg_2',
           mail_from: 'sender2@example.com',
           rcpt_to: 'recipient@example.com',
           subject: 'Test Subject 2',
           timestamp: 1704070800,
+          direction: 'outgoing',
           size: 2048,
+          bounce: false,
+          received_with_ssl: true,
         },
         status: {
           status: 'Pending',
@@ -170,14 +178,18 @@ describe('Formatter', () => {
   describe('formatMessage', () => {
     const mockMessage: MessageDetails = {
       id: 1,
+      token: 'test-token-123',
       details: {
         message_id: 'msg_abc123',
         mail_from: 'sender@example.com',
         rcpt_to: 'recipient@example.com',
         subject: 'Test Email',
         timestamp: 1704067200,
+        direction: 'outgoing',
         size: 5120,
+        bounce: false,
         tag: 'newsletter',
+        received_with_ssl: true,
       },
       status: {
         status: 'Sent',
@@ -185,6 +197,7 @@ describe('Formatter', () => {
         last_delivery_attempt: 1704067200,
       },
       inspection: {
+        inspected: true,
         spam: false,
         spam_score: 0.1,
         threat: false,
@@ -194,7 +207,9 @@ describe('Formatter', () => {
         {
           filename: 'document.pdf',
           content_type: 'application/pdf',
+          data: 'base64encodeddata...',
           size: 10240,
+          hash: 'sha256hash...',
         },
       ],
     };
@@ -222,6 +237,7 @@ describe('Formatter', () => {
       const spamMessage = {
         ...mockMessage,
         inspection: {
+          inspected: true,
           spam: true,
           spam_score: 8.5,
           threat: false,
@@ -237,6 +253,7 @@ describe('Formatter', () => {
       const threatMessage = {
         ...mockMessage,
         inspection: {
+          inspected: true,
           spam: false,
           spam_score: 0.1,
           threat: true,
