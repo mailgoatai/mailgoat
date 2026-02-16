@@ -5,9 +5,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import Table from 'cli-table3';
 import { ConfigManager } from '../lib/config';
-import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { debugLogger } from '../lib/debug';
 
@@ -73,7 +71,7 @@ export function createSearchCommand(): Command {
 
       try {
         const configManager = new ConfigManager();
-        const config = await configManager.load();
+        await configManager.load();
         const formatter = new Formatter(options.json);
 
         // Validate at least one filter

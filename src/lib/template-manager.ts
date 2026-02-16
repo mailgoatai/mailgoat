@@ -3,7 +3,7 @@
  * Handles email template storage, loading, and variable substitution
  */
 
-import * as fs from 'fs/promises';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import Handlebars from 'handlebars';
