@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import Handlebars from 'handlebars';
@@ -35,8 +36,7 @@ export class TemplateManager {
   private templatesDir: string;
 
   constructor(templatesDir?: string) {
-    this.templatesDir =
-      templatesDir || path.join(os.homedir(), '.mailgoat', 'templates');
+    this.templatesDir = templatesDir || path.join(os.homedir(), '.mailgoat', 'templates');
     debugLogger.log('config', `Templates directory: ${this.templatesDir}`);
   }
 
@@ -45,10 +45,10 @@ export class TemplateManager {
    */
   private async ensureTemplatesDir(): Promise<void> {
     try {
-      await fs.access(this.templatesDir);
+      await fsPromises.access(this.templatesDir);
     } catch {
       debugLogger.log('config', `Creating templates directory: ${this.templatesDir}`);
-      await fs.mkdir(this.templatesDir, { recursive: true, mode: 0o700 });
+      await fsPromises.mkdir(this.templatesDir, { recursive: true, mode: 0o700 });
     }
   }
 
@@ -69,9 +69,7 @@ export class TemplateManager {
 
     // Only allow alphanumeric, dash, underscore
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw new Error(
-        'Template name must contain only letters, numbers, dashes, and underscores'
-      );
+      throw new Error('Template name must contain only letters, numbers, dashes, and underscores');
     }
 
     if (name.length > 100) {
