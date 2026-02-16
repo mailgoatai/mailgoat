@@ -40,19 +40,23 @@ export function createTemplateCommand(): Command {
         // Read body from file if specified
         let body = options.body;
         if (options.bodyFile) {
-          if (!fs.existsSync(options.bodyFile)) {
+          try {
+            await fs.promises.access(options.bodyFile);
+          } catch {
             throw new Error(`Body file not found: ${options.bodyFile}`);
           }
-          body = fs.readFileSync(options.bodyFile, 'utf8');
+          body = await fs.promises.readFile(options.bodyFile, 'utf8');
         }
 
         // Read HTML from file if specified
         let html = options.html;
         if (options.htmlFile) {
-          if (!fs.existsSync(options.htmlFile)) {
+          try {
+            await fs.promises.access(options.htmlFile);
+          } catch {
             throw new Error(`HTML file not found: ${options.htmlFile}`);
           }
-          html = fs.readFileSync(options.htmlFile, 'utf8');
+          html = await fs.promises.readFile(options.htmlFile, 'utf8');
         }
 
         // Validate that we have at least one body
@@ -72,7 +76,7 @@ export function createTemplateCommand(): Command {
           description: options.description,
         };
 
-        manager.create(template);
+        await manager.create(template);
 
         const formatter = new Formatter(options.json);
 
@@ -100,10 +104,10 @@ export function createTemplateCommand(): Command {
     .command('list')
     .description('List all templates')
     .option('--json', 'Output result as JSON')
-    .action((options) => {
+    .action(async (options) => {
       try {
         const manager = new TemplateManager();
-        const templates = manager.list();
+        const templates = await manager.list();
 
         const formatter = new Formatter(options.json);
 
@@ -158,10 +162,10 @@ export function createTemplateCommand(): Command {
     .command('show <name>')
     .description('Show template details')
     .option('--json', 'Output result as JSON')
-    .action((name, options) => {
+    .action(async (name, options) => {
       try {
         const manager = new TemplateManager();
-        const template = manager.load(name);
+        const template = await manager.load(name);
 
         const formatter = new Formatter(options.json);
 
@@ -239,7 +243,7 @@ export function createTemplateCommand(): Command {
         const manager = new TemplateManager();
 
         // Check if template exists
-        if (!manager.exists(name)) {
+        if (!(await manager.exists(name))) {
           throw new Error(`Template '${name}' not found`);
         }
 
@@ -259,7 +263,7 @@ export function createTemplateCommand(): Command {
           }
         }
 
-        manager.delete(name);
+        await manager.delete(name);
 
         const formatter = new Formatter(options.json);
 
@@ -295,7 +299,7 @@ export function createTemplateCommand(): Command {
         const manager = new TemplateManager();
 
         // Check if template exists
-        if (!manager.exists(name)) {
+        if (!(await manager.exists(name))) {
           throw new Error(`Template '${name}' not found`);
         }
 
@@ -310,20 +314,24 @@ export function createTemplateCommand(): Command {
 
         // Read body from file if specified
         if (options.bodyFile) {
-          if (!fs.existsSync(options.bodyFile)) {
+          try {
+            await fs.promises.access(options.bodyFile);
+          } catch {
             throw new Error(`Body file not found: ${options.bodyFile}`);
           }
-          updates.body = fs.readFileSync(options.bodyFile, 'utf8');
+          updates.body = await fs.promises.readFile(options.bodyFile, 'utf8');
         } else if (options.body !== undefined) {
           updates.body = options.body;
         }
 
         // Read HTML from file if specified
         if (options.htmlFile) {
-          if (!fs.existsSync(options.htmlFile)) {
+          try {
+            await fs.promises.access(options.htmlFile);
+          } catch {
             throw new Error(`HTML file not found: ${options.htmlFile}`);
           }
-          updates.html = fs.readFileSync(options.htmlFile, 'utf8');
+          updates.html = await fs.promises.readFile(options.htmlFile, 'utf8');
         } else if (options.html !== undefined) {
           updates.html = options.html;
         }
@@ -332,7 +340,7 @@ export function createTemplateCommand(): Command {
           throw new Error('No updates provided. Use --subject, --body, --html, etc.');
         }
 
-        manager.update(name, updates);
+        await manager.update(name, updates);
 
         const formatter = new Formatter(options.json);
 

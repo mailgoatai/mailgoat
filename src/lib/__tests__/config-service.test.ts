@@ -52,26 +52,26 @@ describe('ConfigService', () => {
   });
 
   describe('constructor', () => {
-    it('should set up directories correctly', () => {
+    it('should set up directories correctly', async () => {
       expect(service.getBaseDir()).toBe(mockBaseDir);
       expect(service.getProfilesDir()).toBe(`${mockBaseDir}/profiles`);
       expect(service.getDefaultConfigPath()).toBe(`${mockBaseDir}/config.yml`);
     });
 
-    it('should use default base directory if not provided', () => {
+    it('should use default base directory if not provided', async () => {
       const defaultService = new ConfigService();
       expect(defaultService.getBaseDir()).toContain('.mailgoat');
     });
   });
 
   describe('load', () => {
-    const defaultConfig = {
+    const _defaultConfig = {
       server: 'https://postal.example.com',
       email: 'user@example.com',
       api_key: 'test_key_123',
     };
 
-    it('should load default config', () => {
+    it('should load default config', async () => {
       const configYaml = `
 server: https://postal.example.com
 email: user@example.com
@@ -81,14 +81,14 @@ api_key: test_key_123
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(configYaml);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.server).toBe('https://postal.example.com');
       expect(config.email).toBe('user@example.com');
       expect(config.api_key).toBe('test_key_123');
     });
 
-    it('should load profile config', () => {
+    it('should load profile config', async () => {
       const profileYaml = `
 server: https://staging.example.com
 email: staging@example.com
@@ -101,28 +101,28 @@ metadata:
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(profileYaml);
 
-      const config = service.load({ profile: 'staging' });
+      const config = await service.load({ profile: 'staging' });
 
       expect(config.server).toBe('https://staging.example.com');
       expect(config.profile).toBe('staging');
     });
 
-    it('should throw error if default config does not exist', () => {
+    it('should throw error if default config does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(() => service.load()).toThrow('Default config not found');
+      expect(() => await service.load()).toThrow('Default config not found');
     });
 
-    it('should throw error if profile does not exist', () => {
+    it('should throw error if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
       mockedFs.readdirSync.mockReturnValue([]);
 
-      expect(() => service.load({ profile: 'nonexistent' })).toThrow(
+      expect(() => await service.load({ profile: 'nonexistent' })).toThrow(
         'Profile "nonexistent" not found'
       );
     });
 
-    it('should use cached config if available', () => {
+    it('should use cached config if available', async () => {
       const cachedConfig = {
         server: 'https://cached.example.com',
         email: 'cached@example.com',
@@ -131,13 +131,13 @@ metadata:
 
       (cacheManager.get as jest.Mock).mockReturnValueOnce(cachedConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config).toEqual(cachedConfig);
       expect(mockedFs.readFileSync).not.toHaveBeenCalled();
     });
 
-    it('should cache loaded config', () => {
+    it('should cache loaded config', async () => {
       const configYaml = `
 server: https://postal.example.com
 email: user@example.com
@@ -147,7 +147,7 @@ api_key: test_key_123
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(configYaml);
 
-      service.load();
+      await service.load();
 
       expect(cacheManager.set).toHaveBeenCalledWith(
         expect.stringContaining('config:'),
@@ -156,7 +156,7 @@ api_key: test_key_123
       );
     });
 
-    it('should skip cache when skipCache is true', () => {
+    it('should skip cache when skipCache is true', async () => {
       const configYaml = `
 server: https://postal.example.com
 email: user@example.com
@@ -166,7 +166,7 @@ api_key: test_key_123
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(configYaml);
 
-      service.load({ skipCache: true });
+      await service.load({ skipCache: true });
 
       expect(cacheManager.get).not.toHaveBeenCalled();
       expect(cacheManager.set).not.toHaveBeenCalled();
@@ -180,51 +180,51 @@ email: user@example.com
 api_key: test_key_123
 `;
 
-    it('should override server from MAILGOAT_SERVER', () => {
+    it('should override server from MAILGOAT_SERVER', async () => {
       process.env.MAILGOAT_SERVER = 'https://override.example.com';
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.server).toBe('https://override.example.com');
     });
 
-    it('should override email from MAILGOAT_EMAIL', () => {
+    it('should override email from MAILGOAT_EMAIL', async () => {
       process.env.MAILGOAT_EMAIL = 'override@example.com';
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.email).toBe('override@example.com');
     });
 
-    it('should override API key from MAILGOAT_API_KEY', () => {
+    it('should override API key from MAILGOAT_API_KEY', async () => {
       process.env.MAILGOAT_API_KEY = 'override_key';
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.api_key).toBe('override_key');
     });
 
-    it('should override profile from MAILGOAT_PROFILE', () => {
+    it('should override profile from MAILGOAT_PROFILE', async () => {
       process.env.MAILGOAT_PROFILE = 'production';
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.profile).toBe('production');
     });
 
-    it('should override multiple values', () => {
+    it('should override multiple values', async () => {
       process.env.MAILGOAT_SERVER = 'https://multi.example.com';
       process.env.MAILGOAT_EMAIL = 'multi@example.com';
       process.env.MAILGOAT_API_KEY = 'multi_key';
@@ -232,20 +232,20 @@ api_key: test_key_123
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load();
+      const config = await service.load();
 
       expect(config.server).toBe('https://multi.example.com');
       expect(config.email).toBe('multi@example.com');
       expect(config.api_key).toBe('multi_key');
     });
 
-    it('should skip env overrides when skipEnv is true', () => {
+    it('should skip env overrides when skipEnv is true', async () => {
       process.env.MAILGOAT_SERVER = 'https://override.example.com';
 
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(defaultConfig);
 
-      const config = service.load({ skipEnv: true });
+      const config = await service.load({ skipEnv: true });
 
       expect(config.server).toBe('https://postal.example.com');
     });
@@ -258,10 +258,10 @@ api_key: test_key_123
       api_key: 'test_key_123',
     };
 
-    it('should save to default config when no profile specified', () => {
+    it('should save to default config when no profile specified', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.save(config);
+      await service.save(config);
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         `${mockBaseDir}/config.yml`,
@@ -270,10 +270,10 @@ api_key: test_key_123
       );
     });
 
-    it('should save to profile when profile specified', () => {
+    it('should save to profile when profile specified', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.save(config, 'staging');
+      await service.save(config, 'staging');
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         `${mockBaseDir}/profiles/staging.yml`,
@@ -282,10 +282,10 @@ api_key: test_key_123
       );
     });
 
-    it('should create directory if it does not exist', () => {
+    it('should create directory if it does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.save(config);
+      await service.save(config);
 
       expect(mockedFs.mkdirSync).toHaveBeenCalledWith(
         mockBaseDir,
@@ -293,19 +293,19 @@ api_key: test_key_123
       );
     });
 
-    it('should invalidate cache after saving', () => {
+    it('should invalidate cache after saving', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.save(config);
+      await service.save(config);
 
       expect(cacheManager.invalidate).toHaveBeenCalled();
     });
 
-    it('should add metadata when saving to profile', () => {
+    it('should add metadata when saving to profile', async () => {
       mockedFs.existsSync.mockReturnValue(false);
       mockedFs.readFileSync.mockReturnValue(''); // No existing metadata
 
-      service.save(config, 'test-profile');
+      await service.save(config, 'test-profile');
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         expect.stringContaining('test-profile.yml'),
@@ -316,24 +316,24 @@ api_key: test_key_123
   });
 
   describe('listProfiles', () => {
-    it('should list available profiles', () => {
+    it('should list available profiles', async () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readdirSync.mockReturnValue(['staging.yml', 'production.yml', 'dev.yml'] as any);
 
-      const profiles = service.listProfiles();
+      const profiles = await service.listProfiles();
 
       expect(profiles).toEqual(['dev', 'production', 'staging']);
     });
 
-    it('should return empty array if profiles directory does not exist', () => {
+    it('should return empty array if profiles directory does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      const profiles = service.listProfiles();
+      const profiles = await service.listProfiles();
 
       expect(profiles).toEqual([]);
     });
 
-    it('should filter non-YAML files', () => {
+    it('should filter non-YAML files', async () => {
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readdirSync.mockReturnValue([
         'staging.yml',
@@ -342,14 +342,14 @@ api_key: test_key_123
         'backup.old',
       ] as any);
 
-      const profiles = service.listProfiles();
+      const profiles = await service.listProfiles();
 
       expect(profiles).toEqual(['production', 'staging']);
     });
   });
 
   describe('createProfile', () => {
-    it('should create new profile with provided config', () => {
+    it('should create new profile with provided config', async () => {
       const config = {
         server: 'https://new.example.com',
         email: 'new@example.com',
@@ -358,7 +358,7 @@ api_key: test_key_123
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.createProfile('new-profile', config, 'New profile description');
+      await service.createProfile('new-profile', config, 'New profile description');
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled();
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
@@ -368,7 +368,7 @@ api_key: test_key_123
       );
     });
 
-    it('should create profile from default config if none provided', () => {
+    it('should create profile from default config if none provided', async () => {
       const defaultConfigYaml = `
 server: https://postal.example.com
 email: user@example.com
@@ -381,7 +381,7 @@ api_key: test_key_123
       });
       mockedFs.readFileSync.mockReturnValue(defaultConfigYaml);
 
-      service.createProfile('from-default');
+      await service.createProfile('from-default');
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         expect.stringContaining('from-default.yml'),
@@ -390,49 +390,49 @@ api_key: test_key_123
       );
     });
 
-    it('should throw error if profile already exists', () => {
+    it('should throw error if profile already exists', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      expect(() => service.createProfile('existing')).toThrow('already exists');
+      expect(() => await service.createProfile('existing')).toThrow('already exists');
     });
 
-    it('should validate profile name', () => {
+    it('should validate profile name', async () => {
       const invalidNames = ['invalid name', 'invalid@name', '', 'a'.repeat(51), 'default'];
 
       invalidNames.forEach((name) => {
-        expect(() => service.createProfile(name)).toThrow();
+        expect(() => await service.createProfile(name)).toThrow();
       });
     });
   });
 
   describe('deleteProfile', () => {
-    it('should delete profile', () => {
+    it('should delete profile', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      service.deleteProfile('old-profile');
+      await service.deleteProfile('old-profile');
 
       expect(mockedFs.unlinkSync).toHaveBeenCalledWith(
         `${mockBaseDir}/profiles/old-profile.yml`
       );
     });
 
-    it('should throw error if profile does not exist', () => {
+    it('should throw error if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(() => service.deleteProfile('nonexistent')).toThrow('does not exist');
+      expect(() => await service.deleteProfile('nonexistent')).toThrow('does not exist');
     });
 
-    it('should invalidate cache after deletion', () => {
+    it('should invalidate cache after deletion', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      service.deleteProfile('old-profile');
+      await service.deleteProfile('old-profile');
 
       expect(cacheManager.invalidate).toHaveBeenCalled();
     });
   });
 
   describe('copyProfile', () => {
-    it('should copy profile to new name', () => {
+    it('should copy profile to new name', async () => {
       const sourceProfileYaml = `
 server: https://source.example.com
 email: source@example.com
@@ -449,7 +449,7 @@ metadata:
       });
       mockedFs.readFileSync.mockReturnValue(sourceProfileYaml);
 
-      service.copyProfile('source', 'target');
+      await service.copyProfile('source', 'target');
 
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         `${mockBaseDir}/profiles/target.yml`,
@@ -460,35 +460,35 @@ metadata:
   });
 
   describe('profileExists', () => {
-    it('should return true if profile exists', () => {
+    it('should return true if profile exists', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      expect(service.profileExists('existing')).toBe(true);
+      expect(await service.profileExists('existing')).toBe(true);
     });
 
-    it('should return false if profile does not exist', () => {
+    it('should return false if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(service.profileExists('nonexistent')).toBe(false);
+      expect(await service.profileExists('nonexistent')).toBe(false);
     });
   });
 
   describe('defaultConfigExists', () => {
-    it('should return true if default config exists', () => {
+    it('should return true if default config exists', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      expect(service.defaultConfigExists()).toBe(true);
+      expect(await service.defaultConfigExists()).toBe(true);
     });
 
-    it('should return false if default config does not exist', () => {
+    it('should return false if default config does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(service.defaultConfigExists()).toBe(false);
+      expect(await service.defaultConfigExists()).toBe(false);
     });
   });
 
   describe('getProfileMetadata', () => {
-    it('should return profile metadata', () => {
+    it('should return profile metadata', async () => {
       const profileYaml = `
 server: https://postal.example.com
 email: user@example.com
@@ -502,24 +502,24 @@ metadata:
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(profileYaml);
 
-      const metadata = service.getProfileMetadata('test');
+      const metadata = await service.getProfileMetadata('test');
 
       expect(metadata).toBeDefined();
       expect(metadata?.name).toBe('test');
       expect(metadata?.description).toBe('Test profile');
     });
 
-    it('should return null if profile does not exist', () => {
+    it('should return null if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      const metadata = service.getProfileMetadata('nonexistent');
+      const metadata = await service.getProfileMetadata('nonexistent');
 
       expect(metadata).toBeNull();
     });
   });
 
   describe('validation', () => {
-    it('should validate config before saving', () => {
+    it('should validate config before saving', async () => {
       const config = {
         server: 'https://postal.example.com',
         email: 'user@example.com',
@@ -528,12 +528,12 @@ metadata:
 
       mockedFs.existsSync.mockReturnValue(false);
 
-      service.save(config);
+      await service.save(config);
 
       expect(validationService.validateConfig).toHaveBeenCalledWith(config);
     });
 
-    it('should throw error if validation fails', () => {
+    it('should throw error if validation fails', async () => {
       const invalidConfig = {
         server: 'invalid',
         email: 'user@example.com',
@@ -545,7 +545,7 @@ metadata:
         error: 'Invalid configuration',
       });
 
-      expect(() => service.save(invalidConfig)).toThrow('Configuration validation failed');
+      expect(() => await service.save(invalidConfig)).toThrow('Configuration validation failed');
     });
   });
 });

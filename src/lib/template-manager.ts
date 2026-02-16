@@ -35,8 +35,7 @@ export class TemplateManager {
   private templatesDir: string;
 
   constructor(templatesDir?: string) {
-    this.templatesDir =
-      templatesDir || path.join(os.homedir(), '.mailgoat', 'templates');
+    this.templatesDir = templatesDir || path.join(os.homedir(), '.mailgoat', 'templates');
     debugLogger.log('config', `Templates directory: ${this.templatesDir}`);
   }
 
@@ -69,9 +68,7 @@ export class TemplateManager {
 
     // Only allow alphanumeric, dash, underscore
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw new Error(
-        'Template name must contain only letters, numbers, dashes, and underscores'
-      );
+      throw new Error('Template name must contain only letters, numbers, dashes, and underscores');
     }
 
     if (name.length > 100) {
@@ -122,15 +119,19 @@ export class TemplateManager {
   /**
    * Create a new template
    */
-  create(template: EmailTemplate): void {
+  async create(template: EmailTemplate): Promise<void> {
     this.validateTemplateName(template.name);
     this.validateTemplate(template);
-    this.ensureTemplatesDir();
+    await this.ensureTemplatesDir();
 
     const templatePath = this.getTemplatePath(template.name);
 
-    if (fs.existsSync(templatePath)) {
+    try {
+      await fs.access(templatePath);
       throw new Error(`Template '${template.name}' already exists`);
+    } catch (err: any) {
+      if (err.message.includes('already exists')) throw err;
+      // File doesn't exist, continue
     }
 
     const now = new Date().toISOString();
@@ -141,7 +142,7 @@ export class TemplateManager {
     };
 
     const content = YAML.stringify(templateData);
-    fs.writeFileSync(templatePath, content, { mode: 0o600 });
+    await fs.writeFile(templatePath, content, { mode: 0o600 });
 
     debugLogger.log('config', `Created template: ${template.name}`);
   }
@@ -149,16 +150,18 @@ export class TemplateManager {
   /**
    * Update an existing template
    */
-  update(name: string, updates: Partial<EmailTemplate>): void {
+  async update(name: string, updates: Partial<EmailTemplate>): Promise<void> {
     this.validateTemplateName(name);
 
     const templatePath = this.getTemplatePath(name);
 
-    if (!fs.existsSync(templatePath)) {
+    try {
+      await fs.access(templatePath);
+    } catch {
       throw new Error(`Template '${name}' not found`);
     }
 
-    const existing = this.load(name);
+    const existing = await this.load(name);
     const updated: EmailTemplate = {
       ...existing,
       ...updates,
@@ -170,7 +173,7 @@ export class TemplateManager {
     this.validateTemplate(updated);
 
     const content = YAML.stringify(updated);
-    fs.writeFileSync(templatePath, content, { mode: 0o600 });
+    await fs.writeFile(templatePath, content, { mode: 0o600 });
 
     debugLogger.log('config', `Updated template: ${name}`);
   }
@@ -178,16 +181,18 @@ export class TemplateManager {
   /**
    * Load a template
    */
-  load(name: string): EmailTemplate {
+  async load(name: string): Promise<EmailTemplate> {
     this.validateTemplateName(name);
 
     const templatePath = this.getTemplatePath(name);
 
-    if (!fs.existsSync(templatePath)) {
+    try {
+      await fs.access(templatePath);
+    } catch {
       throw new Error(`Template '${name}' not found`);
     }
 
-    const content = fs.readFileSync(templatePath, 'utf8');
+    const content = await fs.readFile(templatePath, 'utf8');
     const template = YAML.parse(content) as EmailTemplate;
 
     debugLogger.log('config', `Loaded template: ${name}`);
@@ -198,16 +203,18 @@ export class TemplateManager {
   /**
    * Delete a template
    */
-  delete(name: string): void {
+  async delete(name: string): Promise<void> {
     this.validateTemplateName(name);
 
     const templatePath = this.getTemplatePath(name);
 
-    if (!fs.existsSync(templatePath)) {
+    try {
+      await fs.access(templatePath);
+    } catch {
       throw new Error(`Template '${name}' not found`);
     }
 
-    fs.unlinkSync(templatePath);
+    await fs.unlink(templatePath);
 
     debugLogger.log('config', `Deleted template: ${name}`);
   }
@@ -215,19 +222,21 @@ export class TemplateManager {
   /**
    * List all templates
    */
-  list(): EmailTemplate[] {
-    if (!fs.existsSync(this.templatesDir)) {
+  async list(): Promise<EmailTemplate[]> {
+    try {
+      await fs.access(this.templatesDir);
+    } catch {
       return [];
     }
 
-    const files = fs.readdirSync(this.templatesDir);
+    const files = await fs.readdir(this.templatesDir);
     const templates: EmailTemplate[] = [];
 
     for (const file of files) {
       if (file.endsWith('.yml')) {
         const name = file.replace(/\.yml$/, '');
         try {
-          const template = this.load(name);
+          const template = await this.load(name);
           templates.push(template);
         } catch (error) {
           debugLogger.logError('config', error as Error);
@@ -242,11 +251,12 @@ export class TemplateManager {
   /**
    * Check if a template exists
    */
-  exists(name: string): boolean {
+  async exists(name: string): Promise<boolean> {
     try {
       this.validateTemplateName(name);
       const templatePath = this.getTemplatePath(name);
-      return fs.existsSync(templatePath);
+      await fs.access(templatePath);
+      return true;
     } catch {
       return false;
     }
