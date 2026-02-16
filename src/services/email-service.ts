@@ -5,7 +5,7 @@
  * Separates business logic from CLI commands and provides reusable email functionality.
  */
 
-import { IMailProvider, SendMessageParams, SendMessageResponse, MessageDetails } from '../providers';
+import { IMailProvider, SendMessageParams, MessageDetails } from '../providers';
 import { validationService, ValidationService } from '../lib/validation-service';
 import { ILogger, ConsoleLogger } from './logger.interface';
 

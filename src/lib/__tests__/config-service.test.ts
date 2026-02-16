@@ -65,7 +65,7 @@ describe('ConfigService', () => {
   });
 
   describe('load', () => {
-    const defaultConfig = {
+    const _defaultConfig = {
       server: 'https://postal.example.com',
       email: 'user@example.com',
       api_key: 'test_key_123',

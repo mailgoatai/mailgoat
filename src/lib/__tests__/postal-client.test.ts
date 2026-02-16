@@ -447,7 +447,7 @@ describe('PostalClient', () => {
 
   describe('connection pooling', () => {
     it('should create client with connection pooling', () => {
-      const clientWithPool = new PostalClient(mockConfig);
+      const _clientWithPool = new PostalClient(mockConfig);
 
       expect(mockedAxios.create).toHaveBeenCalledWith(
         expect.objectContaining({

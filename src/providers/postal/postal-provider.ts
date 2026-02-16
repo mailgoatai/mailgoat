@@ -22,18 +22,13 @@ import {
  * Postal-specific configuration
  * Extends the base MailGoatConfig
  */
-export interface PostalProviderConfig extends MailGoatConfig {
-  // Postal doesn't need additional config beyond base
-  // This interface exists for future extensibility
-}
+export type PostalProviderConfig = MailGoatConfig;
 
 /**
  * Postal Provider Options
  * Extends base ProviderOptions with Postal-specific settings
  */
-export interface PostalProviderOptions extends PostalClientOptions {
-  // Inherits: maxRetries, baseDelay, enableRetry
-}
+export type PostalProviderOptions = PostalClientOptions;
 
 /**
  * Postal Mail Provider
@@ -101,7 +96,7 @@ export class PostalProvider implements IMailProvider {
    * @param options - Filtering and pagination options (unused)
    * @throws Error indicating Postal does not support message listing
    */
-  async listMessages(options?: ListMessagesOptions): Promise<Message[]> {
+  async listMessages(_options?: ListMessagesOptions): Promise<Message[]> {
     throw new Error(
       'Postal Legacy API does not support message listing. ' +
         'Use the Postal web UI or implement webhook-based message tracking.'
@@ -117,7 +112,7 @@ export class PostalProvider implements IMailProvider {
    * @param id - Message identifier (unused)
    * @throws Error indicating Postal does not support message deletion via API
    */
-  async deleteMessage(id: string): Promise<void> {
+  async deleteMessage(_id: string): Promise<void> {
     throw new Error(
       'Postal Legacy API does not support message deletion. ' +
         'Use the Postal web UI or database access for message management.'

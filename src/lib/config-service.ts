@@ -138,7 +138,7 @@ export class ConfigService {
     }
 
     // Add metadata if saving to profile
-    let configToSave: any = { ...config };
+    const configToSave: any = { ...config };
     if (profileName) {
       const existingMetadata = this.getProfileMetadata(profileName);
       configToSave.metadata = {
@@ -191,7 +191,7 @@ export class ConfigService {
     const profileConfig = YAML.parse(content) as ProfileConfig;
 
     // Extract config without metadata
-    const { metadata, ...config } = profileConfig;
+    const { metadata: _metadata, ...config } = profileConfig;
 
     return config as MailGoatConfig;
   }
