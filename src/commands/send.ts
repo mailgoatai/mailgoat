@@ -82,7 +82,10 @@ export function createSendCommand(): Command {
     .description('Send an email message')
     .option('-t, --to <emails...>', 'Recipient email address(es) (required unless using template)')
     .option('-s, --subject <text>', 'Email subject (required unless using template)')
-    .option('-b, --body <text>', 'Email body (plain text, required unless using template or --html)')
+    .option(
+      '-b, --body <text>',
+      'Email body (plain text, required unless using template or --html)'
+    )
     .option('-f, --from <email>', 'Sender email (defaults to config email)')
     .option('--cc <emails...>', 'CC recipients')
     .option('--bcc <emails...>', 'BCC recipients')
@@ -110,7 +113,7 @@ export function createSendCommand(): Command {
         if (options.template) {
           debugLogger.timeStart(`${operationId}-template`, 'Load and render template');
           const templateManager = new TemplateManager();
-          const template = templateManager.load(options.template);
+          const template = await templateManager.load(options.template);
 
           // Parse variables
           const variables = options.var

@@ -1,0 +1,39 @@
+# Postal DNS Records for mailgoat.ai
+# Generated: 2026-02-16 09:28 UTC
+# Server: 91.98.35.3 (mail.mailgoat.ai)
+
+# MX Record - Mail Exchange
+mailgoat.ai.            MX 10 mail.mailgoat.ai.
+
+# A Record - Mail server IP
+mail.mailgoat.ai.       A  91.98.35.3
+
+# SPF Records - Sender Policy Framework
+mailgoat.ai.            TXT "v=spf1 include:spf.mailgoat.ai ~all"
+spf.mailgoat.ai.        TXT "v=spf1 ip4:91.98.35.3 ~all"
+
+# DKIM Record - DomainKeys Identified Mail (Domain-specific key from Postal)
+qpMdyI._domainkey.mailgoat.ai. TXT "v=DKIM1; t=s; h=sha256; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6lRtiY7g0SxzSnSmclzF3UqmY6YxPD6ahipL6SpUmgqsj4tUdbH7XQ88drmsLZ6E+MCmRrEDOQUtPMwsCzy+Z0KnBNYW7pUng4KgO/ZnvFC75a0ypJGXkWaZVVT0zUjYn4RvGfX768ZYfu50po02Pkf+15bNLBB+lOz3j7Hzm3QIDAQAB;"
+
+# Return Path - Bounce handling
+rp.mailgoat.ai.         CNAME mail.mailgoat.ai.
+
+# Track Domain - Click and open tracking
+track.mailgoat.ai.      CNAME mail.mailgoat.ai.
+
+# DMARC Record - Domain-based Message Authentication
+_dmarc.mailgoat.ai.     TXT "v=DMARC1; p=none; rua=mailto:dmarc@mailgoat.ai"
+
+# PTR Record (Reverse DNS) - Request from Hetzner support
+# Submit ticket with: "Please set PTR record for 91.98.35.3 to mail.mailgoat.ai"
+91.98.35.3              PTR mail.mailgoat.ai.
+
+---
+
+# Notes:
+# - DKIM identifier for this domain: qpMdyI
+# - Domain verified in Postal: 2026-02-16 09:03:58 UTC
+# - Organization: MailGoat
+# - Mail Server: Production (Live mode)
+# - DNS propagation can take 15 minutes to 48 hours
+# - Verify with: dig TXT qpMdyI._domainkey.mailgoat.ai

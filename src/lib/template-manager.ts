@@ -3,7 +3,6 @@
  * Handles email template storage, loading, and variable substitution
  */
 
-import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -128,8 +127,9 @@ export class TemplateManager {
     const templatePath = this.getTemplatePath(template.name);
 
     try {
-      await fs.access(templatePath);
+      await fsPromises.access(templatePath);
       throw new Error(`Template '${template.name}' already exists`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.message.includes('already exists')) throw err;
       // File doesn't exist, continue
@@ -143,7 +143,7 @@ export class TemplateManager {
     };
 
     const content = YAML.stringify(templateData);
-    await fs.writeFile(templatePath, content, { mode: 0o600 });
+    await fsPromises.writeFile(templatePath, content);
 
     debugLogger.log('config', `Created template: ${template.name}`);
   }
@@ -157,7 +157,7 @@ export class TemplateManager {
     const templatePath = this.getTemplatePath(name);
 
     try {
-      await fs.access(templatePath);
+      await fsPromises.access(templatePath);
     } catch {
       throw new Error(`Template '${name}' not found`);
     }
@@ -174,7 +174,7 @@ export class TemplateManager {
     this.validateTemplate(updated);
 
     const content = YAML.stringify(updated);
-    await fs.writeFile(templatePath, content, { mode: 0o600 });
+    await fsPromises.writeFile(templatePath, content);
 
     debugLogger.log('config', `Updated template: ${name}`);
   }
@@ -188,12 +188,12 @@ export class TemplateManager {
     const templatePath = this.getTemplatePath(name);
 
     try {
-      await fs.access(templatePath);
+      await fsPromises.access(templatePath);
     } catch {
       throw new Error(`Template '${name}' not found`);
     }
 
-    const content = await fs.readFile(templatePath, 'utf8');
+    const content = await fsPromises.readFile(templatePath, 'utf8');
     const template = YAML.parse(content) as EmailTemplate;
 
     debugLogger.log('config', `Loaded template: ${name}`);
@@ -210,12 +210,12 @@ export class TemplateManager {
     const templatePath = this.getTemplatePath(name);
 
     try {
-      await fs.access(templatePath);
+      await fsPromises.access(templatePath);
     } catch {
       throw new Error(`Template '${name}' not found`);
     }
 
-    await fs.unlink(templatePath);
+    await fsPromises.unlink(templatePath);
 
     debugLogger.log('config', `Deleted template: ${name}`);
   }
@@ -225,12 +225,12 @@ export class TemplateManager {
    */
   async list(): Promise<EmailTemplate[]> {
     try {
-      await fs.access(this.templatesDir);
+      await fsPromises.access(this.templatesDir);
     } catch {
       return [];
     }
 
-    const files = await fs.readdir(this.templatesDir);
+    const files = await fsPromises.readdir(this.templatesDir);
     const templates: EmailTemplate[] = [];
 
     for (const file of files) {
@@ -256,7 +256,7 @@ export class TemplateManager {
     try {
       this.validateTemplateName(name);
       const templatePath = this.getTemplatePath(name);
-      await fs.access(templatePath);
+      await fsPromises.access(templatePath);
       return true;
     } catch {
       return false;
