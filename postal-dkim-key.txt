@@ -1,0 +1,10 @@
+# DKIM Record for mailgoat.ai
+# Generated: 2026-02-16 09:03 UTC
+# Add this as a TXT record in your DNS:
+
+Name: postal-dkim._domainkey.mailgoat.ai
+Type: TXT
+Value: v=DKIM1; t=s; h=sha256; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6lRtiY7g0SxzSnSmclzF3UqmY6YxPD6ahipL6SpUmgqsj4tUdbH7XQ88drmsLZ6E+MCmRrEDOQUtPMwsCzy+Z0KnBNYW7pUng4KgO/ZnvFC75a0ypJGXkWaZVVT0zUjYn4RvGfX768ZYfu50po02Pkf+15bNLBB+lOz3j7Hzm3QIDAQAB;
+
+# Or in zone file format:
+postal-dkim._domainkey.mailgoat.ai. IN TXT "v=DKIM1; t=s; h=sha256; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6lRtiY7g0SxzSnSmclzF3UqmY6YxPD6ahipL6SpUmgqsj4tUdbH7XQ88drmsLZ6E+MCmRrEDOQUtPMwsCzy+Z0KnBNYW7pUng4KgO/ZnvFC75a0ypJGXkWaZVVT0zUjYn4RvGfX768ZYfu50po02Pkf+15bNLBB+lOz3j7Hzm3QIDAQAB;"

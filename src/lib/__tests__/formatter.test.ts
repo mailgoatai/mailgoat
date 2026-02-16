@@ -288,6 +288,7 @@ describe('Formatter', () => {
     it('should handle message without optional fields', () => {
       const minimalMessage: MessageDetails = {
         id: 1,
+        token: 'test-token',
         details: {
           message_id: 'msg_minimal',
           mail_from: 'sender@example.com',
@@ -295,6 +296,9 @@ describe('Formatter', () => {
           subject: 'Minimal',
           timestamp: 1704067200,
           size: 100,
+          direction: 'incoming',
+          bounce: false,
+          received_with_ssl: true,
         },
       };
 
@@ -308,6 +312,7 @@ describe('Formatter', () => {
       // Access private method through message formatting
       const message: MessageDetails = {
         id: 1,
+        token: 'test-token',
         details: {
           message_id: 'msg_1',
           mail_from: 'sender@example.com',
@@ -315,6 +320,9 @@ describe('Formatter', () => {
           subject: 'Test',
           timestamp: 1704067200,
           size: 1024,
+          direction: 'incoming',
+          bounce: false,
+          received_with_ssl: true,
         },
       };
 
@@ -325,6 +333,7 @@ describe('Formatter', () => {
     it('should handle zero bytes', () => {
       const message: MessageDetails = {
         id: 1,
+        token: 'test-token',
         details: {
           message_id: 'msg_1',
           mail_from: 'sender@example.com',
@@ -332,6 +341,9 @@ describe('Formatter', () => {
           subject: 'Test',
           timestamp: 1704067200,
           size: 0,
+          direction: 'incoming',
+          bounce: false,
+          received_with_ssl: true,
         },
       };
 
@@ -342,6 +354,7 @@ describe('Formatter', () => {
     it('should format megabytes', () => {
       const message: MessageDetails = {
         id: 1,
+        token: 'test-token',
         details: {
           message_id: 'msg_1',
           mail_from: 'sender@example.com',
@@ -349,6 +362,9 @@ describe('Formatter', () => {
           subject: 'Test',
           timestamp: 1704067200,
           size: 1048576, // 1 MB
+          direction: 'incoming',
+          bounce: false,
+          received_with_ssl: true,
         },
       };
 
