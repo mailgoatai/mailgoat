@@ -15,6 +15,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('PostalClient', () => {
   let client: PostalClient;
   let mockConfig: MailGoatConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockAxiosInstance: any;
 
   beforeEach(() => {
@@ -294,7 +295,7 @@ describe('PostalClient', () => {
         },
       });
 
-      await client.getMessage('recipient@example.com', 2);
+      await client.getMessage('recipient@example.com', ['status', 'details']);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/messages/messages', {
         rcpt_to: 'recipient@example.com',
@@ -385,7 +386,8 @@ describe('PostalClient', () => {
         },
       });
 
-      const result = await client.searchMessages('test query');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await (client as any).searchMessages('test query');
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/messages/search', {
         query: 'test query',
@@ -402,7 +404,8 @@ describe('PostalClient', () => {
         },
       });
 
-      await client.searchMessages('query', 3);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any).searchMessages('query', 3);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/messages/search', {
         query: 'query',

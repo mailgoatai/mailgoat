@@ -120,7 +120,7 @@ describe('TemplateManager', () => {
   });
 
   describe('load', () => {
-    it('should load template from file', () => {
+    it('should load template from file', async () => {
       const templateYaml = `
 name: welcome
 subject: Welcome {{name}}!
@@ -132,7 +132,7 @@ created_at: '2024-01-01T00:00:00.000Z'
       mockedFs.existsSync.mockReturnValue(true);
       mockedFs.readFileSync.mockReturnValue(templateYaml);
 
-      const template = manager.load('welcome');
+      const template = await manager.load('welcome');
 
       expect(template.name).toBe('welcome');
       expect(template.subject).toBe('Welcome {{name}}!');
@@ -172,6 +172,7 @@ subject: Test
         'invoice.yml',
         'reminder.yml',
         'notatemplate.txt',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any);
 
       const templates = manager.list();
@@ -333,7 +334,7 @@ subject: Test
   });
 
   describe('integration: save, load, render', () => {
-    it('should save, load, and render template correctly', () => {
+    it('should save, load, and render template correctly', async () => {
       const template = {
         name: 'invoice',
         subject: 'Invoice #{{invoiceNumber}}',
@@ -361,7 +362,7 @@ subject: Test
       mockedFs.readFileSync.mockReturnValue(savedYaml);
 
       // Load
-      const loaded = manager.load('invoice');
+      const loaded = await manager.load('invoice');
 
       // Render
       const variables = {

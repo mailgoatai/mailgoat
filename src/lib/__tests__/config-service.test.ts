@@ -43,7 +43,7 @@ describe('ConfigService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     service = new ConfigService(mockBaseDir);
-    
+
     // Reset environment variables
     delete process.env.MAILGOAT_SERVER;
     delete process.env.MAILGOAT_EMAIL;
@@ -110,14 +110,14 @@ metadata:
     it('should throw error if default config does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(() => await service.load()).toThrow('Default config not found');
+      await expect(service.load()).rejects.toThrow('Default config not found');
     });
 
     it('should throw error if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
       mockedFs.readdirSync.mockReturnValue([]);
 
-      expect(() => await service.load({ profile: 'nonexistent' })).toThrow(
+      await expect(service.load({ profile: 'nonexistent' })).rejects.toThrow(
         'Profile "nonexistent" not found'
       );
     });
@@ -393,15 +393,15 @@ api_key: test_key_123
     it('should throw error if profile already exists', async () => {
       mockedFs.existsSync.mockReturnValue(true);
 
-      expect(() => await service.createProfile('existing')).toThrow('already exists');
+      await expect(service.createProfile('existing')).rejects.toThrow('already exists');
     });
 
     it('should validate profile name', async () => {
       const invalidNames = ['invalid name', 'invalid@name', '', 'a'.repeat(51), 'default'];
 
-      invalidNames.forEach((name) => {
-        expect(() => await service.createProfile(name)).toThrow();
-      });
+      for (const name of invalidNames) {
+        await expect(service.createProfile(name)).rejects.toThrow();
+      }
     });
   });
 
@@ -411,15 +411,13 @@ api_key: test_key_123
 
       await service.deleteProfile('old-profile');
 
-      expect(mockedFs.unlinkSync).toHaveBeenCalledWith(
-        `${mockBaseDir}/profiles/old-profile.yml`
-      );
+      expect(mockedFs.unlinkSync).toHaveBeenCalledWith(`${mockBaseDir}/profiles/old-profile.yml`);
     });
 
     it('should throw error if profile does not exist', async () => {
       mockedFs.existsSync.mockReturnValue(false);
 
-      expect(() => await service.deleteProfile('nonexistent')).toThrow('does not exist');
+      await expect(service.deleteProfile('nonexistent')).rejects.toThrow('does not exist');
     });
 
     it('should invalidate cache after deletion', async () => {
@@ -545,7 +543,7 @@ metadata:
         error: 'Invalid configuration',
       });
 
-      expect(() => await service.save(invalidConfig)).toThrow('Configuration validation failed');
+      await expect(service.save(invalidConfig)).rejects.toThrow('Configuration validation failed');
     });
   });
 });

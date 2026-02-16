@@ -60,7 +60,7 @@ describe('ConfigManager', () => {
   });
 
   describe('load', () => {
-    it('should load and parse valid config', () => {
+    it('should load and parse valid config', async () => {
       const configYaml = `
 server: https://postal.example.com
 email: user@example.com
