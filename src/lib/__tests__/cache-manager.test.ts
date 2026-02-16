@@ -225,28 +225,40 @@ describe('CacheManager', () => {
       cache.set('key', 'cached', 1000);
 
       let factoryCalled = false;
-      const value = await cache.getOrSet('key', async () => {
-        factoryCalled = true;
-        return 'generated';
-      }, 1000);
+      const value = await cache.getOrSet(
+        'key',
+        async () => {
+          factoryCalled = true;
+          return 'generated';
+        },
+        1000
+      );
 
       expect(value).toBe('cached');
       expect(factoryCalled).toBe(false);
     });
 
     it('should call factory and cache result if not exists', async () => {
-      const value = await cache.getOrSet('key', async () => {
-        return 'generated';
-      }, 1000);
+      const value = await cache.getOrSet(
+        'key',
+        async () => {
+          return 'generated';
+        },
+        1000
+      );
 
       expect(value).toBe('generated');
       expect(cache.get('key')).toBe('generated');
     });
 
     it('should support sync factory functions', async () => {
-      const value = await cache.getOrSet('key', () => {
-        return 'sync-value';
-      }, 1000);
+      const value = await cache.getOrSet(
+        'key',
+        () => {
+          return 'sync-value';
+        },
+        1000
+      );
 
       expect(value).toBe('sync-value');
     });

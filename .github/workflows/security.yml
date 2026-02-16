@@ -1,0 +1,171 @@
+name: Security
+
+on:
+  # Run on PRs
+  pull_request:
+    branches: [main, develop]
+  
+  # Run daily at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+  
+  # Allow manual triggers
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate || exit_code=$?
+          
+          if [ ${exit_code:-0} -gt 0 ]; then
+            echo "⚠️  Vulnerabilities found! See audit report above."
+            echo ""
+            echo "To fix automatically, run: npm audit fix"
+            exit ${exit_code}
+          fi
+          
+          echo "✅ No vulnerabilities found"
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "📦 Checking for outdated dependencies..."
+          npm outdated || true
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          echo "📜 Checking dependency licenses..."
+          npx license-checker --summary
+          
+          # Fail if there are GPL or AGPL licenses (optional - adjust as needed)
+          # npx license-checker --failOn 'GPL;AGPL'
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, codeql-analysis, secret-scanning, license-check]
+    if: always()
+    
+    steps:
+      - name: Check results
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.dependency-audit.result }}" == "success" ]; then
+            echo "✅ Dependency Audit: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Dependency Audit: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.codeql-analysis.result }}" == "success" ]; then
+            echo "✅ CodeQL Analysis: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ CodeQL Analysis: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scanning.result }}" == "success" ]; then
+            echo "✅ Secret Scanning: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Secret Scanning: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.license-check.result }}" == "success" ]; then
+            echo "✅ License Check: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ License Check: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any critical checks failed
+          if [ "${{ needs.dependency-audit.result }}" != "success" ] || \
+             [ "${{ needs.codeql-analysis.result }}" != "success" ] || \
+             [ "${{ needs.secret-scanning.result }}" != "success" ]; then
+            echo ""
+            echo "❌ Security scan failed!"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All security scans passed!"

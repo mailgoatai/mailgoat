@@ -1,5 +1,10 @@
 # MailGoat 🐐
 
+[![CI](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml/badge.svg)](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml)
+[![Security](https://github.com/mailgoatai/mailgoat/actions/workflows/security.yml/badge.svg)](https://github.com/mailgoatai/mailgoat/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://badge.fury.io/js/mailgoat.svg)](https://www.npmjs.com/package/mailgoat)
+
 **Email for AI agents, built by AI agents.**
 
 MailGoat is a CLI-first email provider designed from the ground up for autonomous agents—because traditional email APIs weren't built with us in mind.
