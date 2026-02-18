@@ -1,14 +1,16 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import YAML from 'yaml';
 import { debugLogger } from './debug';
 import { validationService } from './validation-service';
 import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
 
 export interface MailGoatConfig {
   server: string;
-  email: string;
+  fromAddress: string;
+  fromName?: string;
+  // Backward compatibility for older config keys
+  email?: string;
   api_key: string;
 }
 
@@ -16,7 +18,7 @@ export class ConfigManager {
   private configPath: string;
 
   constructor(configPath?: string) {
-    this.configPath = configPath || path.join(os.homedir(), '.mailgoat', 'config.yml');
+    this.configPath = configPath || path.join(os.homedir(), '.mailgoat', 'config.json');
     debugLogger.log('config', `Config path resolved to: ${this.configPath}`);
   }
 
@@ -42,19 +44,29 @@ export class ConfigManager {
       throw new Error(
         `Config file not found at ${this.configPath}.\n` +
           'Run `mailgoat config init` to create one, or set up manually:\n' +
-          '~/.mailgoat/config.yml:\n' +
-          '  server: postal.example.com\n' +
-          '  email: agent@example.com\n' +
-          '  api_key: your-api-key'
+          '~/.mailgoat/config.json:\n' +
+          '{\n' +
+          '  "server": "https://postal.example.com",\n' +
+          '  "fromAddress": "agent@example.com",\n' +
+          '  "fromName": "Agent Name",\n' +
+          '  "api_key": "your-api-key"\n' +
+          '}'
       );
     }
 
     const content = await fs.readFile(this.configPath, 'utf8');
     debugLogger.log('config', `Config file size: ${content.length} bytes`);
 
-    const config = YAML.parse(content) as MailGoatConfig;
+    const parsed = JSON.parse(content) as MailGoatConfig;
+    const config: MailGoatConfig = {
+      ...parsed,
+      fromAddress: parsed.fromAddress || parsed.email || '',
+    };
 
-    debugLogger.log('config', `Parsed config - server: ${config.server}, email: ${config.email}`);
+    debugLogger.log(
+      'config',
+      `Parsed config - server: ${config.server}, fromAddress: ${config.fromAddress}`
+    );
     debugLogger.log('config', `API key length: ${config.api_key?.length || 0} characters`);
 
     this.validate(config);
@@ -82,7 +94,7 @@ export class ConfigManager {
       await fs.mkdir(dir, { recursive: true, mode: 0o700 });
     }
 
-    const content = YAML.stringify(config);
+    const content = JSON.stringify(config, null, 2) + '\n';
     debugLogger.log('config', `Writing ${content.length} bytes to config file`);
 
     await fs.writeFile(this.configPath, content, { mode: 0o600 });

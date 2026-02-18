@@ -4,17 +4,15 @@ import chalk from 'chalk';
 import { ConfigManager, MailGoatConfig } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
-import * as validators from '../lib/validators';
+import { validationService } from '../lib/validation-service';
 
 /**
  * Validate email address format (wrapper for prompts)
  */
 function validateEmail(email: string): boolean | string {
-  if (!email) {
-    return 'Email address is required';
-  }
-  if (!validators.validateEmail(email)) {
-    return 'Invalid email address format';
+  const result = validationService.validateEmail(email);
+  if (!result.valid) {
+    return result.error || 'Invalid email address';
   }
   return true;
 }
@@ -23,11 +21,9 @@ function validateEmail(email: string): boolean | string {
  * Validate server URL format (wrapper for prompts)
  */
 function validateServerUrl(url: string): boolean | string {
-  if (!url) {
-    return 'Server URL is required';
-  }
-  if (!validators.validateUrl(url)) {
-    return 'Invalid server URL format (e.g., postal.example.com)';
+  const result = validationService.validateUrl(url);
+  if (!result.valid) {
+    return 'Invalid server URL format (e.g., https://postal.example.com)';
   }
   return true;
 }
@@ -36,11 +32,12 @@ function validateServerUrl(url: string): boolean | string {
  * Validate API key format (wrapper for prompts)
  */
 function validateApiKey(key: string): boolean | string {
-  if (!key) {
+  if (!key || !key.trim()) {
     return 'API key is required';
   }
-  if (!validators.validateApiKey(key)) {
-    return 'API key seems too short (minimum 10 characters)';
+  const result = validationService.validateApiKey(key.trim());
+  if (!result.valid) {
+    return result.error || 'Invalid API key';
   }
   return true;
 }
@@ -83,17 +80,20 @@ export function createConfigCommand(): Command {
 
         // Check if config exists
         if ((await configManager.exists()) && !options.force) {
-          console.error(
-            formatter.error(
-              `Configuration already exists at ${configManager.getPath()}\n` +
-                'Use --force to overwrite'
-            )
-          );
-          process.exit(1);
+          const overwrite = await prompts({
+            type: 'confirm',
+            name: 'value',
+            message: `Configuration already exists at ${configManager.getPath()}. Overwrite?`,
+            initial: false,
+          });
+          if (!overwrite.value) {
+            console.log(chalk.yellow('Configuration init cancelled'));
+            return;
+          }
         }
 
         console.log(chalk.bold.cyan('📧 MailGoat Configuration Setup'));
-        console.log(chalk.gray('Create your ~/.mailgoat/config.yml file\n'));
+        console.log(chalk.gray('Create your ~/.mailgoat/config.json file\n'));
 
         // Interactive prompts
         const response = await prompts([
@@ -101,20 +101,25 @@ export function createConfigCommand(): Command {
             type: 'text',
             name: 'server',
             message: 'Postal server URL',
-            initial: 'postal.example.com',
+            initial: 'https://postal.example.com',
             validate: validateServerUrl,
-          },
-          {
-            type: 'text',
-            name: 'email',
-            message: 'Your email address',
-            validate: validateEmail,
           },
           {
             type: 'password',
             name: 'api_key',
             message: 'Postal API key',
             validate: validateApiKey,
+          },
+          {
+            type: 'text',
+            name: 'fromAddress',
+            message: 'From address',
+            validate: validateEmail,
+          },
+          {
+            type: 'text',
+            name: 'fromName',
+            message: 'From name (optional)',
           },
           {
             type: 'confirm',
@@ -127,13 +132,14 @@ export function createConfigCommand(): Command {
         // Check if user cancelled
         if (!response.confirm) {
           console.log(chalk.yellow('\nConfiguration cancelled'));
-          process.exit(0);
+          return;
         }
 
         const config: MailGoatConfig = {
-          server: response.server,
-          email: response.email,
-          api_key: response.api_key,
+          server: response.server.trim(),
+          fromAddress: response.fromAddress.trim(),
+          fromName: response.fromName?.trim() || undefined,
+          api_key: response.api_key.trim(),
         };
 
         // Test connection (unless skipped)
@@ -154,7 +160,7 @@ export function createConfigCommand(): Command {
 
             if (!proceed.value) {
               console.log(chalk.yellow('Configuration cancelled'));
-              process.exit(0);
+              return;
             }
           }
         }
@@ -178,7 +184,7 @@ export function createConfigCommand(): Command {
       } catch (error: any) {
         if (error.message === 'User canceled') {
           console.log(chalk.yellow('\nConfiguration cancelled'));
-          process.exit(0);
+          return;
         }
         const formatter = new Formatter(false);
         console.error(formatter.error(error.message));
@@ -202,7 +208,10 @@ export function createConfigCommand(): Command {
         } else {
           console.log(`Configuration file: ${configManager.getPath()}\n`);
           console.log(`Server:   ${config.server}`);
-          console.log(`Email:    ${config.email}`);
+          console.log(`From:     ${config.fromAddress}`);
+          if (config.fromName) {
+            console.log(`From Name:${config.fromName}`);
+          }
           console.log(`API Key:  ${config.api_key.substring(0, 8)}...`);
         }
       } catch (error: any) {

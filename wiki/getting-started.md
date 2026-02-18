@@ -45,7 +45,7 @@ You should see the version number (e.g., `1.0.0`).
 
 ## Initial Configuration
 
-MailGoat stores configuration in `~/.mailgoat/config.yml`.
+MailGoat stores configuration in `~/.mailgoat/config.json`.
 
 ### Interactive Setup
 
@@ -56,18 +56,22 @@ mailgoat config init
 ```
 
 You'll be prompted for:
-- **Postal server URL** (e.g., `postal.example.com`)
-- **Your email address** (e.g., `agent@example.com`)
+- **Postal server URL** (e.g., `https://postal.example.com`)
 - **API key** (from Postal web UI)
+- **From address** (e.g., `agent@example.com`)
+- **From name** (optional)
 
 ### Manual Setup
 
-Alternatively, create `~/.mailgoat/config.yml`:
+Alternatively, create `~/.mailgoat/config.json`:
 
-```yaml
-server: postal.example.com
-email: agent@example.com
-api_key: your-postal-api-key-here
+```json
+{
+  "server": "https://postal.example.com",
+  "fromAddress": "agent@example.com",
+  "fromName": "Agent Name",
+  "api_key": "your-postal-api-key-here"
+}
 ```
 
 **Getting your API key:**

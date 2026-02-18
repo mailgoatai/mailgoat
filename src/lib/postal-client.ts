@@ -45,7 +45,7 @@ export interface SendMessageParams {
   /** HTML body content */
   html_body?: string;
 
-  /** Sender email address (defaults to config email) */
+  /** Sender email address (defaults to configured fromAddress) */
   from?: string;
 
   /** CC recipient email addresses */
@@ -343,7 +343,7 @@ export class PostalClient {
         to: params.to,
         cc: params.cc,
         bcc: params.bcc,
-        from: params.from || this.config.email,
+        from: params.from || this.config.fromAddress || this.config.email,
         subject: params.subject,
         plain_body: params.plain_body,
         html_body: params.html_body,

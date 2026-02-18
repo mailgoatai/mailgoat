@@ -55,14 +55,14 @@ async function checkConfig(configManager: ConfigManager): Promise<HealthCheckRes
     const config = await configManager.load();
 
     // Validate required fields
-    if (!config.server || !config.email || !config.api_key) {
+    if (!config.server || !config.fromAddress || !config.api_key) {
       return {
         name: 'config',
         status: 'fail',
         message: 'Config file missing required fields',
         duration: Date.now() - start,
         details: {
-          required: ['server', 'email', 'api_key'],
+          required: ['server', 'fromAddress', 'api_key'],
           found: Object.keys(config),
         },
       };
@@ -76,7 +76,7 @@ async function checkConfig(configManager: ConfigManager): Promise<HealthCheckRes
       details: {
         path: configManager.getPath(),
         server: config.server,
-        email: config.email,
+        fromAddress: config.fromAddress,
       },
     };
   } catch (error: any) {

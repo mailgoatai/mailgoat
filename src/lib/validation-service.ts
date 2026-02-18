@@ -36,7 +36,9 @@ export interface SendOptions {
  */
 export interface Config {
   server: string;
-  email: string;
+  fromAddress?: string;
+  fromName?: string;
+  email?: string;
   api_key: string;
   webhook?: {
     url?: string;
@@ -475,13 +477,14 @@ export class ValidationService {
       };
     }
 
-    // Validate email
-    const emailResult = this.validateEmail(config.email);
-    if (!emailResult.valid) {
+    // Validate from address (fallback to legacy email key)
+    const fromAddress = config.fromAddress || config.email;
+    const emailResult = this.validateEmail(fromAddress || '');
+    if (!fromAddress || !emailResult.valid) {
       return {
         valid: false,
-        error: `Invalid email: ${emailResult.error}`,
-        field: 'email',
+        error: `Invalid from address: ${emailResult.error}`,
+        field: 'fromAddress',
       };
     }
 

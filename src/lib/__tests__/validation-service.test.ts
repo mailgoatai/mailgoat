@@ -361,7 +361,7 @@ describe('ValidationService', () => {
     it('should accept valid config', () => {
       const config = {
         server: 'https://postal.example.com',
-        email: 'user@example.com',
+        fromAddress: 'user@example.com',
         api_key: 'proj_abc123def456',
       };
       const result = service.validateConfig(config);
@@ -371,7 +371,7 @@ describe('ValidationService', () => {
     it('should reject invalid server URL', () => {
       const config = {
         server: 'not-a-url',
-        email: 'user@example.com',
+        fromAddress: 'user@example.com',
         api_key: 'proj_abc123def456',
       };
       const result = service.validateConfig(config);
@@ -382,18 +382,18 @@ describe('ValidationService', () => {
     it('should reject invalid email', () => {
       const config = {
         server: 'https://postal.example.com',
-        email: 'invalid',
+        fromAddress: 'invalid',
         api_key: 'proj_abc123def456',
       };
       const result = service.validateConfig(config);
       expect(result.valid).toBe(false);
-      expect(result.field).toBe('email');
+      expect(result.field).toBe('fromAddress');
     });
 
     it('should reject invalid API key', () => {
       const config = {
         server: 'https://postal.example.com',
-        email: 'user@example.com',
+        fromAddress: 'user@example.com',
         api_key: 'short',
       };
       const result = service.validateConfig(config);
@@ -404,7 +404,7 @@ describe('ValidationService', () => {
     it('should validate webhook URL if provided', () => {
       const config = {
         server: 'https://postal.example.com',
-        email: 'user@example.com',
+        fromAddress: 'user@example.com',
         api_key: 'proj_abc123def456',
         webhook: {
           url: 'not-a-url',
@@ -418,7 +418,7 @@ describe('ValidationService', () => {
     it('should accept valid webhook config', () => {
       const config = {
         server: 'https://postal.example.com',
-        email: 'user@example.com',
+        fromAddress: 'user@example.com',
         api_key: 'proj_abc123def456',
         webhook: {
           url: 'https://webhook.example.com',

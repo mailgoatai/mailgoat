@@ -25,7 +25,7 @@ describe('PostalClient', () => {
     // Setup mock config
     mockConfig = {
       server: 'https://postal.example.com',
-      email: 'sender@example.com',
+      fromAddress: 'sender@example.com',
       api_key: 'test_api_key_123',
     };
 
