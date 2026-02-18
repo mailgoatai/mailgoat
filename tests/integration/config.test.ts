@@ -47,6 +47,7 @@ describe('ConfigManager Integration Tests', () => {
     const configPath = createTestConfig(TEST_CONFIG);
     const updated: MailGoatConfig = {
       server: 'updated.example.com',
+      fromAddress: 'updated@example.com',
       email: 'updated@example.com',
       api_key: 'updated-api-key',
     };

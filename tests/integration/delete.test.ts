@@ -15,6 +15,7 @@ describe('Delete Command Integration Tests', () => {
   beforeEach(() => {
     config = {
       server: 'https://postal.example.com',
+      fromAddress: 'test@example.com',
       email: 'test@example.com',
       api_key: 'test-api-key',
     };

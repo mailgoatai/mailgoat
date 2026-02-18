@@ -6,7 +6,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import YAML from 'yaml';
 import { MailGoatConfig } from '../../../src/lib/config';
 
 /**
@@ -16,7 +15,7 @@ export function createTestConfig(config: MailGoatConfig): string {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mailgoat-test-'));
   const configPath = path.join(tempDir, 'config.yml');
 
-  const content = YAML.stringify(config);
+  const content = JSON.stringify(config, null, 2);
   fs.writeFileSync(configPath, content, { mode: 0o600 });
 
   return configPath;
@@ -88,6 +87,7 @@ export function createTestAttachment(
  */
 export const TEST_CONFIG: MailGoatConfig = {
   server: 'postal.example.com',
+  fromAddress: 'test@example.com',
   email: 'test@example.com',
   api_key: 'test-api-key',
 };
