@@ -7,6 +7,7 @@ import { Formatter } from '../lib/formatter';
 import { validationService } from '../lib/validation-service';
 import { debugLogger } from '../lib/debug';
 import { TemplateManager } from '../lib/template-manager';
+import { SchedulerStore, parseScheduleInput } from '../lib/scheduler';
 import {
   formatBytes,
   prepareAttachment,
@@ -67,6 +68,7 @@ export function createSendCommand(): Command {
     .option('--template <name>', 'Use email template')
     .option('--var <key=value...>', 'Template variables (e.g., --var name=John --var age=30)')
     .option('--data <file>', 'JSON file with template variables')
+    .option('--schedule <datetime>', 'Schedule send time in local timezone (YYYY-MM-DD HH:mm)')
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
@@ -241,14 +243,45 @@ export function createSendCommand(): Command {
           }
         }
 
-        // Send message
-        debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
-        const result = await client.sendMessage(messageParams);
-        debugLogger.timeEnd(`${operationId}-send`);
+        if (options.schedule) {
+          const scheduledDate = parseScheduleInput(options.schedule);
+          if (scheduledDate.getTime() <= Date.now()) {
+            throw new Error('Scheduled time must be in the future');
+          }
 
-        // Output result
-        const output = formatter.formatSendResponse(result);
-        formatter.output(output);
+          const store = new SchedulerStore();
+          const queued = store.enqueue({
+            scheduledForIso: scheduledDate.toISOString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            payload: messageParams,
+          });
+          store.close();
+
+          if (options.json) {
+            formatter.output({
+              status: 'scheduled',
+              id: queued.id,
+              scheduledFor: queued.scheduledForIso,
+              timezone: queued.timezone,
+            });
+          } else {
+            console.log(
+              chalk.green(
+                `✓ Email scheduled (ID ${queued.id}) for ${scheduledDate.toLocaleString()} (${queued.timezone})`
+              )
+            );
+            console.log(chalk.cyan('Run `mailgoat scheduler start` to process scheduled emails.'));
+          }
+        } else {
+          // Send message immediately
+          debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
+          const result = await client.sendMessage(messageParams);
+          debugLogger.timeEnd(`${operationId}-send`);
+
+          // Output result
+          const output = formatter.formatSendResponse(result);
+          formatter.output(output);
+        }
 
         debugLogger.timeEnd(operationId);
       } catch (error: any) {

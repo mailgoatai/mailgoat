@@ -9,6 +9,7 @@ import { createTemplateCommand } from './commands/template';
 import { createDeleteCommand } from './commands/delete';
 import { createSearchCommand } from './commands/search';
 import { createHealthCommand } from './commands/health';
+import { createSchedulerCommand } from './commands/scheduler';
 import { debugLogger } from './lib/debug';
 import { setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -52,6 +53,7 @@ program.addCommand(createTemplateCommand());
 program.addCommand(createDeleteCommand());
 program.addCommand(createSearchCommand());
 program.addCommand(createHealthCommand());
+program.addCommand(createSchedulerCommand());
 
 // Parse arguments
 program.parse(process.argv);

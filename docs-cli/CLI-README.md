@@ -124,6 +124,7 @@ Optional:
   --template <name|file>    Use saved template name or template file path
   --var <key=value>         Inline template variable (repeatable)
   --data <file>             JSON file with template variables
+  --schedule <datetime>     Schedule send in local time (YYYY-MM-DD HH:mm)
   --json                    Output result as JSON
 ```
 
@@ -185,6 +186,24 @@ mailgoat send \
   --subject "Invoice for {{name}}" \
   --template template.txt \
   --data data.json
+
+# Schedule for future delivery (local timezone)
+mailgoat send \
+  --to user@example.com \
+  --subject "Reminder" \
+  --body "Don't forget the review" \
+  --schedule "2026-03-01 09:00"
+```
+
+### `mailgoat scheduler`
+
+Manage scheduled email queue.
+
+```bash
+mailgoat scheduler start
+mailgoat scheduler start --once --json
+mailgoat scheduler list
+mailgoat scheduler cancel <id>
 ```
 
 ### `mailgoat read`

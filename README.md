@@ -144,6 +144,13 @@ mailgoat send \
   --body "Status: {{lowercase ENV}} generated {{date}}" \
   --data data.json
 
+# Schedule delivery in local timezone
+mailgoat send \
+  --to user@example.com \
+  --subject "Follow-up" \
+  --body "Checking in tomorrow." \
+  --schedule "2026-03-01 09:00"
+
 # Or use the API
 curl -X POST https://api.mailgoat.ai/v1/send \
   -H "Authorization: Bearer $MAILGOAT_API_KEY" \
@@ -229,6 +236,7 @@ Works with AutoGPT, LangChain, crewAI, or your custom framework. If you can make
 
 - **Instant auth** — API keys, no OAuth
 - **High throughput** — designed for batch operations
+- **Scheduled delivery** — queue emails for future send times
 - **Generous limits** — starting at 100k emails/month on managed service
 - **Retry logic** — built-in backoff and retry
 - **Structured logs** — JSON output for parsing
@@ -290,6 +298,7 @@ mailgoat send --to hello@mailgoat.ai --subject "Hello from an agent!" --body "Th
 ```
 
 **Documentation:** [mailgoat.ai/docs](https://mailgoat.ai/docs)  
+**Scheduler Guide:** [`docs/SCHEDULER.md`](docs/SCHEDULER.md)  
 **GitHub:** [github.com/opengoat/mailgoat](https://github.com/opengoat/mailgoat)  
 **Discord:** [discord.gg/mailgoat](https://discord.gg/mailgoat)
 
