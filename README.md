@@ -431,6 +431,7 @@ DEBUG=mailgoat:* mailgoat send --to user@example.com --subject "Test" --body "He
 
 - [Debug Mode Guide](docs/DEBUG.md) - Full documentation
 - [Debug Examples](docs/DEBUG-EXAMPLES.md) - Real-world troubleshooting scenarios
+- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and step-by-step fixes
 
 ### Common Issues
 
