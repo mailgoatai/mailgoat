@@ -32,6 +32,8 @@ interface HealthReport {
   };
 }
 
+type HealthExitCode = 0 | 1 | 2;
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -306,10 +308,42 @@ async function checkTemplates(): Promise<HealthCheckResult> {
   }
 }
 
+async function checkSendTest(client: PostalClient, to: string): Promise<HealthCheckResult> {
+  const start = Date.now();
+
+  try {
+    await client.sendMessage({
+      to: [to],
+      subject: '[MailGoat Health Check] Test Message',
+      plain_body: 'This is a MailGoat health check test email.',
+    });
+
+    return {
+      name: 'send_test',
+      status: 'pass',
+      message: `Test email sent to ${to}`,
+      duration: Date.now() - start,
+      details: { to },
+    };
+  } catch (error: unknown) {
+    return {
+      name: 'send_test',
+      status: 'fail',
+      message: `Test email failed: ${getErrorMessage(error)}`,
+      duration: Date.now() - start,
+      details: {
+        to,
+        solution:
+          'Verify sender domain in Postal, recipient validity, and delivery permissions before retrying --send-test',
+      },
+    };
+  }
+}
+
 /**
  * Perform all health checks
  */
-async function performHealthChecks(verbose: boolean): Promise<HealthReport> {
+async function performHealthChecks(verbose: boolean, sendTest: boolean): Promise<HealthReport> {
   const checks: HealthCheckResult[] = [];
   const timestamp = new Date().toISOString();
 
@@ -363,6 +397,13 @@ async function performHealthChecks(verbose: boolean): Promise<HealthReport> {
     if (verbose) console.log(chalk.cyan('Checking API authentication...'));
     const authCheck = await checkAuthentication(client);
     checks.push(authCheck);
+
+    // Optional send test
+    if (sendTest) {
+      if (verbose) console.log(chalk.cyan('Sending test email...'));
+      const sendTestCheck = await checkSendTest(client, config.fromAddress);
+      checks.push(sendTestCheck);
+    }
   }
 
   // Calculate summary
@@ -383,6 +424,16 @@ async function performHealthChecks(verbose: boolean): Promise<HealthReport> {
   };
 }
 
+function getHealthExitCode(report: HealthReport): HealthExitCode {
+  if (report.summary.failed > 0) {
+    return 2;
+  }
+  if (report.summary.warnings > 0) {
+    return 1;
+  }
+  return 0;
+}
+
 export function createHealthCommand(): Command {
   const cmd = new Command('health');
 
@@ -390,6 +441,7 @@ export function createHealthCommand(): Command {
     .description('Check system health and connectivity')
     .option('-v, --verbose', 'Show detailed check progress', false)
     .option('--json', 'Output results as JSON')
+    .option('--send-test', 'Send a test email to configured fromAddress', false)
     .action(async (options) => {
       const operationId = `health-${Date.now()}`;
       debugLogger.timeStart(operationId, 'Health check');
@@ -402,7 +454,7 @@ export function createHealthCommand(): Command {
         }
 
         // Perform all checks
-        const report = await performHealthChecks(options.verbose);
+        const report = await performHealthChecks(options.verbose, options.sendTest);
 
         if (options.json) {
           // JSON output for monitoring tools
@@ -469,7 +521,7 @@ export function createHealthCommand(): Command {
         debugLogger.timeEnd(operationId);
 
         // Exit with appropriate code
-        process.exit(report.healthy ? 0 : 1);
+        process.exit(getHealthExitCode(report));
       } catch (error: unknown) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
@@ -487,7 +539,7 @@ export function createHealthCommand(): Command {
           console.error(formatter.error(message));
         }
 
-        process.exit(1);
+        process.exit(2);
       }
     });
 

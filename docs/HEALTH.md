@@ -19,8 +19,17 @@ mailgoat health --json
 
 The health command uses standard exit codes for automation:
 
-- **Exit 0**: System is healthy (all critical checks passed)
-- **Exit 1**: System is unhealthy (one or more critical checks failed)
+- **Exit 0**: Healthy (no failures, no warnings)
+- **Exit 1**: Warnings present (no failures)
+- **Exit 2**: Critical failure (one or more failed checks)
+
+### Optional Test Email
+
+You can verify end-to-end send capability by sending a test email to your configured `fromAddress`:
+
+```bash
+mailgoat health --send-test
+```
 
 This makes it easy to integrate with monitoring tools, scripts, and orchestration systems.
 
