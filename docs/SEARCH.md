@@ -4,9 +4,9 @@ The `mailgoat search` command allows you to find messages using various filterin
 
 ## Status
 
-**⚠️ COMING SOON:** The search command is currently a placeholder. Full implementation requires Postal's inbox/message listing API endpoints. The command structure and filters are designed and ready for implementation.
+**✅ AVAILABLE:** The search command is implemented and runs against a local inbox cache file (`~/.mailgoat/inbox/messages.json` by default).
 
-## Quick Start (When Available)
+## Quick Start
 
 ```bash
 # Search by sender
@@ -23,6 +23,15 @@ mailgoat search --from user@example.com --subject "report" --after 7d
 ```
 
 ## Planned Features
+
+## Data Source
+
+`mailgoat search` reads cached messages from:
+
+- Default path: `~/.mailgoat/inbox/messages.json`
+- Override path: `--cache-path /path/to/messages.json`
+
+The cache file must contain a JSON array of message objects.
 
 ### Search Filters
 
@@ -477,14 +486,16 @@ POST /api/v1/messages/search
 
 ## Current Status
 
-**⚠️ Not Yet Implemented**
+**✅ Implemented for local cache search**
 
-The search command is ready but requires:
-1. Postal inbox/message listing API
-2. Search/query endpoint support
-3. Filtering capabilities on the server side
+Current implementation:
+1. Loads messages from local cache JSON
+2. Filters by sender/recipient/subject/body/date/tag/attachments
+3. Supports sorting (`date`, `from`, `to`, `subject`) and limits
+4. Supports machine-readable JSON output
 
-**Workaround:** Use `mailgoat inbox` command to list messages, then filter manually.
+Future enhancement:
+1. Add direct Postal API backed search when listing/search endpoints are available
 
 ## Related Commands
 
@@ -508,12 +519,9 @@ DEBUG=mailgoat:* mailgoat search --from user@example.com
 
 ## FAQs
 
-### When will search be available?
+### Does search query Postal directly?
 
-Search will be available when:
-1. Postal provides inbox/message listing APIs
-2. Search/query endpoints are implemented
-3. The MailGoat client adds search support
+No. Current search runs locally on cached inbox data. Use webhooks/inbox sync flows to keep cache data current.
 
 ### How is search different from inbox?
 
@@ -543,6 +551,7 @@ Not yet, but this feature is planned for future releases.
 - [x] Date parsing implemented
 - [x] Output formatting planned
 - [x] Documentation written
+- [x] Local cache integration
 - [ ] Postal API integration
 - [ ] Result caching
 - [ ] Pagination support

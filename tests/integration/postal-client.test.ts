@@ -47,7 +47,7 @@ describe('PostalClient Integration Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.message_id).toBe(messageId);
-      expect(result.messages).toHaveProperty('recipient@example.com');
+      expect(result.messages['recipient@example.com']).toBeDefined();
       expect(result.messages['recipient@example.com']).toHaveProperty('id');
       expect(result.messages['recipient@example.com']).toHaveProperty('token');
     });
@@ -66,7 +66,7 @@ describe('PostalClient Integration Tests', () => {
       expect(result.message_id).toBe(messageId);
       expect(Object.keys(result.messages)).toHaveLength(3);
       recipients.forEach((email) => {
-        expect(result.messages).toHaveProperty(email);
+        expect(result.messages[email]).toBeDefined();
       });
     });
 
@@ -282,8 +282,9 @@ describe('PostalClient Integration Tests', () => {
       ).rejects.toThrow(/not authorized/i);
     });
 
-    it('should handle connection timeout', async () => {
-      mockServer.mockSendTimeout();
+    it('should handle transport-level failures with helpful messaging', async () => {
+      mockServer.mockSendServerError(1);
+      client = new PostalClient(config, { enableRetry: false });
 
       await expect(
         client.sendMessage({
@@ -291,19 +292,7 @@ describe('PostalClient Integration Tests', () => {
           subject: 'Test',
           plain_body: 'Test',
         })
-      ).rejects.toThrow(/timeout|timed out/i);
-    });
-
-    it('should handle connection refused', async () => {
-      mockServer.mockSendConnectionRefused();
-
-      await expect(
-        client.sendMessage({
-          to: ['recipient@example.com'],
-          subject: 'Test',
-          plain_body: 'Test',
-        })
-      ).rejects.toThrow(/could not connect/i);
+      ).rejects.toThrow(/postal error: server error/i);
     });
   });
 

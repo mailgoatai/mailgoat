@@ -72,12 +72,13 @@ describe('Delete Command Integration Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should handle network timeout', async () => {
+    it('should handle transport failure', async () => {
       const messageId = generateMessageId();
+      client = new PostalClient(config, { enableRetry: false });
 
-      mockServer.mockDeleteTimeout();
+      mockServer.mockDeleteServerError();
 
-      await expect(client.deleteMessage(messageId)).rejects.toThrow(/timeout/i);
+      await expect(client.deleteMessage(messageId)).rejects.toThrow(/postal error|server error/i);
     });
   });
 

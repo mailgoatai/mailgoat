@@ -263,5 +263,21 @@ export function getLogFiles(): { error: string; combined: string } {
   };
 }
 
+/**
+ * Update active log level at runtime
+ */
+export function setLogLevel(level: 'error' | 'warn' | 'info' | 'debug'): void {
+  logger.level = level;
+}
+
+/**
+ * Enable or disable all logger transports
+ */
+export function setLoggerSilent(silent: boolean): void {
+  logger.transports.forEach((transport) => {
+    transport.silent = silent;
+  });
+}
+
 // Export logger as default
 export default logger;

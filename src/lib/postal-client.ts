@@ -243,7 +243,11 @@ export class PostalClient {
   private async retryWithBackoff<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
     if (!this.enableRetry) {
       debugLogger.log('api', `Retry disabled for: ${operationName}`);
-      return fn();
+      try {
+        return await fn();
+      } catch (error: any) {
+        throw this.categorizeError(error);
+      }
     }
 
     let lastError: any;
@@ -258,7 +262,7 @@ export class PostalClient {
         // Don't retry on certain errors
         if (this.shouldNotRetry(error)) {
           debugLogger.log('api', `Not retrying ${operationName}: error is non-retryable`);
-          throw error;
+          throw this.categorizeError(error);
         }
 
         // If this was the last attempt, throw
@@ -392,7 +396,7 @@ export class PostalClient {
         id: messageId,
       });
 
-      return response.data;
+      return response.data.data;
     }, `Delete message ${messageId}`);
   }
 
