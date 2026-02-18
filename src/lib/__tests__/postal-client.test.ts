@@ -38,6 +38,14 @@ describe('PostalClient', () => {
           common: {},
         },
       },
+      interceptors: {
+        request: {
+          use: jest.fn(),
+        },
+        response: {
+          use: jest.fn(),
+        },
+      },
     };
 
     mockedAxios.create = jest.fn().mockReturnValue(mockAxiosInstance);
