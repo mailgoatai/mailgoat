@@ -1,0 +1,306 @@
+# MailGoat + Postal Full Stack Deployment
+# This docker-compose file deploys a complete email system in one command
+#
+# Quick Start:
+#   1. Copy .env.example to .env and configure your domain
+#   2. Run: docker-compose -f docker-compose.full.yml up -d
+#   3. Access Postal web UI at https://your-domain.com
+#   4. Use MailGoat CLI to send/receive emails
+#
+# See DOCKER.md for detailed setup instructions
+
+version: '3.8'
+
+networks:
+  mailgoat:
+    driver: bridge
+
+volumes:
+  mariadb-data:
+    driver: local
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  postal-data:
+    driver: local
+
+services:
+  # ======================
+  # DATABASE SERVICES
+  # ======================
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: mailgoat-mariadb
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme}
+      MARIADB_DATABASE: postal
+      MARIADB_USER: postal
+      MARIADB_PASSWORD: ${DB_PASSWORD:-changeme}
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - '127.0.0.1:3306:3306' # Only expose locally for debugging
+
+  redis:
+    image: redis:7-alpine
+    container_name: mailgoat-redis
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - '127.0.0.1:6379:6379' # Only expose locally
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: mailgoat-rabbitmq
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-postal}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-changeme}
+      RABBITMQ_DEFAULT_VHOST: postal
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - '127.0.0.1:5672:5672' # AMQP
+      - '127.0.0.1:15672:15672' # Management UI
+
+  # ======================
+  # POSTAL SERVICES
+  # ======================
+
+  postal-web:
+    image: ghcr.io/postalserver/postal:3.3.2
+    container_name: mailgoat-postal-web
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    volumes:
+      - postal-data:/opt/postal/app/public/assets
+    command: postal web-server
+    environment:
+      # Database
+      POSTAL_DB_HOST: mariadb
+      POSTAL_DB_DATABASE: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTAL_DB_POOL_SIZE: 5
+
+      # RabbitMQ
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: ${RABBITMQ_USER:-postal}
+      POSTAL_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme}
+      POSTAL_RABBITMQ_VHOST: postal
+
+      # Redis (optional, for caching)
+      POSTAL_REDIS_HOST: redis
+      POSTAL_REDIS_PORT: 6379
+
+      # Web Server
+      POSTAL_WEB_HOSTNAME: ${POSTAL_HOSTNAME:-postal.example.com}
+      POSTAL_WEB_PROTOCOL: ${POSTAL_PROTOCOL:-https}
+      POSTAL_WEB_PORT: 5000
+
+      # SMTP
+      POSTAL_SMTP_HOSTNAME: ${SMTP_HOSTNAME:-mail.example.com}
+
+      # Security
+      POSTAL_SECRET_KEY_BASE: ${SECRET_KEY_BASE:-generate-a-long-random-string-here}
+      POSTAL_SIGNING_KEY: ${SIGNING_KEY:-generate-another-random-string-here}
+
+      # Features
+      POSTAL_USE_IP_POOLS: ${USE_IP_POOLS:-false}
+      POSTAL_DEFAULT_MAXIMUM_HOLDING_TIME: 432000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    ports:
+      - '${POSTAL_WEB_PORT:-5000}:5000'
+
+  postal-smtp:
+    image: ghcr.io/postalserver/postal:3.3.2
+    container_name: mailgoat-postal-smtp
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    command: postal smtp-server
+    environment:
+      # Database
+      POSTAL_DB_HOST: mariadb
+      POSTAL_DB_DATABASE: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: ${DB_PASSWORD:-changeme}
+
+      # RabbitMQ
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: ${RABBITMQ_USER:-postal}
+      POSTAL_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme}
+      POSTAL_RABBITMQ_VHOST: postal
+
+      # SMTP
+      POSTAL_SMTP_HOSTNAME: ${SMTP_HOSTNAME:-mail.example.com}
+      POSTAL_SMTP_PORT: 25
+
+      # TLS (if enabled)
+      POSTAL_SMTP_TLS_ENABLED: ${SMTP_TLS_ENABLED:-false}
+      POSTAL_SMTP_TLS_CERTIFICATE_PATH: ${TLS_CERT_PATH:-}
+      POSTAL_SMTP_TLS_PRIVATE_KEY_PATH: ${TLS_KEY_PATH:-}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postal-web:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', "timeout 5 bash -c '</dev/tcp/localhost/25' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    ports:
+      - '${SMTP_PORT:-25}:25'
+      - '${SMTP_SUBMISSION_PORT:-587}:587' # Submission port
+
+  postal-worker:
+    image: ghcr.io/postalserver/postal:3.3.2
+    container_name: mailgoat-postal-worker
+    restart: unless-stopped
+    networks:
+      - mailgoat
+    command: postal worker
+    environment:
+      # Database
+      POSTAL_DB_HOST: mariadb
+      POSTAL_DB_DATABASE: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: ${DB_PASSWORD:-changeme}
+
+      # RabbitMQ
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: ${RABBITMQ_USER:-postal}
+      POSTAL_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme}
+      POSTAL_RABBITMQ_VHOST: postal
+
+      # Worker Settings
+      POSTAL_WORKER_PROCESSES: ${WORKER_PROCESSES:-4}
+      POSTAL_WORKER_THREADS: ${WORKER_THREADS:-5}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      postal-web:
+        condition: service_healthy
+    deploy:
+      replicas: ${WORKER_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ======================
+  # MAILGOAT CLI
+  # ======================
+
+  mailgoat:
+    image: mailgoatai/mailgoat:latest
+    container_name: mailgoat-cli
+    restart: 'no' # Don't auto-restart, this is for manual CLI usage
+    networks:
+      - mailgoat
+    environment:
+      # MailGoat Configuration
+      MAILGOAT_SERVER: http://postal-web:5000
+      MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
+      MAILGOAT_EMAIL: ${MAILGOAT_FROM_EMAIL:-noreply@example.com}
+    depends_on:
+      postal-web:
+        condition: service_healthy
+    # This service is meant to be used interactively or via docker-compose run
+    # Example: docker-compose -f docker-compose.full.yml run --rm mailgoat send --to user@example.com --subject "Test" --body "Hello!"
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+
+  # ======================
+  # OPTIONAL: REVERSE PROXY (Production)
+  # ======================
+
+  # Uncomment this section for production deployments with automatic HTTPS
+  #
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: mailgoat-nginx
+  #   restart: unless-stopped
+  #   networks:
+  #     - mailgoat
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   depends_on:
+  #     - postal-web
+
+  # ======================
+  # OPTIONAL: DATABASE BACKUP
+  # ======================
+
+  # db-backup:
+  #   image: databack/mysql-backup:master
+  #   container_name: mailgoat-backup
+  #   restart: unless-stopped
+  #   networks:
+  #     - mailgoat
+  #   volumes:
+  #     - ./backups:/db
+  #   environment:
+  #     DB_SERVER: mariadb
+  #     DB_USER: postal
+  #     DB_PASS: ${DB_PASSWORD:-changeme}
+  #     DB_NAMES: postal
+  #     DB_DUMP_FREQ: 1440  # Daily backups
+  #     DB_DUMP_TARGET: /db
+  #   depends_on:
+  #     - mariadb
