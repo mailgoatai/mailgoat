@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+
+# Testing
+coverage/
+*.test.ts
+tests/
+benchmarks/
+
+# Development files
+.git/
+.github/
+.husky/
+*.md
+!README.md
+.prettierrc.json
+.prettierignore
+.lintstagedrc.json
+eslint.config.mjs
+jest.config.js
+tsconfig.json
+
+# Documentation
+docs/
+docs-archive/
+docs-cli/
+wiki/
+website/
+
+# Examples and templates
+examples/
+templates/
+
+# Environment files (security)
+.env
+.env.*
+*.env
+postal-*.txt
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Agent files
+.agents/
+.openclaw/
+AGENTS.md
+ARCHITECTURE-REVIEW.md
+CHANGELOG-DEBUG.md
+CI-CD-SETUP-SUMMARY.md
+CI_PIPELINE_FIX_REPORT.md
+CODE-AUDIT.md
+DEVELOPMENT-GUIDELINES.md
+DNS-UNBLOCK-STATUS.md
+DOMAIN_REGISTRATION_NEEDED.md
+EMAIL-DEPLOYMENT-STATUS.md
+EMAIL-SETUP-PLAN.md
+ENGINEERING-PLAN.md
+FIX_CHECKLIST.md
+HEARTBEAT.md
+IDENTITY.md
+LINTING.md
+MISSION.md
+POSTAL-DEPLOYMENT-HANDOFF.md
+QA-CI-FIX-REPORT.md
+QUALITY-GATES-SUMMARY.md
+ROLE.md
+SOUL.md
+STRATEGY.md
+TASK-BACKLOG.md
+TOOLS.md
+VISION.md
+organization/
+opengoat
+
+# Scripts
+scripts/

@@ -531,6 +531,29 @@ Now connect MailGoat CLI to your Postal instance.
 
 ### Step 1: Install MailGoat CLI
 
+**Option A: Docker (Recommended)**
+
+No Node.js installation required! Use the official Docker image:
+
+```bash
+# Pull the latest image
+docker pull mailgoatai/mailgoat:latest
+
+# Create an alias for convenience
+echo 'alias mailgoat="docker run --rm -e MAILGOAT_SERVER -e MAILGOAT_API_KEY -e MAILGOAT_FROM_ADDRESS mailgoatai/mailgoat:latest"' >> ~/.bashrc
+source ~/.bashrc
+
+# Or use docker-compose (see docker-compose.yml in the repo)
+```
+
+**Benefits:**
+- ✅ No dependencies to install
+- ✅ Consistent environment
+- ✅ Easy updates: `docker pull mailgoatai/mailgoat:latest`
+- ✅ Works on any platform (Linux, macOS, Windows)
+
+**Option B: npm**
+
 ```bash
 # Install via npm (requires Node.js 18+)
 npm install -g mailgoat
@@ -542,6 +565,32 @@ npm install -g mailgoat
 ```
 
 ### Step 2: Configure MailGoat
+
+**If using Docker (recommended):**
+
+Use environment variables instead of a config file:
+
+```bash
+# Set environment variables (add to ~/.bashrc or .env file)
+export MAILGOAT_SERVER="https://postal.example.com"
+export MAILGOAT_API_KEY="your-server-name_AbCdEfGh123456789"
+export MAILGOAT_FROM_ADDRESS="agent@example.com"
+export MAILGOAT_FROM_NAME="AI Agent"
+```
+
+Or use a `.env` file with docker-compose:
+
+```bash
+# Create .env file
+cat > .env <<EOF
+MAILGOAT_SERVER=https://postal.example.com
+MAILGOAT_API_KEY=your-server-name_AbCdEfGh123456789
+MAILGOAT_FROM_ADDRESS=agent@example.com
+MAILGOAT_FROM_NAME=AI Agent
+EOF
+```
+
+**If using npm installation:**
 
 Create the configuration file:
 
@@ -578,9 +627,9 @@ polling:
 ```
 
 **Important:** Replace these values:
-- `url` - Your Postal instance URL
-- `api_key` - The credential you generated in Initial Setup Step 5
-- `from` - An email address on your domain
+- `url` / `MAILGOAT_SERVER` - Your Postal instance URL
+- `api_key` / `MAILGOAT_API_KEY` - The credential you generated in Initial Setup Step 5
+- `from` / `MAILGOAT_FROM_ADDRESS` - An email address on your domain
 
 ### Step 3: Verify Configuration
 

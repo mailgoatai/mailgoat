@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mailgoat:
+    image: mailgoatai/mailgoat:latest
+    container_name: mailgoat
+    environment:
+      # MailGoat Configuration
+      # Get your API key from: https://mailgoat.ai/dashboard
+      MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
+      MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
+      MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
+      MAILGOAT_FROM_NAME: ${MAILGOAT_FROM_NAME:-MailGoat Agent}
+    # Override the default command to run your specific task
+    # Example: send an email
+    command:
+      - send
+      - --to
+      - user@example.com
+      - --subject
+      - "Hello from Docker"
+      - --body
+      - "This email was sent from a containerized MailGoat CLI!"
+    # For interactive usage, uncomment:
+    # stdin_open: true
+    # tty: true
+    restart: unless-stopped
+
+  # Example: Webhook receiver for incoming mail
+  # mailgoat-webhook:
+  #   image: mailgoatai/mailgoat:latest
+  #   container_name: mailgoat-webhook
+  #   environment:
+  #     MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
+  #     MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
+  #   command:
+  #     - webhook
+  #     - add
+  #     - http://your-service:8080/inbox
+  #   restart: on-failure
+
+  # Example: Scheduled email sender (requires cron or external scheduler)
+  # mailgoat-scheduled:
+  #   image: mailgoatai/mailgoat:latest
+  #   container_name: mailgoat-scheduled
+  #   environment:
+  #     MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
+  #     MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
+  #     MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
+  #     MAILGOAT_FROM_NAME: "Scheduled Agent"
+  #   command:
+  #     - send
+  #     - --to
+  #     - reports@example.com
+  #     - --subject
+  #     - "Daily Report"
+  #     - --body
+  #     - "Your scheduled report"
+  #   restart: on-failure

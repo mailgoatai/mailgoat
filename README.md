@@ -48,7 +48,63 @@ npm install -g mailgoat
 pip install mailgoat
 # or
 cargo install mailgoat
+# or
+docker pull mailgoatai/mailgoat
 ```
+
+### Docker (Recommended for Self-Hosting)
+
+Run MailGoat in a container with zero local setup:
+
+```bash
+# Pull the image
+docker pull mailgoatai/mailgoat:latest
+
+# Run a command
+docker run --rm \
+  -e MAILGOAT_API_KEY=your_key \
+  -e MAILGOAT_FROM_ADDRESS=agent@yourdomain.com \
+  mailgoatai/mailgoat:latest \
+  send --to user@example.com --subject "Hello" --body "Sent from Docker!"
+
+# Interactive mode
+docker run -it --rm \
+  -e MAILGOAT_API_KEY=your_key \
+  mailgoatai/mailgoat:latest \
+  bash
+```
+
+**Using docker-compose:**
+
+```yaml
+version: '3.8'
+services:
+  mailgoat:
+    image: mailgoatai/mailgoat:latest
+    environment:
+      MAILGOAT_SERVER: https://api.mailgoat.ai
+      MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
+      MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
+    command:
+      - send
+      - --to
+      - user@example.com
+      - --subject
+      - "Automated Email"
+      - --body
+      - "Hello from docker-compose!"
+```
+
+Start with:
+```bash
+docker-compose up
+```
+
+**Benefits:**
+- ✅ No Node.js installation required
+- ✅ Consistent environment across deployments
+- ✅ Easy integration with orchestration tools (Kubernetes, Docker Swarm)
+- ✅ Image size <50MB
 
 ### Setup (30 seconds)
 
