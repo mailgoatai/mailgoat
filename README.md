@@ -137,6 +137,13 @@ mailgoat send \
   --attach report.pdf \
   --attach chart.png
 
+# With inline templates + JSON data
+mailgoat send \
+  --to user@example.com \
+  --subject "Daily report for {{uppercase name}}" \
+  --body "Status: {{lowercase ENV}} generated {{date}}" \
+  --data data.json
+
 # Or use the API
 curl -X POST https://api.mailgoat.ai/v1/send \
   -H "Authorization: Bearer $MAILGOAT_API_KEY" \

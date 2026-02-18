@@ -49,6 +49,9 @@ mailgoat send [options]
 | `--from EMAIL` | Override sender address (must be allowed) | `--from bot@example.com` |
 | `--tag TAG` | Tag message for filtering/tracking | `--tag weekly-report` |
 | `--attach FILE` | Attach a file (repeat for multiple) | `--attach report.pdf --attach chart.png` |
+| `--template NAME_OR_FILE` | Use saved template or template file path | `--template weekly` |
+| `--var KEY=VALUE` | Template variable (repeatable) | `--var name=Alice` |
+| `--data FILE` | JSON file of template variables | `--data vars.json` |
 | `--json` | Output in JSON format | `--json` |
 
 ### Examples
@@ -88,6 +91,15 @@ mailgoat send \
   --body "See attached files" \
   --attach report.pdf \
   --attach chart.png
+```
+
+**Templated body with data file:**
+```bash
+mailgoat send \
+  --to user@example.com \
+  --subject "Status for {{uppercase name}}" \
+  --body "Environment {{lowercase ENV}} generated {{date}}" \
+  --data vars.json
 ```
 
 **Multi-line body (bash):**

@@ -25,18 +25,42 @@ export interface EmailTemplate {
 }
 
 export interface TemplateVariables {
-  [key: string]: string | number | boolean;
+  [key: string]: unknown;
 }
 
 /**
  * Template Manager class
  */
 export class TemplateManager {
+  private static helpersRegistered = false;
   private templatesDir: string;
 
   constructor(templatesDir?: string) {
     this.templatesDir = templatesDir || path.join(os.homedir(), '.mailgoat', 'templates');
+    TemplateManager.registerHelpers();
     debugLogger.log('config', `Templates directory: ${this.templatesDir}`);
+  }
+
+  private static registerHelpers(): void {
+    if (TemplateManager.helpersRegistered) {
+      return;
+    }
+
+    Handlebars.registerHelper('uppercase', (value: unknown) => String(value ?? '').toUpperCase());
+    Handlebars.registerHelper('lowercase', (value: unknown) => String(value ?? '').toLowerCase());
+    Handlebars.registerHelper('date', () => new Date().toISOString());
+
+    TemplateManager.helpersRegistered = true;
+  }
+
+  private renderField(template: string, variables: TemplateVariables): string {
+    try {
+      const compiled = Handlebars.compile(template, { strict: true });
+      return compiled(variables);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Template rendering failed: ${message}`);
+    }
   }
 
   /**
@@ -276,53 +300,46 @@ export class TemplateManager {
 
     // Compile and render subject
     if (template.subject) {
-      const subjectTemplate = Handlebars.compile(template.subject);
-      rendered.subject = subjectTemplate(variables);
+      rendered.subject = this.renderField(template.subject, variables);
     }
 
     // Compile and render plain body
     if (template.body) {
-      const bodyTemplate = Handlebars.compile(template.body);
-      rendered.body = bodyTemplate(variables);
+      rendered.body = this.renderField(template.body, variables);
     }
 
     // Compile and render HTML body
     if (template.html) {
-      const htmlTemplate = Handlebars.compile(template.html);
-      rendered.html = htmlTemplate(variables);
+      rendered.html = this.renderField(template.html, variables);
     }
 
     // Render from email
     if (template.from) {
-      const fromTemplate = Handlebars.compile(template.from);
-      rendered.from = fromTemplate(variables);
+      rendered.from = this.renderField(template.from, variables);
     }
 
     // Render CC emails
     if (template.cc) {
-      rendered.cc = template.cc.map((email) => {
-        const emailTemplate = Handlebars.compile(email);
-        return emailTemplate(variables);
-      });
+      rendered.cc = template.cc.map((email) => this.renderField(email, variables));
     }
 
     // Render BCC emails
     if (template.bcc) {
-      rendered.bcc = template.bcc.map((email) => {
-        const emailTemplate = Handlebars.compile(email);
-        return emailTemplate(variables);
-      });
+      rendered.bcc = template.bcc.map((email) => this.renderField(email, variables));
     }
 
     // Render tag
     if (template.tag) {
-      const tagTemplate = Handlebars.compile(template.tag);
-      rendered.tag = tagTemplate(variables);
+      rendered.tag = this.renderField(template.tag, variables);
     }
 
     debugLogger.log('config', 'Template rendered successfully');
 
     return rendered;
+  }
+
+  renderString(template: string, variables: TemplateVariables = {}): string {
+    return this.renderField(template, variables);
   }
 
   /**

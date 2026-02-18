@@ -121,6 +121,9 @@ Optional:
   --html                    Treat body as HTML instead of plain text
   --tag <tag>               Custom tag for this message
   --attach <file>           Attach file (repeat flag for multiple files)
+  --template <name|file>    Use saved template name or template file path
+  --var <key=value>         Inline template variable (repeatable)
+  --data <file>             JSON file with template variables
   --json                    Output result as JSON
 ```
 
@@ -168,6 +171,20 @@ mailgoat send \
   --body "Attached files" \
   --attach report.pdf \
   --attach screenshot.png
+
+# Inline templating with JSON data + helpers
+mailgoat send \
+  --to user@example.com \
+  --subject "Daily update for {{uppercase name}}" \
+  --body "Environment: {{lowercase ENV}} at {{date}}" \
+  --data data.json
+
+# Template body file + JSON data
+mailgoat send \
+  --to user@example.com \
+  --subject "Invoice for {{name}}" \
+  --template template.txt \
+  --data data.json
 ```
 
 ### `mailgoat read`

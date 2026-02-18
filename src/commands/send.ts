@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { promises as fs } from 'fs';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
@@ -16,6 +17,29 @@ import {
 function collectAttachment(value: string, previous: string[]): string[] {
   previous.push(value);
   return previous;
+}
+
+async function loadJsonData(filePath: string): Promise<Record<string, unknown>> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Data file must contain a JSON object');
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load template data file '${filePath}': ${message}`);
+  }
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function createSendCommand(): Command {
@@ -42,6 +66,7 @@ export function createSendCommand(): Command {
     )
     .option('--template <name>', 'Use email template')
     .option('--var <key=value...>', 'Template variables (e.g., --var name=John --var age=30)')
+    .option('--data <file>', 'JSON file with template variables')
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
@@ -58,20 +83,29 @@ export function createSendCommand(): Command {
 
         // Handle template if specified
         let templateData: any = {};
+        const templateManager = new TemplateManager();
+        const cliVariables = options.var
+          ? TemplateManager.parseVariables(Array.isArray(options.var) ? options.var : [options.var])
+          : {};
+        const dataVariables = options.data ? await loadJsonData(options.data) : {};
+        const variables = { ...dataVariables, ...cliVariables };
+
         if (options.template) {
           debugLogger.timeStart(`${operationId}-template`, 'Load and render template');
-          const templateManager = new TemplateManager();
-          const template = await templateManager.load(options.template);
+          const isTemplateFile = await fileExists(options.template);
+          let rendered;
 
-          // Parse variables
-          const variables = options.var
-            ? TemplateManager.parseVariables(
-                Array.isArray(options.var) ? options.var : [options.var]
-              )
-            : {};
-
-          // Render template
-          const rendered = templateManager.render(template, variables);
+          if (isTemplateFile) {
+            const templateBody = await fs.readFile(options.template, 'utf8');
+            rendered = {
+              name: options.template,
+              subject: '',
+              body: templateManager.renderString(templateBody, variables),
+            };
+          } else {
+            const template = await templateManager.load(options.template);
+            rendered = templateManager.render(template, variables);
+          }
           debugLogger.timeEnd(`${operationId}-template`);
 
           // Use template values, but allow CLI options to override
@@ -89,6 +123,11 @@ export function createSendCommand(): Command {
             console.log(chalk.cyan(`Using template: ${options.template}`));
           }
         }
+
+        const renderedSubject = options.subject
+          ? templateManager.renderString(options.subject, variables)
+          : undefined;
+        const renderedBody = options.body ? templateManager.renderString(options.body, variables) : undefined;
 
         // Check that required fields are present (either from template or CLI)
         if (!options.to && !templateData.to) {
@@ -126,9 +165,9 @@ export function createSendCommand(): Command {
           to,
           cc,
           bcc,
-          subject: options.subject,
-          body: options.html ? undefined : options.body,
-          html: options.html ? options.body : undefined,
+          subject: renderedSubject || templateData.subject,
+          body: options.html ? undefined : renderedBody || templateData.body,
+          html: options.html ? renderedBody : templateData.html,
           from: options.from,
           tag: options.tag,
           attachments: options.attach,
@@ -149,15 +188,15 @@ export function createSendCommand(): Command {
         // Prepare message params (CLI options override template)
         const messageParams: any = {
           to,
-          subject: options.subject || templateData.subject,
+          subject: renderedSubject || templateData.subject,
           from: options.from || templateData.from,
         };
 
         // Set body (plain or HTML)
         if (options.html) {
-          messageParams.html_body = options.body;
-        } else if (options.body) {
-          messageParams.plain_body = options.body;
+          messageParams.html_body = renderedBody;
+        } else if (renderedBody) {
+          messageParams.plain_body = renderedBody;
         } else if (templateData.html) {
           messageParams.html_body = templateData.html;
         } else if (templateData.body) {

@@ -49,6 +49,33 @@ describe('TemplateManager', () => {
     expect(rendered.body).toBe('Hello Alice');
   });
 
+  it('supports built-in helpers in render', async () => {
+    mockedFs.access.mockResolvedValue(undefined);
+    mockedFs.readFile.mockResolvedValue(
+      'name: welcome\nsubject: "{{uppercase name}}"\nbody: "{{lowercase CITY}} {{date}}"\n' as any
+    );
+
+    const template = await manager.load('welcome');
+    const rendered = manager.render(template, { name: 'Alice', CITY: 'LONDON' });
+
+    expect(rendered.subject).toBe('ALICE');
+    expect(rendered.body?.startsWith('london ')).toBe(true);
+  });
+
+  it('throws helpful error when variable is missing', async () => {
+    mockedFs.access.mockResolvedValue(undefined);
+    mockedFs.readFile.mockResolvedValue(
+      'name: welcome\nsubject: "Hi {{name}}"\nbody: "Hello {{missing}}"\n' as any
+    );
+
+    const template = await manager.load('welcome');
+    expect(() => manager.render(template, { name: 'Alice' })).toThrow(/Template rendering failed/);
+  });
+
+  it('renders inline template strings', () => {
+    expect(manager.renderString('Hello {{uppercase name}}', { name: 'agent' })).toBe('Hello AGENT');
+  });
+
   it('lists templates and ignores invalid entries', async () => {
     mockedFs.access.mockResolvedValue(undefined);
     mockedFs.readdir.mockResolvedValue(['b.yml', 'a.yml', 'x.txt'] as any);
