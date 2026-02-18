@@ -54,8 +54,7 @@ USER mailgoat
 # Default environment variables (can be overridden)
 ENV MAILGOAT_SERVER=""
 ENV MAILGOAT_API_KEY=""
-ENV MAILGOAT_FROM_ADDRESS=""
-ENV MAILGOAT_FROM_NAME=""
+ENV MAILGOAT_EMAIL=""
 
 # Set the entrypoint to the CLI
 ENTRYPOINT ["mailgoat"]

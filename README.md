@@ -63,7 +63,7 @@ docker pull mailgoatai/mailgoat:latest
 # Run a command
 docker run --rm \
   -e MAILGOAT_API_KEY=your_key \
-  -e MAILGOAT_FROM_ADDRESS=agent@yourdomain.com \
+  -e MAILGOAT_EMAIL=agent@yourdomain.com \
   mailgoatai/mailgoat:latest \
   send --to user@example.com --subject "Hello" --body "Sent from Docker!"
 
@@ -84,7 +84,7 @@ services:
     environment:
       MAILGOAT_SERVER: https://api.mailgoat.ai
       MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-      MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
+      MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
     command:
       - send
       - --to

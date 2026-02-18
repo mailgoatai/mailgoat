@@ -9,8 +9,7 @@ services:
       # Get your API key from: https://mailgoat.ai/dashboard
       MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
       MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-      MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
-      MAILGOAT_FROM_NAME: ${MAILGOAT_FROM_NAME:-MailGoat Agent}
+      MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
     # Override the default command to run your specific task
     # Example: send an email
     command:
@@ -46,8 +45,7 @@ services:
   #   environment:
   #     MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
   #     MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-  #     MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
-  #     MAILGOAT_FROM_NAME: "Scheduled Agent"
+  #     MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
   #   command:
   #     - send
   #     - --to

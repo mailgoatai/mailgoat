@@ -540,7 +540,7 @@ No Node.js installation required! Use the official Docker image:
 docker pull mailgoatai/mailgoat:latest
 
 # Create an alias for convenience
-echo 'alias mailgoat="docker run --rm -e MAILGOAT_SERVER -e MAILGOAT_API_KEY -e MAILGOAT_FROM_ADDRESS mailgoatai/mailgoat:latest"' >> ~/.bashrc
+echo 'alias mailgoat="docker run --rm -e MAILGOAT_SERVER -e MAILGOAT_API_KEY -e MAILGOAT_EMAIL mailgoatai/mailgoat:latest"' >> ~/.bashrc
 source ~/.bashrc
 
 # Or use docker-compose (see docker-compose.yml in the repo)
@@ -574,8 +574,7 @@ Use environment variables instead of a config file:
 # Set environment variables (add to ~/.bashrc or .env file)
 export MAILGOAT_SERVER="https://postal.example.com"
 export MAILGOAT_API_KEY="your-server-name_AbCdEfGh123456789"
-export MAILGOAT_FROM_ADDRESS="agent@example.com"
-export MAILGOAT_FROM_NAME="AI Agent"
+export MAILGOAT_EMAIL="agent@example.com"
 ```
 
 Or use a `.env` file with docker-compose:
@@ -585,8 +584,7 @@ Or use a `.env` file with docker-compose:
 cat > .env <<EOF
 MAILGOAT_SERVER=https://postal.example.com
 MAILGOAT_API_KEY=your-server-name_AbCdEfGh123456789
-MAILGOAT_FROM_ADDRESS=agent@example.com
-MAILGOAT_FROM_NAME=AI Agent
+MAILGOAT_EMAIL=agent@example.com
 EOF
 ```
 
@@ -629,7 +627,7 @@ polling:
 **Important:** Replace these values:
 - `url` / `MAILGOAT_SERVER` - Your Postal instance URL
 - `api_key` / `MAILGOAT_API_KEY` - The credential you generated in Initial Setup Step 5
-- `from` / `MAILGOAT_FROM_ADDRESS` - An email address on your domain
+- `from` / `MAILGOAT_EMAIL` - An email address on your domain
 
 ### Step 3: Verify Configuration
 

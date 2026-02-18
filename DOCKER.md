@@ -45,7 +45,7 @@ docker run --rm mailgoatai/mailgoat:latest --version
 docker run --rm \
   -e MAILGOAT_SERVER=https://api.mailgoat.ai \
   -e MAILGOAT_API_KEY=your_api_key \
-  -e MAILGOAT_FROM_ADDRESS=agent@yourdomain.com \
+  -e MAILGOAT_EMAIL=agent@yourdomain.com \
   mailgoatai/mailgoat:latest \
   send \
     --to user@example.com \
@@ -82,8 +82,7 @@ services:
     environment:
       MAILGOAT_SERVER: https://api.mailgoat.ai
       MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-      MAILGOAT_FROM_ADDRESS: ${MAILGOAT_FROM_ADDRESS}
-      MAILGOAT_FROM_NAME: ${MAILGOAT_FROM_NAME:-MailGoat Agent}
+      MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
     command:
       - send
       - --to
@@ -98,8 +97,7 @@ Create `.env` file:
 
 ```bash
 MAILGOAT_API_KEY=your_api_key_here
-MAILGOAT_FROM_ADDRESS=agent@yourdomain.com
-MAILGOAT_FROM_NAME=My Agent
+MAILGOAT_EMAIL=agent@yourdomain.com
 ```
 
 Run:
@@ -120,7 +118,7 @@ services:
     environment:
       MAILGOAT_SERVER: ${MAILGOAT_SERVER}
       MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-      MAILGOAT_FROM_ADDRESS: scheduler@yourdomain.com
+      MAILGOAT_EMAIL: scheduler@yourdomain.com
     command:
       - send
       - --to
@@ -170,7 +168,7 @@ spec:
                 secretKeyRef:
                   name: mailgoat-secrets
                   key: api-key
-            - name: MAILGOAT_FROM_ADDRESS
+            - name: MAILGOAT_EMAIL
               value: "agent@yourdomain.com"
             command:
             - mailgoat
@@ -203,8 +201,7 @@ kubectl apply -f cronjob.yml
 |----------|----------|-------------|
 | `MAILGOAT_SERVER` | No | API server URL (default: https://api.mailgoat.ai) |
 | `MAILGOAT_API_KEY` | Yes | Your API key from Postal/MailGoat |
-| `MAILGOAT_FROM_ADDRESS` | Yes | Default sender email address |
-| `MAILGOAT_FROM_NAME` | No | Default sender name |
+| `MAILGOAT_EMAIL` | Yes | Default sender email address |
 
 ## Testing
 
@@ -230,7 +227,7 @@ docker run --rm mailgoatai/mailgoat:latest invalid-command 2>&1 | grep -q "unkno
 # Test 4: Send email
 docker run --rm \
   -e MAILGOAT_API_KEY=$MAILGOAT_API_KEY \
-  -e MAILGOAT_FROM_ADDRESS=$MAILGOAT_FROM_ADDRESS \
+  -e MAILGOAT_EMAIL=$MAILGOAT_EMAIL \
   mailgoatai/mailgoat:latest \
   send \
     --to test@example.com \
