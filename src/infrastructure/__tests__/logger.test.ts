@@ -201,7 +201,7 @@ describe('Logger', () => {
       const timer = createTimer();
 
       const duration1 = timer();
-      
+
       // Wait
       const start = Date.now();
       while (Date.now() - start < 5) {
@@ -368,11 +368,11 @@ describe('Logger', () => {
   describe('directory creation', () => {
     it('should create log directory if it does not exist', () => {
       mockedFs.existsSync.mockReturnValue(false);
-      
+
       // Re-import to trigger directory creation
       jest.resetModules();
       mockedFs.existsSync.mockReturnValue(false);
-      
+
       require('../logger');
 
       expect(mockedFs.mkdirSync).toHaveBeenCalled();

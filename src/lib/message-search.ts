@@ -51,7 +51,9 @@ export function parseSearchDate(dateStr: string): number {
 
   const match = dateStr.match(/^(\d+)([hdwmy])$/);
   if (!match) {
-    throw new Error(`Invalid date format: ${dateStr}. Use ISO date (2024-01-01) or relative (7d, 2w)`);
+    throw new Error(
+      `Invalid date format: ${dateStr}. Use ISO date (2024-01-01) or relative (7d, 2w)`
+    );
   }
 
   const [, amount, unit] = match;
@@ -85,10 +87,7 @@ export function searchCachedMessages(
       return false;
     }
 
-    if (
-      filters.subject &&
-      !message.subject.toLowerCase().includes(filters.subject.toLowerCase())
-    ) {
+    if (filters.subject && !message.subject.toLowerCase().includes(filters.subject.toLowerCase())) {
       return false;
     }
 
@@ -110,7 +109,8 @@ export function searchCachedMessages(
 
     if (filters.hasAttachment) {
       const hasAttachments =
-        message.has_attachments === true || (Array.isArray(message.attachments) && message.attachments.length > 0);
+        message.has_attachments === true ||
+        (Array.isArray(message.attachments) && message.attachments.length > 0);
       if (!hasAttachments) {
         return false;
       }

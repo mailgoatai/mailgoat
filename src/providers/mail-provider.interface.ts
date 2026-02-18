@@ -1,17 +1,17 @@
 /**
  * Mail Provider Interface
- * 
+ *
  * Abstraction layer for email service providers.
  * Allows swapping between different providers (Postal, SendGrid, SMTP, etc.)
  * without changing application code.
- * 
+ *
  * @public
  */
 
 /**
  * Parameters for sending an email message
  * Generic interface that all providers must support
- * 
+ *
  * @public
  */
 export interface SendMessageParams {
@@ -59,7 +59,7 @@ export interface SendMessageParams {
 /**
  * Response after sending a message
  * Normalized across all providers
- * 
+ *
  * @public
  */
 export interface SendMessageResponse {
@@ -84,7 +84,7 @@ export interface SendMessageResponse {
 /**
  * Detailed information about a message
  * Normalized across all providers
- * 
+ *
  * @public
  */
 export interface MessageDetails {
@@ -151,7 +151,7 @@ export interface MessageDetails {
 /**
  * Options for listing messages
  * Optional feature - not all providers support this
- * 
+ *
  * @public
  */
 export interface ListMessagesOptions {
@@ -177,7 +177,7 @@ export interface ListMessagesOptions {
 
 /**
  * Simplified message information for list operations
- * 
+ *
  * @public
  */
 export interface Message {
@@ -194,16 +194,16 @@ export interface Message {
 
 /**
  * Mail Provider Interface
- * 
+ *
  * All email service providers must implement this interface.
  * Provides a consistent API regardless of the underlying provider.
- * 
+ *
  * @public
  */
 export interface IMailProvider {
   /**
    * Send an email message
-   * 
+   *
    * @param params - Message parameters
    * @returns Promise resolving to send response with message ID
    */
@@ -211,7 +211,7 @@ export interface IMailProvider {
 
   /**
    * Get detailed information about a specific message
-   * 
+   *
    * @param id - Message identifier
    * @param expansions - Optional list of fields to expand (provider-specific)
    * @returns Promise resolving to message details
@@ -220,7 +220,7 @@ export interface IMailProvider {
 
   /**
    * List messages (optional - not all providers support this)
-   * 
+   *
    * @param options - Filtering and pagination options
    * @returns Promise resolving to array of messages
    */
@@ -228,7 +228,7 @@ export interface IMailProvider {
 
   /**
    * Delete a message (optional - not all providers support this)
-   * 
+   *
    * @param id - Message identifier
    * @returns Promise resolving when deletion completes
    */
@@ -236,7 +236,7 @@ export interface IMailProvider {
 
   /**
    * Get delivery information for a message (optional)
-   * 
+   *
    * @param id - Message identifier
    * @returns Promise resolving to delivery details
    */
@@ -244,7 +244,7 @@ export interface IMailProvider {
 
   /**
    * Test connectivity to the provider (optional)
-   * 
+   *
    * @returns Promise resolving to true if connected
    */
   testConnection?(): Promise<boolean>;
@@ -253,7 +253,7 @@ export interface IMailProvider {
 /**
  * Provider configuration options
  * Base interface that all providers can extend
- * 
+ *
  * @public
  */
 export interface ProviderConfig {
@@ -276,7 +276,7 @@ export interface ProviderConfig {
 /**
  * Provider initialization options
  * Common options across all providers
- * 
+ *
  * @public
  */
 export interface ProviderOptions {

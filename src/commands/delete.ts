@@ -19,9 +19,7 @@ function _parseDuration(duration: string): number {
   const match = duration.match(/^(\d+)([hdwmy])$/);
 
   if (!match) {
-    throw new Error(
-      `Invalid duration format: ${duration}. Use format like: 30d, 2w, 6h, 1m, 1y`
-    );
+    throw new Error(`Invalid duration format: ${duration}. Use format like: 30d, 2w, 6h, 1m, 1y`);
   }
 
   const [, amount, unit] = match;

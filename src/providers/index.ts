@@ -1,9 +1,9 @@
 /**
  * Mail Providers Module
- * 
+ *
  * Abstraction layer for email service providers.
  * Allows switching between different providers without changing application code.
- * 
+ *
  * @packageDocumentation
  */
 

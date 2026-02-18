@@ -1,9 +1,9 @@
 /**
  * Postal Mail Provider
- * 
+ *
  * Implementation of IMailProvider for Postal email server.
  * Wraps the existing PostalClient to conform to the provider interface.
- * 
+ *
  * @see https://github.com/postalserver/postal
  */
 
@@ -32,10 +32,10 @@ export type PostalProviderOptions = PostalClientOptions;
 
 /**
  * Postal Mail Provider
- * 
+ *
  * Implements IMailProvider interface using Postal's Legacy API.
  * Provides email sending, message retrieval, and delivery tracking.
- * 
+ *
  * @public
  */
 export class PostalProvider implements IMailProvider {
@@ -44,7 +44,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Create a new Postal provider instance
-   * 
+   *
    * @param config - Postal server configuration
    * @param options - Provider options (retry, timeout, etc.)
    */
@@ -55,7 +55,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Send an email message via Postal
-   * 
+   *
    * @param params - Message parameters
    * @returns Promise resolving to send response with message ID
    */
@@ -66,7 +66,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Get detailed information about a message
-   * 
+   *
    * @param id - Message identifier
    * @param expansions - Optional list of fields to expand
    * @returns Promise resolving to message details
@@ -78,7 +78,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Get delivery information for a message
-   * 
+   *
    * @param id - Message identifier
    * @returns Promise resolving to delivery details
    */
@@ -89,10 +89,10 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * List messages
-   * 
+   *
    * Note: Postal's Legacy API does not provide a list endpoint.
    * This method is included for interface compliance but will throw.
-   * 
+   *
    * @param options - Filtering and pagination options (unused)
    * @throws Error indicating Postal does not support message listing
    */
@@ -105,10 +105,10 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Delete a message
-   * 
+   *
    * Note: Postal's Legacy API does not provide a delete endpoint.
    * This method is included for interface compliance but will throw.
-   * 
+   *
    * @param id - Message identifier (unused)
    * @throws Error indicating Postal does not support message deletion via API
    */
@@ -121,7 +121,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Test connectivity to Postal server
-   * 
+   *
    * @returns Promise resolving to true if server is reachable
    */
   async testConnection(): Promise<boolean> {
@@ -142,7 +142,7 @@ export class PostalProvider implements IMailProvider {
   /**
    * Get the underlying PostalClient instance
    * Useful for Postal-specific operations not in the interface
-   * 
+   *
    * @returns The wrapped PostalClient
    */
   getClient(): PostalClient {
@@ -151,7 +151,7 @@ export class PostalProvider implements IMailProvider {
 
   /**
    * Get provider configuration
-   * 
+   *
    * @returns Provider configuration
    */
   getConfig(): PostalProviderConfig {

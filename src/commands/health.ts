@@ -114,11 +114,7 @@ async function checkConnectivity(client: PostalClient, server: string): Promise<
     };
   } catch (error: any) {
     // Network errors mean connectivity issue
-    if (
-      error.code === 'ENOTFOUND' ||
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ETIMEDOUT'
-    ) {
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
       return {
         name: 'connectivity',
         status: 'fail',
@@ -406,9 +402,7 @@ export function createHealthCommand(): Command {
           console.log();
           console.log(
             chalk.bold(
-              report.healthy
-                ? chalk.green('✓ System Healthy')
-                : chalk.red('✗ System Unhealthy')
+              report.healthy ? chalk.green('✓ System Healthy') : chalk.red('✗ System Unhealthy')
             )
           );
           console.log();
@@ -416,7 +410,11 @@ export function createHealthCommand(): Command {
           // Show each check
           report.checks.forEach((check) => {
             const icon =
-              check.status === 'pass' ? chalk.green('✓') : check.status === 'fail' ? chalk.red('✗') : chalk.yellow('⚠');
+              check.status === 'pass'
+                ? chalk.green('✓')
+                : check.status === 'fail'
+                  ? chalk.red('✗')
+                  : chalk.yellow('⚠');
             const status =
               check.status === 'pass'
                 ? chalk.green('PASS')

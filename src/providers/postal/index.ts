@@ -1,6 +1,6 @@
 /**
  * Postal Provider Module
- * 
+ *
  * Exports Postal-specific provider implementation
  */
 

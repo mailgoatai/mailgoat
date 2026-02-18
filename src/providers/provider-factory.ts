@@ -1,6 +1,6 @@
 /**
  * Provider Factory
- * 
+ *
  * Factory for creating mail provider instances.
  * Supports multiple provider types and handles configuration.
  */
@@ -16,16 +16,16 @@ export type ProviderType = 'postal' | 'sendgrid' | 'smtp' | 'ses';
 
 /**
  * Provider Factory
- * 
+ *
  * Creates mail provider instances based on configuration.
  * Handles provider-specific setup and validation.
- * 
+ *
  * @public
  */
 export class ProviderFactory {
   /**
    * Create a mail provider instance
-   * 
+   *
    * @param type - Provider type identifier
    * @param config - Provider configuration
    * @param options - Provider options (retry, timeout, etc.)
@@ -43,14 +43,12 @@ export class ProviderFactory {
 
       case 'sendgrid':
         throw new Error(
-          'SendGrid provider not yet implemented. ' +
-            'This will be added in a future update.'
+          'SendGrid provider not yet implemented. ' + 'This will be added in a future update.'
         );
 
       case 'smtp':
         throw new Error(
-          'SMTP provider not yet implemented. ' +
-            'This will be added in a future update.'
+          'SMTP provider not yet implemented. ' + 'This will be added in a future update.'
         );
 
       case 'ses':
@@ -60,8 +58,7 @@ export class ProviderFactory {
 
       default:
         throw new Error(
-          `Unknown provider type: ${type}. ` +
-            `Supported types: postal, sendgrid, smtp, ses`
+          `Unknown provider type: ${type}. ` + `Supported types: postal, sendgrid, smtp, ses`
         );
     }
   }
@@ -69,7 +66,7 @@ export class ProviderFactory {
   /**
    * Create provider from MailGoat config
    * Convenience method that extracts provider type from config
-   * 
+   *
    * @param config - MailGoat configuration
    * @param options - Provider options
    * @returns Configured mail provider instance
@@ -85,7 +82,7 @@ export class ProviderFactory {
 
   /**
    * Get list of supported provider types
-   * 
+   *
    * @returns Array of supported provider type strings
    */
   static getSupportedProviders(): ProviderType[] {
@@ -94,7 +91,7 @@ export class ProviderFactory {
 
   /**
    * Get list of currently implemented provider types
-   * 
+   *
    * @returns Array of implemented provider type strings
    */
   static getImplementedProviders(): ProviderType[] {
@@ -103,7 +100,7 @@ export class ProviderFactory {
 
   /**
    * Check if a provider type is supported
-   * 
+   *
    * @param type - Provider type to check
    * @returns True if provider is supported
    */
@@ -113,7 +110,7 @@ export class ProviderFactory {
 
   /**
    * Check if a provider type is implemented
-   * 
+   *
    * @param type - Provider type to check
    * @returns True if provider is implemented
    */

@@ -1,6 +1,6 @@
 /**
  * Logger Interface
- * 
+ *
  * Simple logging interface for services.
  * Can be implemented by different logging backends.
  */
@@ -19,9 +19,9 @@ export interface LogContext {
 
 /**
  * Logger Interface
- * 
+ *
  * Provides structured logging for services.
- * 
+ *
  * @public
  */
 export interface ILogger {
@@ -66,7 +66,7 @@ export interface ILogger {
 /**
  * Console Logger Implementation
  * Simple logger that outputs to console
- * 
+ *
  * @public
  */
 export class ConsoleLogger implements ILogger {
@@ -92,7 +92,7 @@ export class ConsoleLogger implements ILogger {
   log(level: LogLevel, message: string, context?: LogContext): void {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}] [${this.prefix}]`;
-    
+
     if (context && Object.keys(context).length > 0) {
       console.log(`${prefix} ${message}`, context);
     } else {
@@ -104,7 +104,7 @@ export class ConsoleLogger implements ILogger {
 /**
  * Null Logger Implementation
  * Logger that does nothing (useful for testing)
- * 
+ *
  * @public
  */
 export class NullLogger implements ILogger {

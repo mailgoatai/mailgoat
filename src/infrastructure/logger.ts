@@ -81,7 +81,8 @@ export const logger = winston.createLogger({
  * Add console transport in development or when LOG_CONSOLE=true
  */
 const isDevelopment = process.env.NODE_ENV !== 'production';
-const forceConsole = process.env.LOG_CONSOLE === 'true' || process.env.MAILGOAT_LOG_CONSOLE === 'true';
+const forceConsole =
+  process.env.LOG_CONSOLE === 'true' || process.env.MAILGOAT_LOG_CONSOLE === 'true';
 
 if (isDevelopment || forceConsole) {
   logger.add(
@@ -98,7 +99,11 @@ if (isDevelopment || forceConsole) {
 /**
  * Log an error with stack trace
  */
-export function logError(message: string, error: Error | unknown, meta?: Record<string, any>): void {
+export function logError(
+  message: string,
+  error: Error | unknown,
+  meta?: Record<string, any>
+): void {
   if (error instanceof Error) {
     logger.error(message, {
       error: {
