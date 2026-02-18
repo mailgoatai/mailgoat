@@ -11,6 +11,13 @@ import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { debugLogger } from '../lib/debug';
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 /**
  * Parse time duration string (e.g., "30d", "2w", "6h")
  * Returns milliseconds
@@ -203,12 +210,12 @@ export function createDeleteCommand(): Command {
         }
 
         debugLogger.timeEnd(operationId);
-      } catch (error: any) {
+      } catch (error: unknown) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
 
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(getErrorMessage(error)));
         process.exit(1);
       }
     });

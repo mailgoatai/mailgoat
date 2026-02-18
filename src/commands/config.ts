@@ -6,6 +6,13 @@ import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { validationService } from '../lib/validation-service';
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 /**
  * Validate email address format (wrapper for prompts)
  */
@@ -52,9 +59,10 @@ async function testConnection(config: MailGoatConfig): Promise<boolean> {
     // We're just testing if the server responds, not if the API key is valid
     await client.getMessage('test-message-id');
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
     // Check error type
-    if (error.message.includes('No response from server')) {
+    if (message.includes('No response from server')) {
       return false;
     }
     // If we get an API error (not network error), connection is working
@@ -76,7 +84,6 @@ export function createConfigCommand(): Command {
     .action(async (options) => {
       try {
         const configManager = new ConfigManager();
-        const formatter = new Formatter(false);
 
         // Check if config exists
         if ((await configManager.exists()) && !options.force) {
@@ -181,13 +188,14 @@ export function createConfigCommand(): Command {
         console.log('\n  3. Read a message:');
         console.log(chalk.gray('     mailgoat read <message-id>'));
         console.log('\n' + chalk.gray('For more help, run: ') + chalk.cyan('mailgoat --help'));
-      } catch (error: any) {
-        if (error.message === 'User canceled') {
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        if (message === 'User canceled') {
           console.log(chalk.yellow('\nConfiguration cancelled'));
           return;
         }
         const formatter = new Formatter(false);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(message));
         process.exit(1);
       }
     });
@@ -214,9 +222,10 @@ export function createConfigCommand(): Command {
           }
           console.log(`API Key:  ${config.api_key.substring(0, 8)}...`);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(message));
         process.exit(1);
       }
     });

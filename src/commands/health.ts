@@ -17,7 +17,7 @@ interface HealthCheckResult {
   status: 'pass' | 'fail' | 'warn';
   message: string;
   duration?: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 interface HealthReport {
@@ -30,6 +30,13 @@ interface HealthReport {
     failed: number;
     warnings: number;
   };
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }
 
 /**
@@ -79,11 +86,11 @@ async function checkConfig(configManager: ConfigManager): Promise<HealthCheckRes
         fromAddress: config.fromAddress,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       name: 'config',
       status: 'fail',
-      message: `Config error: ${error.message}`,
+      message: `Config error: ${getErrorMessage(error)}`,
       duration: Date.now() - start,
     };
   }
@@ -112,15 +119,17 @@ async function checkConnectivity(client: PostalClient, server: string): Promise<
       duration: Date.now() - start,
       details: { server },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
+    const code = error instanceof Error && 'code' in error ? String(error.code) : undefined;
     // Network errors mean connectivity issue
-    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+    if (code === 'ENOTFOUND' || code === 'ECONNREFUSED' || code === 'ETIMEDOUT') {
       return {
         name: 'connectivity',
         status: 'fail',
-        message: `Cannot reach Postal server: ${error.message}`,
+        message: `Cannot reach Postal server: ${message}`,
         duration: Date.now() - start,
-        details: { server, error: error.code },
+        details: { server, error: code },
       };
     }
 
@@ -159,16 +168,17 @@ async function checkAuthentication(client: PostalClient): Promise<HealthCheckRes
       message: 'API authentication successful',
       duration: Date.now() - start,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
     // 401/403 means auth failed
-    if (error.message && /authentication|unauthorized|forbidden/i.test(error.message)) {
+    if (/authentication|unauthorized|forbidden/i.test(message)) {
       return {
         name: 'authentication',
         status: 'fail',
         message: 'API authentication failed',
         duration: Date.now() - start,
         details: {
-          error: error.message,
+          error: message,
           solution: 'Check API key in config',
         },
       };
@@ -239,11 +249,11 @@ async function checkDiskSpace(): Promise<HealthCheckResult> {
         writable: true,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       name: 'disk_space',
       status: 'fail',
-      message: `Disk check failed: ${error.message}`,
+      message: `Disk check failed: ${getErrorMessage(error)}`,
       duration: Date.now() - start,
     };
   }
@@ -286,11 +296,11 @@ async function checkTemplates(): Promise<HealthCheckResult> {
         count: templates.length,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       name: 'templates',
       status: 'warn',
-      message: `Templates check failed: ${error.message}`,
+      message: `Templates check failed: ${getErrorMessage(error)}`,
       duration: Date.now() - start,
     };
   }
@@ -460,20 +470,21 @@ export function createHealthCommand(): Command {
 
         // Exit with appropriate code
         process.exit(report.healthy ? 0 : 1);
-      } catch (error: any) {
+      } catch (error: unknown) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
+        const message = getErrorMessage(error);
 
         const formatter = new Formatter(options.json);
 
         if (options.json) {
           formatter.output({
             healthy: false,
-            error: error.message,
+            error: message,
             timestamp: new Date().toISOString(),
           });
         } else {
-          console.error(formatter.error(error.message));
+          console.error(formatter.error(message));
         }
 
         process.exit(1);
