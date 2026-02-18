@@ -112,7 +112,7 @@ jobs:
           fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.get_version.outputs.VERSION }}
           body_path: /tmp/release-notes.md
