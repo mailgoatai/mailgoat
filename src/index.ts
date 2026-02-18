@@ -11,6 +11,7 @@ import { createSearchCommand } from './commands/search';
 import { createHealthCommand } from './commands/health';
 import { createSendBatchCommand } from './commands/send-batch';
 import { createSchedulerCommand } from './commands/scheduler';
+import { createWebhookCommand } from './commands/webhook';
 import { debugLogger } from './lib/debug';
 import { setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -56,6 +57,7 @@ program.addCommand(createSearchCommand());
 program.addCommand(createHealthCommand());
 program.addCommand(createSendBatchCommand());
 program.addCommand(createSchedulerCommand());
+program.addCommand(createWebhookCommand());
 
 // Parse arguments
 program.parse(process.argv);

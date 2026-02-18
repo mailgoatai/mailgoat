@@ -139,6 +139,14 @@ export interface MessageDetails {
   headers?: Record<string, string>;
 }
 
+export interface PostalWebhook {
+  id: string;
+  url: string;
+  name?: string;
+  created_at?: string;
+  last_used_at?: string;
+}
+
 /**
  * Client for Postal Legacy API with retry logic and enhanced error handling
  * https://github.com/postalserver/postal
@@ -398,6 +406,37 @@ export class PostalClient {
 
       return response.data.data;
     }, `Delete message ${messageId}`);
+  }
+
+  async createWebhook(url: string, name?: string): Promise<PostalWebhook> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.post('/api/v1/webhooks', {
+        url,
+        name,
+      });
+      return response.data?.data || response.data;
+    }, 'Create webhook');
+  }
+
+  async listWebhooks(): Promise<PostalWebhook[]> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.get('/api/v1/webhooks');
+      return response.data?.data || response.data;
+    }, 'List webhooks');
+  }
+
+  async deleteWebhook(id: string): Promise<{ success: boolean }> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.delete(`/api/v1/webhooks/${id}`);
+      return response.data?.data || response.data;
+    }, `Delete webhook ${id}`);
+  }
+
+  async testWebhook(): Promise<any> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.post('/api/v1/webhooks/test', {});
+      return response.data?.data || response.data;
+    }, 'Test webhook');
   }
 
   /**

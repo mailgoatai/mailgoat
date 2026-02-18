@@ -28,6 +28,17 @@ export interface IncomingMessageRecord {
   snippet?: string;
 }
 
+export interface WebhookEventRecord {
+  id: string;
+  type: string;
+  messageId?: string;
+  payload: unknown;
+  receivedAt: string;
+  handlerStatus: 'pending' | 'success' | 'failed';
+  handlerResult?: unknown;
+  error?: string;
+}
+
 export function getDefaultInboxDbPath(): string {
   return path.join(os.homedir(), '.mailgoat', 'inbox', 'messages.db');
 }
@@ -62,6 +73,18 @@ export class InboxStore {
       );
       CREATE INDEX IF NOT EXISTS idx_inbox_messages_timestamp ON inbox_messages(timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_inbox_messages_read ON inbox_messages(read);
+      CREATE TABLE IF NOT EXISTS webhook_events (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        message_id TEXT,
+        payload_json TEXT NOT NULL,
+        received_at TEXT NOT NULL,
+        handler_status TEXT NOT NULL DEFAULT 'pending',
+        handler_result_json TEXT,
+        error_text TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_webhook_events_received_at ON webhook_events(received_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_webhook_events_type ON webhook_events(type);
     `);
   }
 
@@ -165,6 +188,65 @@ export class InboxStore {
 
   close(): void {
     this.db.close();
+  }
+
+  saveWebhookEvent(event: WebhookEventRecord): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO webhook_events (
+        id, type, message_id, payload_json, received_at, handler_status, handler_result_json, error_text
+      ) VALUES (
+        @id, @type, @message_id, @payload_json, @received_at, @handler_status, @handler_result_json, @error_text
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        type=excluded.type,
+        message_id=excluded.message_id,
+        payload_json=excluded.payload_json,
+        received_at=excluded.received_at,
+        handler_status=excluded.handler_status,
+        handler_result_json=excluded.handler_result_json,
+        error_text=excluded.error_text
+    `);
+
+    stmt.run({
+      id: event.id,
+      type: event.type,
+      message_id: event.messageId || null,
+      payload_json: JSON.stringify(event.payload ?? {}),
+      received_at: normalizeTimestamp(event.receivedAt),
+      handler_status: event.handlerStatus,
+      handler_result_json:
+        event.handlerResult === undefined ? null : JSON.stringify(event.handlerResult),
+      error_text: event.error || null,
+    });
+  }
+
+  getWebhookEventById(id: string): WebhookEventRecord | null {
+    const row = this.db
+      .prepare(
+        `
+      SELECT id, type, message_id, payload_json, received_at, handler_status, handler_result_json, error_text
+      FROM webhook_events
+      WHERE id = ?
+    `
+      )
+      .get(id) as Record<string, any> | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: String(row.id),
+      type: String(row.type),
+      messageId: row.message_id ? String(row.message_id) : undefined,
+      payload: JSON.parse(String(row.payload_json)),
+      receivedAt: String(row.received_at),
+      handlerStatus: row.handler_status as 'pending' | 'success' | 'failed',
+      handlerResult: row.handler_result_json
+        ? JSON.parse(String(row.handler_result_json))
+        : undefined,
+      error: row.error_text ? String(row.error_text) : undefined,
+    };
   }
 
   private mapRow(row: Record<string, any>): InboxMessage {
