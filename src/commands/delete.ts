@@ -10,6 +10,7 @@ import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { debugLogger } from '../lib/debug';
+import { inferExitCode } from '../lib/errors';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -216,7 +217,7 @@ export function createDeleteCommand(): Command {
 
         const formatter = new Formatter(options.json);
         console.error(formatter.error(getErrorMessage(error)));
-        process.exit(1);
+        process.exit(inferExitCode(error));
       }
     });
 

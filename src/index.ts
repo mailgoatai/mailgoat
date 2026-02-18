@@ -14,7 +14,7 @@ import { createSchedulerCommand } from './commands/scheduler';
 import { createWebhookCommand } from './commands/webhook';
 import { createMetricsCommand } from './commands/metrics';
 import { debugLogger } from './lib/debug';
-import { setLogLevel, setLoggerSilent } from './infrastructure/logger';
+import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
 const program = new Command();
 
@@ -23,6 +23,8 @@ program
   .description('CLI-first email provider for AI agents')
   .version('1.1.0')
   .option('--debug', 'Enable verbose debug logging (same as DEBUG=mailgoat:*)', false)
+  .option('--verbose', 'Enable detailed operational logging', false)
+  .option('--log-json', 'Emit JSON-formatted console logs for automation', false)
   .option('--silent', 'Suppress all non-essential output', false);
 
 // Enable debug mode if --debug flag is present
@@ -36,10 +38,14 @@ program.hook('preAction', (thisCommand) => {
     console.warn = () => {};
   }
 
-  if (opts.debug) {
+  if (opts.logJson) {
+    setConsoleJson(true);
+  }
+
+  if (opts.debug || opts.verbose) {
     setLogLevel('debug');
     debugLogger.enable();
-    debugLogger.log('main', '🐛 Debug mode enabled');
+    debugLogger.log('main', opts.debug ? '🐛 Debug mode enabled' : 'Verbose mode enabled');
     debugLogger.log('main', `Node version: ${process.version}`);
     debugLogger.log('main', `Platform: ${process.platform} ${process.arch}`);
     debugLogger.log('main', `CWD: ${process.cwd()}`);

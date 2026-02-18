@@ -3,6 +3,7 @@ import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { InboxStore } from '../lib/inbox-store';
+import { inferExitCode } from '../lib/errors';
 
 export function createReadCommand(): Command {
   const cmd = new Command('read');
@@ -55,7 +56,7 @@ export function createReadCommand(): Command {
       } catch (error: any) {
         const formatter = new Formatter(options.json);
         console.error(formatter.error(error.message));
-        process.exit(1);
+        process.exit(inferExitCode(error));
       }
     });
 

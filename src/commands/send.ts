@@ -9,6 +9,7 @@ import { debugLogger } from '../lib/debug';
 import { TemplateManager } from '../lib/template-manager';
 import { SchedulerStore, parseScheduleInput } from '../lib/scheduler';
 import { metrics } from '../lib/metrics';
+import { inferExitCode } from '../lib/errors';
 import {
   formatBytes,
   prepareAttachment,
@@ -306,7 +307,7 @@ export function createSendCommand(): Command {
 
         const formatter = new Formatter(options.json);
         console.error(formatter.error(error.message));
-        process.exit(1);
+        process.exit(inferExitCode(error));
       }
     });
 

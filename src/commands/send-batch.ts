@@ -7,6 +7,7 @@ import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { BatchMessage, BatchSender, createBatchId } from '../lib/batch-sender';
 import { SqliteBatchStateStore } from '../lib/batch-state-store';
+import { inferExitCode } from '../lib/errors';
 
 function parseCsv(content: string): BatchMessage[] {
   const lines = content
@@ -174,7 +175,7 @@ export function createSendBatchCommand(): Command {
         const message = error instanceof Error ? error.message : String(error);
         const formatter = new Formatter(Boolean(options.json));
         console.error(formatter.error(message));
-        process.exit(1);
+        process.exit(inferExitCode(error));
       }
     });
 }

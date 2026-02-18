@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PostalClient } from '../postal-client';
 import type { MailGoatConfig } from '../config';
+import { MailGoatError } from '../errors';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -75,5 +76,52 @@ describe('PostalClient', () => {
     await expect(
       client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
     ).rejects.toThrow(/No response from Postal server/);
+  });
+
+  it('classifies auth errors with API exit code and request id', async () => {
+    axiosInstance.post.mockRejectedValue({
+      response: {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: {},
+        headers: { 'x-request-id': 'req-123' },
+      },
+    });
+
+    await expect(
+      client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
+    ).rejects.toMatchObject({
+      name: 'MailGoatError',
+      type: 'AuthError',
+      exitCode: 4,
+      requestId: 'req-123',
+    } satisfies Partial<MailGoatError>);
+  });
+
+  it('respects Retry-After header for rate limit backoff', async () => {
+    const timeoutSpy = jest
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(((fn: any) => {
+        if (typeof fn === 'function') fn();
+        return 0 as unknown as NodeJS.Timeout;
+      }) as any);
+
+    axiosInstance.post
+      .mockRejectedValueOnce({
+        response: {
+          status: 429,
+          statusText: 'Too Many Requests',
+          data: {},
+          headers: { 'retry-after': '2' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { data: { message_id: 'm2', messages: { 'a@b.com': { id: 1, token: 't' } } } },
+      });
+
+    await client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' });
+    expect(axiosInstance.post).toHaveBeenCalledTimes(2);
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+    timeoutSpy.mockRestore();
   });
 });

@@ -4,6 +4,8 @@ import { Agent as HttpsAgent } from 'https';
 import { MailGoatConfig } from './config';
 import { debugLogger } from './debug';
 import { metrics } from './metrics';
+import { logger } from '../infrastructure/logger';
+import { MailGoatError } from './errors';
 
 /**
  * Configuration options for PostalClient retry behavior
@@ -182,14 +184,14 @@ export class PostalClient {
       keepAlive: true,
       maxSockets: 50,
       maxFreeSockets: 10,
-      timeout: 30000,
+      timeout: 10000,
     });
 
     const httpsAgent = new HttpsAgent({
       keepAlive: true,
       maxSockets: 50,
       maxFreeSockets: 10,
-      timeout: 30000,
+      timeout: 10000,
     });
 
     debugLogger.log('api', 'Connection pooling enabled: keepAlive=true, maxSockets=50');
@@ -230,6 +232,13 @@ export class PostalClient {
       },
       (error) => {
         if (error.response) {
+          logger.error('postal.api.failure', {
+            status: error.response.status,
+            requestId: this.getRequestId(error),
+            url: error.config?.url,
+            method: error.config?.method,
+            response: error.response.data,
+          });
           debugLogger.logResponse(
             error.response.status,
             error.response.statusText,
@@ -280,8 +289,20 @@ export class PostalClient {
           throw this.enhanceError(error, operationName, attempt + 1);
         }
 
-        // Calculate delay with exponential backoff
-        const delay = this.baseDelay * Math.pow(2, attempt);
+        // Calculate delay with exponential backoff. Respect Retry-After for rate-limits.
+        const exponentialDelay = this.baseDelay * Math.pow(2, attempt);
+        const retryAfterSeconds = Number(error?.response?.headers?.['retry-after'] || 0);
+        const retryAfterDelay = Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 0;
+        const delay = Math.max(exponentialDelay, retryAfterDelay);
+
+        if (error?.response?.status === 429) {
+          logger.warn('postal.rate_limit', {
+            operation: operationName,
+            retryAfterSeconds,
+            delayMs: delay,
+            requestId: this.getRequestId(error),
+          });
+        }
 
         debugLogger.log(
           'api',
@@ -341,6 +362,10 @@ export class PostalClient {
     const enhanced = this.categorizeError(error);
     enhanced.message = `${context} (after ${attempts} ${attempts === 1 ? 'attempt' : 'attempts'}): ${enhanced.message}`;
     return enhanced;
+  }
+
+  private getRequestId(error: any): string | undefined {
+    return error?.response?.headers?.['x-request-id'] || error?.response?.headers?.['request-id'];
   }
 
   /**
@@ -445,24 +470,39 @@ export class PostalClient {
    * Categorize error and provide helpful message
    */
   private categorizeError(error: any): Error {
+    const requestId = this.getRequestId(error);
     // Network/connection errors
-    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      return new Error(
+    if (
+      error.code === 'ENOTFOUND' ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'EADDRNOTAVAIL' ||
+      error.code === 'EMFILE'
+    ) {
+      return new MailGoatError(
         `Could not connect to Postal server at ${this.config.server}. ` +
-          `Check your network connection and server URL.`
+          `Check your network connection and server URL.`,
+        'NetworkError',
+        3,
+        requestId
       );
     }
 
     if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      return new Error(
+      return new MailGoatError(
         `Connection to Postal server timed out. ` +
-          `The server may be overloaded or your network is slow.`
+          `The server may be overloaded or your network is slow.`,
+        'NetworkError',
+        3,
+        requestId
       );
     }
 
     if (!error.response) {
-      return new Error(
-        `No response from Postal server. Check your network connection and server URL.`
+      return new MailGoatError(
+        `No response from Postal server. Check your network connection and server URL.`,
+        'NetworkError',
+        3,
+        requestId
       );
     }
 
@@ -471,17 +511,27 @@ export class PostalClient {
 
     // Authentication errors (401, 403)
     if (status === 401 || status === 403) {
-      return new Error(
+      return new MailGoatError(
         `Authentication failed. Your API key is invalid or expired.\n` + `Run: mailgoat config init`
+          + (requestId ? `\nRequest ID: ${requestId}` : ''),
+        'AuthError',
+        4,
+        requestId,
+        status
       );
     }
 
     // Rate limiting (429)
     if (status === 429) {
       const retryAfter = error.response.headers['retry-after'] || '60';
-      return new Error(
+      return new MailGoatError(
         `Rate limit exceeded. Too many requests to Postal server.\n` +
-          `Wait ${retryAfter} seconds and try again.`
+          `Wait ${retryAfter} seconds and try again.` +
+          (requestId ? `\nRequest ID: ${requestId}` : ''),
+        'RateLimitError',
+        4,
+        requestId,
+        status
       );
     }
 
@@ -492,46 +542,90 @@ export class PostalClient {
 
       switch (errorCode) {
         case 'NoRecipients':
-          return new Error('No recipients specified. Add --to, --cc, or --bcc.');
+          return new MailGoatError(
+            'No recipients specified. Add --to, --cc, or --bcc.',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'NoContent':
-          return new Error('Email has no content. Add --body or --html.');
+          return new MailGoatError(
+            'Email has no content. Add --body or --html.',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'TooManyToAddresses':
-          return new Error('Too many recipients in To field (maximum 50).');
+          return new MailGoatError('Too many recipients in To field (maximum 50).', 'ApiError', 4, requestId, status);
         case 'TooManyCCAddresses':
-          return new Error('Too many recipients in CC field (maximum 50).');
+          return new MailGoatError('Too many recipients in CC field (maximum 50).', 'ApiError', 4, requestId, status);
         case 'TooManyBCCAddresses':
-          return new Error('Too many recipients in BCC field (maximum 50).');
+          return new MailGoatError('Too many recipients in BCC field (maximum 50).', 'ApiError', 4, requestId, status);
         case 'FromAddressMissing':
-          return new Error('Sender email (From) is missing. Add --from or check config.');
+          return new MailGoatError(
+            'Sender email (From) is missing. Add --from or check config.',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'UnauthenticatedFromAddress':
-          return new Error(
+          return new MailGoatError(
             `Sender email "${data.data.from || 'unknown'}" is not authorized.\n` +
-              `You can only send from domains configured in your Postal server.`
+              `You can only send from domains configured in your Postal server.`,
+            'ApiError',
+            4,
+            requestId,
+            status
           );
         case 'MessageNotFound':
-          return new Error(`Message not found. Check the message ID and try again.`);
+          return new MailGoatError(
+            `Message not found. Check the message ID and try again.`,
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         default:
-          return new Error(`Postal error: ${errorMessage}`);
+          return new MailGoatError(
+            `Postal error: ${errorMessage}${requestId ? ` (Request ID: ${requestId})` : ''}`,
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
       }
     }
 
     // Server errors (500-599)
     if (status >= 500) {
-      return new Error(
+      return new MailGoatError(
         `Postal server error (HTTP ${status}). The server may be experiencing issues.\n` +
-          `Try again in a few minutes.`
+          `Try again in a few minutes.` +
+          (requestId ? `\nRequest ID: ${requestId}` : ''),
+        'ServerError',
+        4,
+        requestId,
+        status
       );
     }
 
     // Client errors (400-499)
     if (status >= 400) {
-      return new Error(
+      return new MailGoatError(
         `Request error (HTTP ${status}): ${error.response.statusText}\n` +
-          `Check your request parameters.`
+          `Check your request parameters.` +
+          (requestId ? `\nRequest ID: ${requestId}` : ''),
+        'ApiError',
+        4,
+        requestId,
+        status
       );
     }
 
     // Generic error
-    return new Error(`Unexpected error: ${error.message}`);
+    return new MailGoatError(`Unexpected error: ${error.message}`, 'ApiError', 4, requestId, status);
   }
 }

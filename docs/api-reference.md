@@ -16,6 +16,8 @@ mailgoat [global-options] <command> [subcommand] [options]
 
 Global options:
 - `--debug`: Enable verbose debug logs (equivalent to `DEBUG=mailgoat:*`).
+- `--verbose`: Enable detailed operational logs.
+- `--log-json`: Output console logs as JSON.
 - `--silent`: Suppress non-essential output.
 - `-V, --version`: Print CLI version.
 - `-h, --help`: Show help.
@@ -39,6 +41,9 @@ Config overrides (used by config service and docs/examples):
 Default command behavior:
 - `0`: Success.
 - `1`: Validation, command, config, or API error.
+- `2`: Configuration errors.
+- `3`: Network/transport errors.
+- `4`: Postal API/auth/rate-limit errors.
 
 Health command special behavior:
 - `0`: All checks passed.

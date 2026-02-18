@@ -39,6 +39,12 @@ const consoleFormat = winston.format.combine(
   })
 );
 
+const consoleJsonFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.json()
+);
+
 /**
  * Custom format for file output (structured JSON)
  */
@@ -281,6 +287,17 @@ export function setLogLevel(level: 'error' | 'warn' | 'info' | 'debug'): void {
 export function setLoggerSilent(silent: boolean): void {
   logger.transports.forEach((transport) => {
     transport.silent = silent;
+  });
+}
+
+/**
+ * Toggle JSON formatting for console transport
+ */
+export function setConsoleJson(enabled: boolean): void {
+  logger.transports.forEach((transport) => {
+    if (transport instanceof winston.transports.Console) {
+      transport.format = enabled ? consoleJsonFormat : consoleFormat;
+    }
   });
 }
 
