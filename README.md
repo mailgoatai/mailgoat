@@ -129,6 +129,14 @@ mailgoat send \
   --subject "Weekly Report" \
   --body "Here's your summary..."
 
+# With attachments
+mailgoat send \
+  --to user@example.com \
+  --subject "Weekly Report" \
+  --body "See attached report + chart." \
+  --attach report.pdf \
+  --attach chart.png
+
 # Or use the API
 curl -X POST https://api.mailgoat.ai/v1/send \
   -H "Authorization: Bearer $MAILGOAT_API_KEY" \
@@ -143,11 +151,17 @@ curl -X POST https://api.mailgoat.ai/v1/send \
 ### Receive Email
 
 ```bash
-# Poll for new messages
-mailgoat inbox --since 1h
+# 1) Run local webhook receiver
+mailgoat inbox serve --host 0.0.0.0 --port 3000 --path /webhooks/postal
 
-# Webhook delivery (recommended)
-mailgoat webhook add https://your-agent.com/inbox
+# 2) Configure Postal webhook to POST to:
+# https://your-public-host/webhooks/postal
+
+# 3) List/search locally cached messages
+mailgoat inbox list
+mailgoat inbox list --unread
+mailgoat inbox list --since 1h
+mailgoat inbox search "subject:report"
 ```
 
 ---

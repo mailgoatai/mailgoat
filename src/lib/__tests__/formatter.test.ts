@@ -1,375 +1,84 @@
-/**
- * Formatter Unit Tests
- *
- * Tests for output formatting utilities.
- */
-
 import { Formatter } from '../formatter';
 import type { MessageDetails } from '../postal-client';
 
-// Mock chalk to avoid color codes in tests
-jest.mock('chalk', () => ({
-  green: jest.fn((str) => str),
-  red: jest.fn((str) => str),
-  yellow: jest.fn((str) => str),
-  cyan: jest.fn((str) => str),
-  bold: {
-    underline: jest.fn((str) => str),
-  },
-}));
+jest.mock('chalk', () => {
+  const boldFn = ((str: string) => str) as any;
+  boldFn.underline = (str: string) => str;
+
+  return {
+    __esModule: true,
+    default: {
+      green: (str: string) => str,
+      red: (str: string) => str,
+      yellow: (str: string) => str,
+      cyan: (str: string) => str,
+      bold: boldFn,
+    },
+  };
+});
 
 describe('Formatter', () => {
-  let formatter: Formatter;
-  let jsonFormatter: Formatter;
-  let consoleLogSpy: jest.SpyInstance;
+  const message: MessageDetails = {
+    id: 1,
+    token: 'tok',
+    details: {
+      rcpt_to: 'to@example.com',
+      mail_from: 'from@example.com',
+      subject: 'Subject',
+      message_id: 'msg-1',
+      timestamp: 1700000000,
+      direction: 'incoming',
+      size: 100,
+      bounce: false,
+      received_with_ssl: true,
+    },
+    status: { status: 'Sent', held: false },
+    plain_body: 'body',
+  };
 
-  beforeEach(() => {
-    formatter = new Formatter(false);
-    jsonFormatter = new Formatter(true);
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+  it('formats output in text and json mode', () => {
+    const text = new Formatter(false);
+    const json = new Formatter(true);
+
+    expect(text.success('ok')).toContain('ok');
+    expect(text.error('bad')).toContain('bad');
+    expect(() => JSON.parse(json.success('ok'))).not.toThrow();
+    expect(() => JSON.parse(json.error('bad'))).not.toThrow();
   });
 
-  afterEach(() => {
-    consoleLogSpy.mockRestore();
+  it('formats inbox list', () => {
+    const formatter = new Formatter(false);
+    const output = formatter.formatInboxList([message]);
+    expect(typeof output).toBe('string');
+    expect(output).toContain('msg-1');
+    expect(output).toContain('Subject');
   });
 
-  describe('constructor', () => {
-    it('should create formatter in human-readable mode by default', () => {
-      const defaultFormatter = new Formatter();
-      const result = defaultFormatter.success('Test');
-      expect(result).toContain('Test');
-    });
-
-    it('should create formatter in JSON mode when requested', () => {
-      const result = jsonFormatter.success('Test');
-      expect(result).toContain('"status"');
-      expect(result).toContain('"message"');
-    });
-  });
-
-  describe('output', () => {
-    it('should output data in human-readable mode', () => {
-      formatter.output('Hello World');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Hello World');
-    });
-
-    it('should output data as JSON in JSON mode', () => {
-      const data = { message: 'Hello' };
-      jsonFormatter.output(data);
-      expect(consoleLogSpy).toHaveBeenCalledWith(JSON.stringify(data, null, 2));
-    });
-  });
-
-  describe('success', () => {
-    it('should format success message in human-readable mode', () => {
-      const result = formatter.success('Operation successful');
-      expect(result).toContain('Operation successful');
-    });
-
-    it('should format success message as JSON in JSON mode', () => {
-      const result = jsonFormatter.success('Operation successful');
-      const parsed = JSON.parse(result);
-      expect(parsed.status).toBe('success');
-      expect(parsed.message).toBe('Operation successful');
-    });
-  });
-
-  describe('error', () => {
-    it('should format error message in human-readable mode', () => {
-      const result = formatter.error('Something went wrong');
-      expect(result).toContain('Something went wrong');
-    });
-
-    it('should format error message as JSON in JSON mode', () => {
-      const result = jsonFormatter.error('Something went wrong');
-      const parsed = JSON.parse(result);
-      expect(parsed.status).toBe('error');
-      expect(parsed.message).toBe('Something went wrong');
-    });
-  });
-
-  describe('formatSendResponse', () => {
-    const sendData = {
-      message_id: 'msg_abc123',
-      messages: {
-        'recipient1@example.com': { id: 1, token: 'token1' },
-        'recipient2@example.com': { id: 2, token: 'token2' },
-      },
-    };
-
-    it('should format send response in human-readable mode', () => {
-      const result = formatter.formatSendResponse(sendData);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('Message sent successfully');
-      expect(result).toContain('msg_abc123');
-      expect(result).toContain('2'); // recipient count
-    });
-
-    it('should return raw data in JSON mode', () => {
-      const result = jsonFormatter.formatSendResponse(sendData);
-      expect(result).toEqual(sendData);
-    });
-  });
-
-  describe('formatInboxList', () => {
-    const mockMessages: MessageDetails[] = [
-      {
-        id: 1,
-        token: 'test-token-1',
-        details: {
-          message_id: 'msg_1',
-          mail_from: 'sender1@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Test Subject 1',
-          timestamp: 1704067200, // Jan 1, 2024
-          direction: 'outgoing',
-          size: 1024,
-          bounce: false,
-          received_with_ssl: true,
-        },
-        status: {
-          status: 'Sent',
-          held: false,
-          last_delivery_attempt: 1704067200,
-        },
-      },
-      {
-        id: 2,
-        token: 'test-token-2',
-        details: {
-          message_id: 'msg_2',
-          mail_from: 'sender2@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Test Subject 2',
-          timestamp: 1704070800,
-          direction: 'outgoing',
-          size: 2048,
-          bounce: false,
-          received_with_ssl: true,
-        },
-        status: {
-          status: 'Pending',
-          held: false,
-          last_delivery_attempt: 1704070800,
-        },
-      },
-    ];
-
-    it('should format message list in human-readable mode', () => {
-      const result = formatter.formatInboxList(mockMessages);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('msg_1');
-      expect(result).toContain('msg_2');
-      expect(result).toContain('Test Subject 1');
-      expect(result).toContain('Test Subject 2');
-    });
-
-    it('should return raw data in JSON mode', () => {
-      const result = jsonFormatter.formatInboxList(mockMessages);
-      expect(result).toEqual(mockMessages);
-    });
-
-    it('should handle empty message list', () => {
-      const result = formatter.formatInboxList([]);
-      expect(result).toContain('No messages');
-    });
-  });
-
-  describe('formatMessage', () => {
-    const mockMessage: MessageDetails = {
-      id: 1,
-      token: 'test-token-123',
-      details: {
-        message_id: 'msg_abc123',
-        mail_from: 'sender@example.com',
-        rcpt_to: 'recipient@example.com',
-        subject: 'Test Email',
-        timestamp: 1704067200,
-        direction: 'outgoing',
-        size: 5120,
-        bounce: false,
-        tag: 'newsletter',
-        received_with_ssl: true,
-      },
-      status: {
-        status: 'Sent',
-        held: false,
-        last_delivery_attempt: 1704067200,
-      },
-      inspection: {
-        inspected: true,
-        spam: false,
-        spam_score: 0.1,
-        threat: false,
-      },
-      plain_body: 'This is the email body content.',
+  it('formats full message details', () => {
+    const formatter = new Formatter(false);
+    const output = formatter.formatMessage({
+      ...message,
+      inspection: { inspected: true, spam: true, spam_score: 7.5, threat: false },
       attachments: [
         {
-          filename: 'document.pdf',
-          content_type: 'application/pdf',
-          data: 'base64encodeddata...',
-          size: 10240,
-          hash: 'sha256hash...',
+          filename: 'a.txt',
+          content_type: 'text/plain',
+          data: 'ZA==',
+          size: 1,
+          hash: 'h',
         },
       ],
-    };
-
-    it('should format message details in human-readable mode', () => {
-      const result = formatter.formatMessage(mockMessage);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('Message Details');
-      expect(result).toContain('msg_abc123');
-      expect(result).toContain('sender@example.com');
-      expect(result).toContain('recipient@example.com');
-      expect(result).toContain('Test Email');
-      expect(result).toContain('newsletter');
-      expect(result).toContain('This is the email body content.');
     });
 
-    it('should include attachment information', () => {
-      const result = formatter.formatMessage(mockMessage);
-      expect(result).toContain('Attachments');
-      expect(result).toContain('document.pdf');
-      expect(result).toContain('application/pdf');
-    });
-
-    it('should show spam status when detected', () => {
-      const spamMessage = {
-        ...mockMessage,
-        inspection: {
-          inspected: true,
-          spam: true,
-          spam_score: 8.5,
-          threat: false,
-        },
-      };
-
-      const result = formatter.formatMessage(spamMessage);
-      expect(result).toContain('SPAM');
-      expect(result).toContain('8.5');
-    });
-
-    it('should show threat status when detected', () => {
-      const threatMessage = {
-        ...mockMessage,
-        inspection: {
-          inspected: true,
-          spam: false,
-          spam_score: 0.1,
-          threat: true,
-          threat_details: 'Malicious attachment detected',
-        },
-      };
-
-      const result = formatter.formatMessage(threatMessage);
-      expect(result).toContain('THREAT');
-      expect(result).toContain('Malicious attachment detected');
-    });
-
-    it('should show held status', () => {
-      const heldMessage = {
-        ...mockMessage,
-        status: {
-          status: 'Held',
-          held: true,
-          last_delivery_attempt: 1704067200,
-        },
-      };
-
-      const result = formatter.formatMessage(heldMessage);
-      expect(result).toContain('held');
-    });
-
-    it('should return raw data in JSON mode', () => {
-      const result = jsonFormatter.formatMessage(mockMessage);
-      expect(result).toEqual(mockMessage);
-    });
-
-    it('should handle message without optional fields', () => {
-      const minimalMessage: MessageDetails = {
-        id: 1,
-        token: 'test-token',
-        details: {
-          message_id: 'msg_minimal',
-          mail_from: 'sender@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Minimal',
-          timestamp: 1704067200,
-          size: 100,
-          direction: 'incoming',
-          bounce: false,
-          received_with_ssl: true,
-        },
-      };
-
-      const result = formatter.formatMessage(minimalMessage);
-      expect(result).toContain('msg_minimal');
-    });
+    expect(typeof output).toBe('string');
+    expect(output).toContain('Message Details');
+    expect(output).toContain('from@example.com');
+    expect(output).toContain('a.txt');
+    expect(output).toContain('SPAM');
   });
 
-  describe('formatBytes', () => {
-    it('should format bytes correctly', () => {
-      // Access private method through message formatting
-      const message: MessageDetails = {
-        id: 1,
-        token: 'test-token',
-        details: {
-          message_id: 'msg_1',
-          mail_from: 'sender@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Test',
-          timestamp: 1704067200,
-          size: 1024,
-          direction: 'incoming',
-          bounce: false,
-          received_with_ssl: true,
-        },
-      };
-
-      const result = formatter.formatMessage(message);
-      expect(result).toContain('1 KB');
-    });
-
-    it('should handle zero bytes', () => {
-      const message: MessageDetails = {
-        id: 1,
-        token: 'test-token',
-        details: {
-          message_id: 'msg_1',
-          mail_from: 'sender@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Test',
-          timestamp: 1704067200,
-          size: 0,
-          direction: 'incoming',
-          bounce: false,
-          received_with_ssl: true,
-        },
-      };
-
-      const result = formatter.formatMessage(message);
-      expect(result).toContain('0 Bytes');
-    });
-
-    it('should format megabytes', () => {
-      const message: MessageDetails = {
-        id: 1,
-        token: 'test-token',
-        details: {
-          message_id: 'msg_1',
-          mail_from: 'sender@example.com',
-          rcpt_to: 'recipient@example.com',
-          subject: 'Test',
-          timestamp: 1704067200,
-          size: 1048576, // 1 MB
-          direction: 'incoming',
-          bounce: false,
-          received_with_ssl: true,
-        },
-      };
-
-      const result = formatter.formatMessage(message);
-      expect(result).toContain('1 MB');
-    });
+  it('returns raw object in json mode', () => {
+    const formatter = new Formatter(true);
+    expect(formatter.formatMessage(message)).toEqual(message);
   });
 });

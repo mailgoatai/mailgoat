@@ -20,14 +20,13 @@ This is a working prototype demonstrating core functionality. Not production-rea
 **What works:**
 - ✅ Sending emails
 - ✅ Reading specific messages (by ID)
+- ✅ Webhook-based inbox caching and listing
 - ✅ Configuration management
 - ✅ JSON output mode
 
 **Known limitations:**
-- ❌ Inbox listing (Postal API doesn't expose this - see workarounds below)
 - ❌ Attachments (not in MVP scope)
 - ❌ Self-registration flow (manual Postal setup required)
-- ❌ Webhooks (planned for Phase 2)
 
 ## Prerequisites
 
@@ -119,6 +118,7 @@ Optional:
   --bcc <emails...>         BCC recipients
   --html                    Treat body as HTML instead of plain text
   --tag <tag>               Custom tag for this message
+  --attach <file>           Attach file (repeat flag for multiple files)
   --json                    Output result as JSON
 ```
 
@@ -151,6 +151,21 @@ mailgoat send \
   --subject "Test" \
   --body "Message" \
   --json
+
+# Single attachment
+mailgoat send \
+  --to user@example.com \
+  --subject "Report" \
+  --body "See attached" \
+  --attach report.pdf
+
+# Multiple attachments
+mailgoat send \
+  --to user@example.com \
+  --subject "Artifacts" \
+  --body "Attached files" \
+  --attach report.pdf \
+  --attach screenshot.png
 ```
 
 ### `mailgoat read`
@@ -180,29 +195,54 @@ mailgoat read abc123 --json
 
 ### `mailgoat inbox`
 
-List inbox messages.
+Manage local inbox cache and webhook receiver.
 
 ```bash
-mailgoat inbox [options]
+mailgoat inbox list [options]
+mailgoat inbox search "<query>" [options]
+mailgoat inbox serve [options]
 
 Options:
-  --unread                  Show only unread messages
-  -l, --limit <n>           Maximum number of messages to show (default: 20)
-  --json                    Output result as JSON
+  list:
+    --unread                  Show only unread messages
+    --since <time>            Filter by time (e.g. 1h, 30m, 2d, ISO timestamp)
+    -l, --limit <n>           Maximum number of messages to show (default: 50)
+    --json                    Output result as JSON
+
+  search:
+    "<query>"                 subject:<text>, from:<email>, to:<email>, or free text
+    -l, --limit <n>           Maximum number of messages to show (default: 50)
+    --json                    Output result as JSON
+
+  serve:
+    --host <host>             Bind address (default: 127.0.0.1)
+    --port <port>             Listen port (default: 3000)
+    --path <path>             Webhook path (default: /webhooks/postal)
 ```
 
-**⚠️ Current Status: Not Implemented**
+MailGoat caches incoming webhook notifications in SQLite (`~/.mailgoat/inbox/messages.db`) and uses that local cache for listing/search.
 
-Postal's Legacy API does not provide a "list messages" endpoint. This command is a stub documenting the limitation.
+#### Webhook Setup
 
-**Workarounds:**
+1. Run local receiver:
 
-1. **Use Postal web UI** - Browse messages visually, then use `mailgoat read <id>`
-2. **Webhooks + local cache** - Maintain a local database of messages via webhooks
-3. **Database query** - If self-hosted, query Postal's database directly
-4. **Custom endpoint** - Add a custom API endpoint to your Postal instance
+```bash
+mailgoat inbox serve --host 0.0.0.0 --port 3000 --path /webhooks/postal
+```
 
-See [Postal API Limitations](#postal-api-limitations) for details.
+2. Expose this endpoint publicly (for local dev, use tunnel tools like ngrok/cloudflared).
+3. In Postal, configure a webhook pointing to:
+   `https://<your-public-host>/webhooks/postal`
+4. Send test email, then verify cache:
+
+```bash
+mailgoat inbox list
+mailgoat inbox list --unread
+mailgoat inbox list --since 1h
+mailgoat inbox search "subject:invoice"
+```
+
+Messages are marked read automatically after successful `mailgoat read <message-id>`.
 
 ### `mailgoat config`
 

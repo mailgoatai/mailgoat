@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
+import { InboxStore } from '../lib/inbox-store';
 
 export function createReadCommand(): Command {
   const cmd = new Command('read');
@@ -39,6 +40,14 @@ export function createReadCommand(): Command {
 
         // Fetch message
         const message = await client.getMessage(messageId, expansions);
+
+        // Mark message as read in local cache if present
+        const store = new InboxStore();
+        try {
+          store.markAsRead(messageId);
+        } finally {
+          store.close();
+        }
 
         // Output result
         const output = formatter.formatMessage(message);

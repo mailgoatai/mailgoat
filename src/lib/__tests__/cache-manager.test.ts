@@ -44,27 +44,31 @@ describe('CacheManager', () => {
   });
 
   describe('TTL expiration', () => {
-    it('should expire entries after TTL', async () => {
+    it('should expire entries after TTL', () => {
+      jest.useFakeTimers();
       cache.set('temp', 'value', 50); // 50ms TTL
 
       // Should exist immediately
       expect(cache.get('temp')).toBe('value');
 
       // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      jest.advanceTimersByTime(100);
 
       // Should be expired
       expect(cache.get('temp')).toBeNull();
+      jest.useRealTimers();
     });
 
-    it('should not expire before TTL', async () => {
+    it('should not expire before TTL', () => {
+      jest.useFakeTimers();
       cache.set('temp', 'value', 200); // 200ms TTL
 
       // Wait 50ms
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      jest.advanceTimersByTime(50);
 
       // Should still exist
       expect(cache.get('temp')).toBe('value');
+      jest.useRealTimers();
     });
   });
 

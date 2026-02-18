@@ -20,6 +20,7 @@ NC='\033[0m'
 
 # Test configuration
 TEST_MODE="${TEST_MODE:-integration}"
+MAILGOAT_CMD="${MAILGOAT_CMD:-mailgoat}"
 TEST_VERBOSE="${TEST_VERBOSE:-false}"
 TEST_FAIL_FAST="${TEST_FAIL_FAST:-false}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-30}"
@@ -65,6 +66,24 @@ log_verbose() {
     echo "$1" | tee -a "$RUN_LOG"
   else
     echo "$1" >> "$RUN_LOG"
+  fi
+}
+
+now_ms() {
+  python3 - <<'PY'
+import time
+print(int(time.time() * 1000))
+PY
+}
+
+run_with_timeout() {
+  local timeout_sec="$1"
+  local cmd="$2"
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$timeout_sec" bash -lc "$cmd"
+  else
+    bash -lc "$cmd"
   fi
 }
 
@@ -145,8 +164,47 @@ mailgoat_exec() {
     echo "[DRY RUN] mailgoat $command"
     return 0
   fi
+
+  if [ "$TEST_MODE" = "mock" ]; then
+    case "$command" in
+      send*invalid-email*)
+        echo "Invalid email"
+        return 1
+        ;;
+      "send --to test@example.com")
+        echo "Missing required fields"
+        return 1
+        ;;
+      send*)
+        cat <<'JSON'
+{"message_id":"mock-message-id","messages":{"test@example.com":{"id":1,"token":"mock-token"}}}
+JSON
+        return 0
+        ;;
+      "inbox --json"*)
+        cat "${SCRIPT_DIR}/fixtures/mock-inbox-response.json"
+        return 0
+        ;;
+      "inbox --unread --json"*)
+        cat "${SCRIPT_DIR}/fixtures/mock-inbox-response.json"
+        return 0
+        ;;
+      read\ invalid-message-id-12345*)
+        echo "Message not found"
+        return 1
+        ;;
+      read*)
+        cat "${SCRIPT_DIR}/fixtures/mock-message-response.json"
+        return 0
+        ;;
+      config\ --check*)
+        echo "Config check not supported"
+        return 1
+        ;;
+    esac
+  fi
   
-  timeout "$timeout" mailgoat $command 2>&1
+  run_with_timeout "$timeout" "$MAILGOAT_CMD $command" 2>&1
 }
 
 assert_equals() {
@@ -189,9 +247,9 @@ assert_exit_code() {
 }
 
 measure_time_ms() {
-  local start_ms=$(date +%s%3N)
+  local start_ms=$(now_ms)
   eval "$1" > /dev/null 2>&1 || true
-  local end_ms=$(date +%s%3N)
+  local end_ms=$(now_ms)
   echo $((end_ms - start_ms))
 }
 
@@ -202,13 +260,13 @@ measure_time_ms() {
 test_T001_send_simple() {
   test_start "T001" "Send simple email"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "send --to test@example.com --subject 'Test' --body 'Test body' --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -225,13 +283,13 @@ test_T001_send_simple() {
 test_T002_send_multiple_recipients() {
   test_start "T002" "Send to multiple recipients"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "send --to test1@example.com,test2@example.com --subject 'Test' --body 'Test' --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -244,13 +302,13 @@ test_T002_send_multiple_recipients() {
 test_T003_send_with_cc_bcc() {
   test_start "T003" "Send with CC/BCC"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "send --to test@example.com --cc cc@example.com --bcc bcc@example.com --subject 'Test' --body 'Test' --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -263,13 +321,13 @@ test_T003_send_with_cc_bcc() {
 test_T007_send_invalid_email() {
   test_start "T007" "Send to invalid email"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "send --to 'invalid-email' --subject 'Test' --body 'Test' 2>&1") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   # Should fail with non-zero exit code
@@ -283,12 +341,12 @@ test_T007_send_invalid_email() {
 test_T008_send_missing_fields() {
   test_start "T008" "Send with missing required fields"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local exit_code=0
   
   mailgoat_exec "send --to test@example.com" > /dev/null 2>&1 || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   # Should fail without subject and body
@@ -306,13 +364,13 @@ test_T008_send_missing_fields() {
 test_T021_inbox_list_all() {
   test_start "T021" "List all messages"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "inbox --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -329,13 +387,13 @@ test_T021_inbox_list_all() {
 test_T022_inbox_unread() {
   test_start "T022" "Filter unread messages"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "inbox --unread --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -356,13 +414,13 @@ test_T023_read_message() {
     return
   fi
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local output
   local exit_code=0
   
   output=$(mailgoat_exec "read $message_id --json") || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   if [ $exit_code -eq 0 ]; then
@@ -379,12 +437,12 @@ test_T023_read_message() {
 test_T026_read_invalid_id() {
   test_start "T026" "Read invalid message ID"
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local exit_code=0
   
   mailgoat_exec "read invalid-message-id-12345" > /dev/null 2>&1 || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   # Should fail with non-zero exit code
@@ -410,13 +468,13 @@ email: test@example.com
 api_key: test_key_12345
 EOF
   
-  local start=$(date +%s%3N)
+  local start=$(now_ms)
   local exit_code=0
   
   # Test config validation (if CLI supports it)
   mailgoat_exec "config --check --config-file $test_config" > /dev/null 2>&1 || exit_code=$?
   
-  local end=$(date +%s%3N)
+  local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
   
   rm -f "$test_config"
@@ -439,7 +497,7 @@ test_T056_cli_startup_time() {
   local iterations=5
   
   for i in $(seq 1 $iterations); do
-    local time_ms=$(measure_time_ms "mailgoat --version")
+    local time_ms=$(measure_time_ms "$MAILGOAT_CMD --version")
     total_time=$((total_time + time_ms))
   done
   
@@ -456,7 +514,7 @@ test_T056_cli_startup_time() {
 test_T057_send_latency() {
   test_start "T057" "Send operation latency"
   
-  local time_ms=$(measure_time_ms "mailgoat send --to test@example.com --subject 'Test' --body 'Test'")
+  local time_ms=$(measure_time_ms "$MAILGOAT_CMD send --to test@example.com --subject 'Test' --body 'Test'")
   local duration=$(echo "scale=1; $time_ms / 1000" | bc)
   
   if [ "$time_ms" -lt "$PERF_SEND_MAX" ]; then
@@ -469,7 +527,7 @@ test_T057_send_latency() {
 test_T058_inbox_latency() {
   test_start "T058" "Inbox fetch latency"
   
-  local time_ms=$(measure_time_ms "mailgoat inbox --limit 10")
+  local time_ms=$(measure_time_ms "$MAILGOAT_CMD inbox --limit 10")
   local duration=$(echo "scale=1; $time_ms / 1000" | bc)
   
   if [ "$time_ms" -lt "$PERF_INBOX_MAX" ]; then
@@ -592,6 +650,10 @@ parse_args() {
         TEST_MODE="$2"
         shift 2
         ;;
+      --mode=*)
+        TEST_MODE="${1#*=}"
+        shift
+        ;;
       --suite)
         TEST_SUITE="$2"
         shift 2
@@ -635,9 +697,17 @@ parse_args() {
 
 check_prerequisites() {
   local missing_deps=()
+
+  if [ "$TEST_MODE" = "mock" ]; then
+    MAILGOAT_CMD="echo"
+  fi
   
-  if ! command -v mailgoat &> /dev/null; then
-    missing_deps+=("mailgoat")
+  if [ "$TEST_MODE" != "mock" ] && ! command -v mailgoat &> /dev/null; then
+    if [ -f "${SCRIPT_DIR}/../dist/index.js" ]; then
+      MAILGOAT_CMD="node ${SCRIPT_DIR}/../dist/index.js"
+    else
+      missing_deps+=("mailgoat (or build dist/index.js)")
+    fi
   fi
   
   if ! command -v jq &> /dev/null; then

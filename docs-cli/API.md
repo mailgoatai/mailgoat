@@ -97,7 +97,7 @@ Content-Type: application/json
 | `bounce` | boolean | No | Mark as bounce message |
 | `tag` | string | No | Custom tag for tracking |
 | `headers` | object | No | Custom headers |
-| `attachments` | array | No | File attachments (MVP: not supported) |
+| `attachments` | array | No | File attachments (base64-encoded) |
 
 \* At least one of `plain_body` or `html_body` required.
 
@@ -155,6 +155,7 @@ mailgoat send \
   [--bcc bcc@example.com] \
   [--html] \
   [--tag custom-tag] \
+  [--attach file1 --attach file2] \
   [--json]
 ```
 
