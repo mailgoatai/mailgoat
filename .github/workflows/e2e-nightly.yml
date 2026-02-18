@@ -1,0 +1,43 @@
+name: E2E Nightly
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  MAILGOAT_E2E_ENABLED: 'true'
+  MAILGOAT_E2E_PERF: 'true'
+  MAILGOAT_E2E_SERVER: ${{ secrets.MAILGOAT_E2E_SERVER }}
+  MAILGOAT_E2E_API_KEY: ${{ secrets.MAILGOAT_E2E_API_KEY }}
+  MAILGOAT_E2E_SENDER: ${{ secrets.MAILGOAT_E2E_SENDER }}
+  MAILGOAT_E2E_RECEIVER: ${{ secrets.MAILGOAT_E2E_RECEIVER }}
+
+jobs:
+  e2e-nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate E2E secrets
+        run: |
+          [ -n "$MAILGOAT_E2E_SERVER" ] || (echo "MAILGOAT_E2E_SERVER is required" && exit 1)
+          [ -n "$MAILGOAT_E2E_API_KEY" ] || (echo "MAILGOAT_E2E_API_KEY is required" && exit 1)
+          [ -n "$MAILGOAT_E2E_SENDER" ] || (echo "MAILGOAT_E2E_SENDER is required" && exit 1)
+          [ -n "$MAILGOAT_E2E_RECEIVER" ] || (echo "MAILGOAT_E2E_RECEIVER is required" && exit 1)
+
+      - name: Run full E2E suite (includes perf)
+        run: npm run test:e2e -- --runInBand

@@ -65,6 +65,16 @@ Run all tests with default configuration:
 ./test-runner.sh
 ```
 
+### E2E Tests (Real Postal Environment)
+
+Run real end-to-end tests (send -> deliver -> receive):
+
+```bash
+npm run test:e2e -- --runInBand
+```
+
+See `docs/e2e-testing.md` for required `MAILGOAT_E2E_*` environment variables and CI setup.
+
 ### Test Modes
 
 **1. Integration Tests (requires real Postal instance)**

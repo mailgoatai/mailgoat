@@ -15,6 +15,7 @@
     "test": "npm run test:integration",
     "test:unit": "jest src",
     "test:integration": "jest tests/integration",
+    "test:e2e": "jest --config jest.e2e.config.js",
     "test:bash": "bash tests/test-runner.sh",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
