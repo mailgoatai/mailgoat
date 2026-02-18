@@ -5,12 +5,17 @@ const mockSendMessage = jest.fn();
 const mockAccess = jest.fn();
 const mockReadFile = jest.fn();
 
-jest.mock('fs', () => ({
-  promises: {
-    access: (...args: unknown[]) => mockAccess(...args),
-    readFile: (...args: unknown[]) => mockReadFile(...args),
-  },
-}));
+jest.mock('fs', () => {
+  const actual = jest.requireActual('fs');
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      access: (...args: unknown[]) => mockAccess(...args),
+      readFile: (...args: unknown[]) => mockReadFile(...args),
+    },
+  };
+});
 
 jest.mock('../../lib/config', () => ({
   ConfigManager: jest.fn().mockImplementation(() => ({

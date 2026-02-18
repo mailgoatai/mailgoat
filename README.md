@@ -144,6 +144,12 @@ mailgoat send \
   --body "Status: {{lowercase ENV}} generated {{date}}" \
   --data data.json
 
+# High-volume batch send with concurrency + metrics
+mailgoat send-batch \
+  --file recipients.json \
+  --concurrency 10 \
+  --metrics-output metrics.json
+
 # Schedule delivery in local timezone
 mailgoat send \
   --to user@example.com \

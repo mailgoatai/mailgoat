@@ -349,3 +349,33 @@ mailgoat health --send-test --json
 ### Notes
 
 - Health checks include config validation, connectivity, auth, and file-system checks.
+
+## Command: `send-batch`
+
+### Usage
+
+```bash
+mailgoat send-batch --file <path> [options]
+```
+
+### Flags
+
+- `--file <path>`: Batch input file (`.json`, `.jsonl`, `.csv`).
+- `--concurrency <n>`: Parallel sends, default `10`, max `50`.
+- `--resume`: Continue from last saved state.
+- `--state-db <path>`: Custom SQLite batch state DB path.
+- `--metrics-output <path>`: Write performance metrics JSON.
+- `--json`: JSON output.
+
+### Examples
+
+```bash
+mailgoat send-batch --file recipients.json
+mailgoat send-batch --file recipients.json --concurrency 20 --metrics-output metrics.json
+mailgoat send-batch --file recipients.json --resume
+```
+
+### Notes
+
+- Dynamic throttling reacts to rate-limit failures by reducing concurrency temporarily.
+- Progress is rendered in-place and includes throughput and ETA.

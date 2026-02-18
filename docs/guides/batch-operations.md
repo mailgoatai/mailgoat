@@ -20,14 +20,16 @@ Related docs: [Examples: batch-sender](../examples/batch-sender/README.md), [Err
 ## CLI Pattern
 
 ```bash
-while IFS=, read -r email name; do
-  mailgoat send \
-    --to "$email" \
-    --subject "Campaign Update" \
-    --body "Hello $name" \
-    --tag campaign-2026-02
-  sleep 0.2
-done < recipients.csv
+mailgoat send-batch \
+  --file recipients.json \
+  --concurrency 10 \
+  --metrics-output metrics.json
+```
+
+Resume interrupted batch:
+
+```bash
+mailgoat send-batch --file recipients.json --resume
 ```
 
 ## Scaling Tips
