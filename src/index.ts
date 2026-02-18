@@ -17,7 +17,7 @@ const program = new Command();
 program
   .name('mailgoat')
   .description('CLI-first email provider for AI agents')
-  .version('0.1.0')
+  .version('1.1.0')
   .option('--debug', 'Enable verbose debug logging (same as DEBUG=mailgoat:*)', false)
   .option('--silent', 'Suppress all non-essential output', false);
 

@@ -47,6 +47,8 @@ mailgoat send [options]
 | `--cc EMAIL` | Carbon copy recipient | `--cc manager@example.com` |
 | `--bcc EMAIL` | Blind carbon copy recipient | `--bcc archive@example.com` |
 | `--from EMAIL` | Override sender address (must be allowed) | `--from bot@example.com` |
+| `--tag TAG` | Tag message for filtering/tracking | `--tag weekly-report` |
+| `--attach FILE` | Attach a file (repeat for multiple) | `--attach report.pdf --attach chart.png` |
 | `--json` | Output in JSON format | `--json` |
 
 ### Examples
@@ -76,6 +78,16 @@ mailgoat send \
   --bcc archive@example.com \
   --subject "Team Update" \
   --body "..."
+```
+
+**With attachments:**
+```bash
+mailgoat send \
+  --to user@example.com \
+  --subject "Report" \
+  --body "See attached files" \
+  --attach report.pdf \
+  --attach chart.png
 ```
 
 **Multi-line body (bash):**
@@ -218,7 +230,7 @@ Message IDs can be obtained from:
 
 1. **Send command output** - Returned when you send an email
 2. **Postal web UI** - View messages in the dashboard
-3. **Webhooks** - (Coming in Phase 2)
+3. **Webhook-backed inbox** - `mailgoat inbox list` / `mailgoat inbox search`
 
 ### Notes
 

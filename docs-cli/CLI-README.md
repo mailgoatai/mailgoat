@@ -13,19 +13,18 @@ MailGoat is a lightweight Node.js CLI that wraps [Postal](https://github.com/pos
 - 📊 **JSON mode** - Machine-readable output for parsing
 - ⚡ **No dependencies** - Just Node.js and a Postal instance
 
-## Status: MVP Prototype
+## Status: v1.1.0
 
-This is a working prototype demonstrating core functionality. Not production-ready.
+MailGoat is production-focused for core agent email workflows.
 
 **What works:**
-- ✅ Sending emails
+- ✅ Sending emails (including attachments)
 - ✅ Reading specific messages (by ID)
-- ✅ Webhook-based inbox caching and listing
-- ✅ Configuration management
+- ✅ Webhook-based inbox caching and listing/search
+- ✅ Configuration management (`config init`, `config show`, `config set`, `config get`)
 - ✅ JSON output mode
 
-**Known limitations:**
-- ❌ Attachments (not in MVP scope)
+**Current limitations:**
 - ❌ Self-registration flow (manual Postal setup required)
 
 ## Prerequisites
@@ -63,12 +62,15 @@ Interactive setup:
 mailgoat config init
 ```
 
-Manual setup (`~/.mailgoat/config.yml`):
+Manual setup (`~/.mailgoat/config.json`):
 
-```yaml
-server: postal.example.com
-email: agent@example.com
-api_key: your-api-key-here
+```json
+{
+  "server": "https://postal.example.com",
+  "fromAddress": "agent@example.com",
+  "fromName": "MailGoat Agent",
+  "api_key": "your-api-key-here"
+}
 ```
 
 **Getting API credentials:**
@@ -96,7 +98,7 @@ mailgoat read <message-id>
 - From send command output (returns message ID)
 - From Postal web UI
 - From webhooks (when implemented)
-- From delivery notifications
+- From `mailgoat inbox list`
 
 ## Commands
 
