@@ -301,6 +301,24 @@ mailgoat config show --json
 
 # Show config file path
 mailgoat config path
+
+# Set nested config value
+mailgoat config set metrics.pushgateway http://localhost:9091
+
+# Get config value
+mailgoat config get metrics.pushgateway
+```
+
+### `mailgoat metrics`
+
+Prometheus metrics endpoint and health probe endpoint.
+
+```bash
+# Foreground
+mailgoat metrics serve --metrics-port 9090
+
+# Daemon mode
+mailgoat metrics serve --metrics-port 9090 --daemon
 ```
 
 ## Configuration

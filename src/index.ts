@@ -12,6 +12,7 @@ import { createHealthCommand } from './commands/health';
 import { createSendBatchCommand } from './commands/send-batch';
 import { createSchedulerCommand } from './commands/scheduler';
 import { createWebhookCommand } from './commands/webhook';
+import { createMetricsCommand } from './commands/metrics';
 import { debugLogger } from './lib/debug';
 import { setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -58,6 +59,7 @@ program.addCommand(createHealthCommand());
 program.addCommand(createSendBatchCommand());
 program.addCommand(createSchedulerCommand());
 program.addCommand(createWebhookCommand());
+program.addCommand(createMetricsCommand());
 
 // Parse arguments
 program.parse(process.argv);

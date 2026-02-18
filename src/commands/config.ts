@@ -13,6 +13,31 @@ function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function getNestedValue(source: Record<string, unknown>, key: string): unknown {
+  const parts = key.split('.');
+  let current: unknown = source;
+  for (const part of parts) {
+    if (!current || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function setNestedValue(source: Record<string, unknown>, key: string, value: unknown): void {
+  const parts = key.split('.');
+  let current: Record<string, unknown> = source;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (!current[part] || typeof current[part] !== 'object') {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
 /**
  * Validate email address format (wrapper for prompts)
  */
@@ -221,6 +246,58 @@ export function createConfigCommand(): Command {
             console.log(`From Name:${config.fromName}`);
           }
           console.log(`API Key:  ${config.api_key.substring(0, 8)}...`);
+          if (config.metrics?.pushgateway) {
+            console.log(`Pushgateway: ${config.metrics.pushgateway}`);
+          }
+        }
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        const formatter = new Formatter(options.json);
+        console.error(formatter.error(message));
+        process.exit(1);
+      }
+    });
+
+  // config set - set a config value, including nested keys
+  cmd
+    .command('set')
+    .description('Set configuration value (supports nested keys like metrics.pushgateway)')
+    .argument('<key>', 'Configuration key')
+    .argument('<value>', 'Configuration value')
+    .action(async (key: string, value: string) => {
+      try {
+        const configManager = new ConfigManager();
+        const config = (await configManager.load()) as unknown as Record<string, unknown>;
+        setNestedValue(config, key, value);
+        await configManager.save(config as unknown as MailGoatConfig);
+        console.log(chalk.green(`✓ Set ${key}`));
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        const formatter = new Formatter(false);
+        console.error(formatter.error(message));
+        process.exit(1);
+      }
+    });
+
+  // config get - get a config value by key
+  cmd
+    .command('get')
+    .description('Get configuration value by key')
+    .argument('<key>', 'Configuration key')
+    .option('--json', 'Output as JSON')
+    .action(async (key: string, options) => {
+      try {
+        const configManager = new ConfigManager();
+        const config = (await configManager.load()) as unknown as Record<string, unknown>;
+        const formatter = new Formatter(options.json);
+        const value = getNestedValue(config, key);
+        if (typeof value === 'undefined') {
+          throw new Error(`Key not found: ${key}`);
+        }
+        if (options.json) {
+          formatter.output({ key, value });
+        } else {
+          console.log(String(value));
         }
       } catch (error: unknown) {
         const message = getErrorMessage(error);

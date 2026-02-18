@@ -8,6 +8,7 @@ import { validationService } from '../lib/validation-service';
 import { debugLogger } from '../lib/debug';
 import { TemplateManager } from '../lib/template-manager';
 import { SchedulerStore, parseScheduleInput } from '../lib/scheduler';
+import { metrics } from '../lib/metrics';
 import {
   formatBytes,
   prepareAttachment,
@@ -273,10 +274,20 @@ export function createSendCommand(): Command {
             console.log(chalk.cyan('Run `mailgoat scheduler start` to process scheduled emails.'));
           }
         } else {
+          const sendStart = Date.now();
+          if (to.length > 1) {
+            metrics.incrementBatch('started');
+          }
           // Send message immediately
           debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
           const result = await client.sendMessage(messageParams);
           debugLogger.timeEnd(`${operationId}-send`);
+          metrics.observeSendDuration((Date.now() - sendStart) / 1000);
+          metrics.incrementEmail('success');
+          if (to.length > 1) {
+            metrics.incrementBatch('completed');
+          }
+          await metrics.pushIfConfigured(config.metrics?.pushgateway);
 
           // Output result
           const output = formatter.formatSendResponse(result);
@@ -287,6 +298,11 @@ export function createSendCommand(): Command {
       } catch (error: any) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
+        metrics.incrementEmail('failed');
+        metrics.incrementApiError(metrics.classifyApiError(error));
+        if (Array.isArray(options?.to) && options.to.length > 1) {
+          metrics.incrementBatch('failed');
+        }
 
         const formatter = new Formatter(options.json);
         console.error(formatter.error(error.message));

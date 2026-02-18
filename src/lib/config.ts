@@ -4,6 +4,7 @@ import * as os from 'os';
 import { debugLogger } from './debug';
 import { validationService } from './validation-service';
 import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
+import { metrics } from './metrics';
 
 export interface MailGoatConfig {
   server: string;
@@ -12,6 +13,9 @@ export interface MailGoatConfig {
   // Backward compatibility for older config keys
   email?: string;
   api_key: string;
+  metrics?: {
+    pushgateway?: string;
+  };
 }
 
 export class ConfigManager {
@@ -26,6 +30,7 @@ export class ConfigManager {
    * Load configuration from file (with caching)
    */
   async load(): Promise<MailGoatConfig> {
+    metrics.incrementConfigOperation('read');
     // Try to get from cache first
     const cacheKey = CacheKeys.config(this.configPath);
     const cached = cacheManager.get<MailGoatConfig>(cacheKey);
@@ -82,6 +87,7 @@ export class ConfigManager {
    * Save configuration to file
    */
   async save(config: MailGoatConfig): Promise<void> {
+    metrics.incrementConfigOperation('write');
     debugLogger.log('config', `Saving config to: ${this.configPath}`);
 
     this.validate(config);

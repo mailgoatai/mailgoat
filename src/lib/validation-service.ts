@@ -44,6 +44,9 @@ export interface Config {
     url?: string;
     secret?: string;
   };
+  metrics?: {
+    pushgateway?: string;
+  };
 }
 
 /**
@@ -506,6 +509,18 @@ export class ValidationService {
           valid: false,
           error: `Invalid webhook URL: ${webhookUrlResult.error}`,
           field: 'webhook.url',
+        };
+      }
+    }
+
+    // Validate metrics pushgateway URL if provided
+    if (config.metrics?.pushgateway) {
+      const pushgatewayResult = this.validateUrl(config.metrics.pushgateway);
+      if (!pushgatewayResult.valid) {
+        return {
+          valid: false,
+          error: `Invalid metrics pushgateway URL: ${pushgatewayResult.error}`,
+          field: 'metrics.pushgateway',
         };
       }
     }

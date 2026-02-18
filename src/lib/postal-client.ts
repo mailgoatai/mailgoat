@@ -3,6 +3,7 @@ import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
 import { MailGoatConfig } from './config';
 import { debugLogger } from './debug';
+import { metrics } from './metrics';
 
 /**
  * Configuration options for PostalClient retry behavior
@@ -286,6 +287,7 @@ export class PostalClient {
           'api',
           `Retrying ${operationName} after ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`
         );
+        metrics.incrementRetry();
 
         await new Promise((resolve) => setTimeout(resolve, delay));
       }

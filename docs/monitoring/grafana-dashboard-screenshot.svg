@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700">
+  <rect width="1200" height="700" fill="#0b1220"/>
+  <text x="30" y="50" fill="#ffffff" font-size="28" font-family="Arial">MailGoat Observability Dashboard (Sample)</text>
+  <rect x="30" y="80" width="560" height="250" fill="#18243d" stroke="#5aa3ff"/>
+  <text x="50" y="115" fill="#cfe3ff" font-size="18" font-family="Arial">Email Send Rate</text>
+  <rect x="610" y="80" width="560" height="250" fill="#18243d" stroke="#ff8f8f"/>
+  <text x="630" y="115" fill="#ffd4d4" font-size="18" font-family="Arial">API Error Rate</text>
+  <rect x="30" y="360" width="1140" height="300" fill="#18243d" stroke="#92f7be"/>
+  <text x="50" y="395" fill="#d3ffe3" font-size="18" font-family="Arial">Send Latency p50/p95/p99</text>
+</svg>
