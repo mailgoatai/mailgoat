@@ -125,6 +125,8 @@ Optional:
   --var <key=value>         Inline template variable (repeatable)
   --data <file>             JSON file with template variables
   --schedule <datetime>     Schedule send in local time (YYYY-MM-DD HH:mm)
+  --dry-run                 Validate and preview without sending
+  --profile                 Show timing breakdown
   --json                    Output result as JSON
 ```
 
@@ -193,6 +195,29 @@ mailgoat send \
   --subject "Reminder" \
   --body "Don't forget the review" \
   --schedule "2026-03-01 09:00"
+
+# Dry run for CI/debugging (no email sent)
+mailgoat send \
+  --to user@example.com \
+  --subject "Preview" \
+  --body "No-op send" \
+  --dry-run
+
+# Profile time breakdown for troubleshooting
+mailgoat send \
+  --to user@example.com \
+  --subject "Timed run" \
+  --body "Measure stages" \
+  --profile
+```
+
+### `mailgoat inspect`
+
+Inspect message delivery and headers.
+
+```bash
+mailgoat inspect <message-id>
+mailgoat inspect <message-id> --json
 ```
 
 ### `mailgoat scheduler`
@@ -307,6 +332,10 @@ mailgoat config set metrics.pushgateway http://localhost:9091
 
 # Get config value
 mailgoat config get metrics.pushgateway
+
+# Validate full configuration
+mailgoat config validate
+mailgoat config validate --json
 ```
 
 ### `mailgoat metrics`

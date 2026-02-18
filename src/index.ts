@@ -13,6 +13,7 @@ import { createSendBatchCommand } from './commands/send-batch';
 import { createSchedulerCommand } from './commands/scheduler';
 import { createWebhookCommand } from './commands/webhook';
 import { createMetricsCommand } from './commands/metrics';
+import { createInspectCommand } from './commands/inspect';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -66,6 +67,7 @@ program.addCommand(createSendBatchCommand());
 program.addCommand(createSchedulerCommand());
 program.addCommand(createWebhookCommand());
 program.addCommand(createMetricsCommand());
+program.addCommand(createInspectCommand());
 
 // Parse arguments
 program.parse(process.argv);

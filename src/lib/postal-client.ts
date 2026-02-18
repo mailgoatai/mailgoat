@@ -7,6 +7,10 @@ import { metrics } from './metrics';
 import { logger } from '../infrastructure/logger';
 import { MailGoatError } from './errors';
 
+interface AxiosRequestMeta {
+  startTime?: number;
+}
+
 /**
  * Configuration options for PostalClient retry behavior
  * @public
@@ -210,6 +214,9 @@ export class PostalClient {
     // Add request interceptor for debug logging
     this.client.interceptors.request.use(
       (config) => {
+        (config as typeof config & { metadata?: AxiosRequestMeta }).metadata = {
+          startTime: Date.now(),
+        };
         debugLogger.logRequest(
           config.method?.toUpperCase() || 'UNKNOWN',
           `${config.baseURL}${config.url}`,
@@ -227,7 +234,12 @@ export class PostalClient {
     // Add response interceptor for debug logging
     this.client.interceptors.response.use(
       (response) => {
-        debugLogger.logResponse(response.status, response.statusText, response.data);
+        const requestConfig = response.config as typeof response.config & { metadata?: AxiosRequestMeta };
+        const duration =
+          typeof requestConfig.metadata?.startTime === 'number'
+            ? Date.now() - requestConfig.metadata.startTime
+            : undefined;
+        debugLogger.logResponse(response.status, response.statusText, response.data, duration);
         return response;
       },
       (error) => {
@@ -239,10 +251,18 @@ export class PostalClient {
             method: error.config?.method,
             response: error.response.data,
           });
+          const requestConfig = error.response.config as typeof error.response.config & {
+            metadata?: AxiosRequestMeta;
+          };
+          const duration =
+            typeof requestConfig?.metadata?.startTime === 'number'
+              ? Date.now() - requestConfig.metadata.startTime
+              : undefined;
           debugLogger.logResponse(
             error.response.status,
             error.response.statusText,
-            error.response.data
+            error.response.data,
+            duration
           );
         } else {
           debugLogger.logError('api', error);

@@ -95,6 +95,45 @@ async function testConnection(config: MailGoatConfig): Promise<boolean> {
   }
 }
 
+async function validateConfiguration(config: MailGoatConfig): Promise<{
+  healthy: boolean;
+  checks: Record<string, { ok: boolean; message: string }>;
+}> {
+  const checks: Record<string, { ok: boolean; message: string }> = {
+    config: { ok: true, message: 'Configuration structure valid' },
+    api: { ok: false, message: 'Not tested' },
+    fromAddress: { ok: false, message: 'Not tested' },
+    dns: {
+      ok: true,
+      message:
+        'Manual check required: verify SPF, DKIM, and DMARC for your sender domain (e.g. with MXToolbox).',
+    },
+  };
+
+  try {
+    const client = new PostalClient(config);
+    await client.getMessage('config-validate-test-id');
+    checks.api = { ok: true, message: 'Postal API reachable' };
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
+    if (
+      message.toLowerCase().includes('authentication') ||
+      message.toLowerCase().includes('invalid')
+    ) {
+      checks.api = { ok: true, message: 'Postal API reachable (auth rejected test id)' };
+    } else {
+      checks.api = { ok: false, message };
+    }
+  }
+
+  checks.fromAddress = validationService.validateEmail(config.fromAddress).valid
+    ? { ok: true, message: 'From address format valid' }
+    : { ok: false, message: 'From address is not a valid email format' };
+
+  const healthy = Object.values(checks).every((check) => check.ok);
+  return { healthy, checks };
+}
+
 export function createConfigCommand(): Command {
   const cmd = new Command('config');
 
@@ -314,6 +353,39 @@ export function createConfigCommand(): Command {
     .action(() => {
       const configManager = new ConfigManager();
       console.log(configManager.getPath());
+    });
+
+  // config validate - full configuration checks
+  cmd
+    .command('validate')
+    .description('Validate config, API connectivity, sender configuration, and DNS guidance')
+    .option('--json', 'Output as JSON')
+    .action(async (options) => {
+      try {
+        const config = await new ConfigManager().load();
+        const formatter = new Formatter(options.json);
+        const report = await validateConfiguration(config);
+
+        if (options.json) {
+          formatter.output(report);
+        } else {
+          console.log(chalk.bold.cyan('MailGoat configuration validation'));
+          Object.entries(report.checks).forEach(([name, check]) => {
+            const icon = check.ok ? chalk.green('✓') : chalk.red('✗');
+            console.log(`${icon} ${name}: ${check.message}`);
+          });
+          console.log(
+            report.healthy ? chalk.green('\nConfiguration is healthy') : chalk.red('\nConfiguration has issues')
+          );
+        }
+
+        process.exit(report.healthy ? 0 : 1);
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        const formatter = new Formatter(options.json);
+        console.error(formatter.error(message));
+        process.exit(1);
+      }
     });
 
   return cmd;

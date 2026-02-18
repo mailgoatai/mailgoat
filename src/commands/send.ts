@@ -71,17 +71,31 @@ export function createSendCommand(): Command {
     .option('--var <key=value...>', 'Template variables (e.g., --var name=John --var age=30)')
     .option('--data <file>', 'JSON file with template variables')
     .option('--schedule <datetime>', 'Schedule send time in local timezone (YYYY-MM-DD HH:mm)')
+    .option('--dry-run', 'Validate and preview message without sending', false)
+    .option('--profile', 'Show timing breakdown for this command', false)
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
       const operationId = `send-${Date.now()}`;
+      const profileStarts = new Map<string, number>();
+      const profileDurations: Record<string, number> = {};
+      const startProfile = (name: string): void => {
+        if (options.profile) profileStarts.set(name, Date.now());
+      };
+      const endProfile = (name: string): void => {
+        if (!options.profile) return;
+        const start = profileStarts.get(name);
+        if (typeof start === 'number') profileDurations[name] = Date.now() - start;
+      };
       debugLogger.timeStart(operationId, 'Send email operation');
 
       try {
+        startProfile('config_load');
         debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
         const configManager = new ConfigManager();
         const config = await configManager.load();
         debugLogger.timeEnd(`${operationId}-config`);
+        endProfile('config_load');
 
         const formatter = new Formatter(options.json);
 
@@ -95,6 +109,7 @@ export function createSendCommand(): Command {
         const variables = { ...dataVariables, ...cliVariables };
 
         if (options.template) {
+          startProfile('template_render');
           debugLogger.timeStart(`${operationId}-template`, 'Load and render template');
           const isTemplateFile = await fileExists(options.template);
           let rendered;
@@ -111,6 +126,7 @@ export function createSendCommand(): Command {
             rendered = templateManager.render(template, variables);
           }
           debugLogger.timeEnd(`${operationId}-template`);
+          endProfile('template_render');
 
           // Use template values, but allow CLI options to override
           templateData = {
@@ -164,6 +180,7 @@ export function createSendCommand(): Command {
           : templateData.bcc;
 
         // Validate inputs before processing
+        startProfile('validation');
         debugLogger.timeStart(`${operationId}-validate`, 'Validate inputs');
         const validation = validationService.validateSendOptions({
           to,
@@ -181,13 +198,16 @@ export function createSendCommand(): Command {
           throw new Error(validation.error);
         }
         debugLogger.timeEnd(`${operationId}-validate`);
+        endProfile('validation');
 
         // Create client after validation
+        startProfile('client_init');
         debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
         const client = new PostalClient(config, {
           enableRetry: options.retry !== false,
         });
         debugLogger.timeEnd(`${operationId}-client`);
+        endProfile('client_init');
 
         // Prepare message params (CLI options override template)
         const messageParams: any = {
@@ -221,6 +241,7 @@ export function createSendCommand(): Command {
         // Process attachments
         const attachFiles = Array.isArray(options.attach) ? options.attach : [];
         if (attachFiles.length > 0) {
+          startProfile('attachment_io');
           const attachments: PreparedAttachment[] = [];
 
           for (const filePath of attachFiles) {
@@ -243,6 +264,26 @@ export function createSendCommand(): Command {
               );
             }
           }
+          endProfile('attachment_io');
+        }
+
+        if (options.dryRun) {
+          const preview = {
+            mode: 'dry-run',
+            valid: true,
+            checks: {
+              apiKeyConfigured: Boolean(config.api_key),
+              fromAddressConfigured: Boolean(config.fromAddress || messageParams.from),
+              attachmentsValidated: attachFiles.length,
+            },
+            wouldSend: messageParams,
+          };
+          formatter.output(options.json ? preview : JSON.stringify(preview, null, 2));
+          if (options.profile && !options.json) {
+            console.log(chalk.cyan('\nProfile breakdown (ms):'));
+            Object.entries(profileDurations).forEach(([name, ms]) => console.log(`  ${name}: ${ms}`));
+          }
+          return;
         }
 
         if (options.schedule) {
@@ -275,6 +316,7 @@ export function createSendCommand(): Command {
             console.log(chalk.cyan('Run `mailgoat scheduler start` to process scheduled emails.'));
           }
         } else {
+          startProfile('send_api');
           const sendStart = Date.now();
           if (to.length > 1) {
             metrics.incrementBatch('started');
@@ -289,10 +331,16 @@ export function createSendCommand(): Command {
             metrics.incrementBatch('completed');
           }
           await metrics.pushIfConfigured(config.metrics?.pushgateway);
+          endProfile('send_api');
 
           // Output result
           const output = formatter.formatSendResponse(result);
           formatter.output(output);
+        }
+
+        if (options.profile && !options.json) {
+          console.log(chalk.cyan('\nProfile breakdown (ms):'));
+          Object.entries(profileDurations).forEach(([name, ms]) => console.log(`  ${name}: ${ms}`));
         }
 
         debugLogger.timeEnd(operationId);
