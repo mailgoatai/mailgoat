@@ -154,6 +154,12 @@ export interface PostalWebhook {
   last_used_at?: string;
 }
 
+export interface PostalApiCredential {
+  id: string;
+  key: string;
+  name?: string;
+}
+
 /**
  * Client for Postal Legacy API with retry logic and enhanced error handling
  * https://github.com/postalserver/postal
@@ -484,6 +490,30 @@ export class PostalClient {
       const response = await this.client.post('/api/v1/webhooks/test', {});
       return response.data?.data || response.data;
     }, 'Test webhook');
+  }
+
+  async createApiCredential(
+    name: string,
+    scopes: Array<'send' | 'read' | 'admin'>
+  ): Promise<PostalApiCredential> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.post('/api/v1/credentials', { name, scopes });
+      return response.data?.data || response.data;
+    }, 'Create API credential');
+  }
+
+  async listApiCredentials(): Promise<Array<{ id: string; name?: string; created_at?: string }>> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.get('/api/v1/credentials');
+      return response.data?.data || response.data;
+    }, 'List API credentials');
+  }
+
+  async revokeApiCredential(id: string): Promise<{ success: boolean }> {
+    return this.retryWithBackoff(async () => {
+      const response = await this.client.delete(`/api/v1/credentials/${id}`);
+      return response.data?.data || response.data;
+    }, `Revoke API credential ${id}`);
   }
 
   /**

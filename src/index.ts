@@ -14,6 +14,7 @@ import { createSchedulerCommand } from './commands/scheduler';
 import { createWebhookCommand } from './commands/webhook';
 import { createMetricsCommand } from './commands/metrics';
 import { createInspectCommand } from './commands/inspect';
+import { createKeysCommand } from './commands/keys';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -68,6 +69,7 @@ program.addCommand(createSchedulerCommand());
 program.addCommand(createWebhookCommand());
 program.addCommand(createMetricsCommand());
 program.addCommand(createInspectCommand());
+program.addCommand(createKeysCommand());
 
 // Parse arguments
 program.parse(process.argv);
