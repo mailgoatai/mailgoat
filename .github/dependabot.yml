@@ -1,0 +1,50 @@
+version: 2
+updates:
+  # Maintain npm dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'UTC'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'automated'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'
+    # Group minor and patch updates together
+    groups:
+      development-dependencies:
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+      production-dependencies:
+        dependency-type: 'production'
+        update-types:
+          - 'patch'
+    # Auto-merge minor/patch updates (requires GitHub Actions setup)
+    # Major updates will require manual review
+    pull-request-branch-name:
+      separator: '/'
+    # Ignore specific dependencies if needed
+    # ignore:
+    #   - dependency-name: "some-package"
+    #     versions: ["1.x"]
+
+  # Monitor GitHub Actions versions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'UTC'
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    commit-message:
+      prefix: 'chore(ci)'

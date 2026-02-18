@@ -313,6 +313,37 @@ Releases are managed by the maintainers:
 
 ---
 
+## Dependency Updates
+
+MailGoat uses [Dependabot](https://docs.github.com/en/code-security/dependabot) to automatically manage dependency updates.
+
+### How It Works
+
+- **Automated PRs:** Dependabot creates pull requests for dependency updates weekly
+- **Grouped Updates:** Minor and patch updates are grouped together to reduce PR noise
+- **Security Updates:** Critical security vulnerabilities trigger immediate PRs
+- **GitHub Actions:** CI/CD workflow dependencies are also monitored
+
+### What You Should Know
+
+**For Maintainers:**
+
+- Review and merge Dependabot PRs regularly (weekly check recommended)
+- Major version updates require manual review and testing
+- Minor/patch updates can often be merged after CI passes
+- Security updates should be prioritized
+
+**For Contributors:**
+
+- Don't manually update dependencies without discussion (Dependabot handles this)
+- If you need a specific version, mention it in your issue/PR
+- Major dependency changes should be discussed first
+
+**Configuration:**
+See `.github/dependabot.yml` for the full configuration.
+
+---
+
 ## License
 
 By contributing to MailGoat, you agree that your contributions will be licensed under the MIT License.
