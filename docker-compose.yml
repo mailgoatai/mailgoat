@@ -1,57 +1,97 @@
 version: '3.8'
 
 services:
-  mailgoat:
-    image: mailgoatai/mailgoat:latest
-    container_name: mailgoat
+  postal:
+    image: ghcr.io/postalserver/postal:latest
+    container_name: mailgoat-postal
+    command: postal web-server
+    ports:
+      - '5000:5000' # Web UI + API
     environment:
-      # MailGoat Configuration
-      # Get your API key from: https://mailgoat.ai/dashboard
-      MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
-      MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-      MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
-    # Override the default command to run your specific task
-    # Example: send an email
-    command:
-      - send
-      - --to
-      - user@example.com
-      - --subject
-      - "Hello from Docker"
-      - --body
-      - "This email was sent from a containerized MailGoat CLI!"
-    # For interactive usage, uncomment:
-    # stdin_open: true
-    # tty: true
-    restart: unless-stopped
+      POSTAL_DB_HOST: db
+      POSTAL_DB_NAME: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: postal
+      POSTAL_DB_POOL_SIZE: 5
+      POSTAL_REDIS_HOST: redis
+      POSTAL_REDIS_PORT: 6379
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: postal
+      POSTAL_RABBITMQ_PASSWORD: postal
+      POSTAL_RABBITMQ_VHOST: postal
+      POSTAL_WEB_HOSTNAME: localhost
+      POSTAL_WEB_PROTOCOL: http
+      POSTAL_WEB_PORT: 5000
+      POSTAL_SMTP_HOSTNAME: localhost
+      POSTAL_SECRET_KEY_BASE: local-dev-secret-key-base-change-me
+      POSTAL_SIGNING_KEY: local-dev-signing-key-change-me
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
 
-  # Example: Webhook receiver for incoming mail
-  # mailgoat-webhook:
-  #   image: mailgoatai/mailgoat:latest
-  #   container_name: mailgoat-webhook
-  #   environment:
-  #     MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
-  #     MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-  #   command:
-  #     - webhook
-  #     - add
-  #     - http://your-service:8080/inbox
-  #   restart: on-failure
+  postal-worker:
+    image: ghcr.io/postalserver/postal:latest
+    container_name: mailgoat-postal-worker
+    command: postal worker
+    environment:
+      POSTAL_DB_HOST: db
+      POSTAL_DB_NAME: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: postal
+      POSTAL_REDIS_HOST: redis
+      POSTAL_REDIS_PORT: 6379
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: postal
+      POSTAL_RABBITMQ_PASSWORD: postal
+      POSTAL_RABBITMQ_VHOST: postal
+    depends_on:
+      - postal
 
-  # Example: Scheduled email sender (requires cron or external scheduler)
-  # mailgoat-scheduled:
-  #   image: mailgoatai/mailgoat:latest
-  #   container_name: mailgoat-scheduled
-  #   environment:
-  #     MAILGOAT_SERVER: ${MAILGOAT_SERVER:-https://api.mailgoat.ai}
-  #     MAILGOAT_API_KEY: ${MAILGOAT_API_KEY}
-  #     MAILGOAT_EMAIL: ${MAILGOAT_EMAIL}
-  #   command:
-  #     - send
-  #     - --to
-  #     - reports@example.com
-  #     - --subject
-  #     - "Daily Report"
-  #     - --body
-  #     - "Your scheduled report"
-  #   restart: on-failure
+  postal-smtp:
+    image: ghcr.io/postalserver/postal:latest
+    container_name: mailgoat-postal-smtp
+    command: postal smtp-server
+    ports:
+      - '25:25' # SMTP
+    environment:
+      POSTAL_DB_HOST: db
+      POSTAL_DB_NAME: postal
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: postal
+      POSTAL_REDIS_HOST: redis
+      POSTAL_REDIS_PORT: 6379
+      POSTAL_RABBITMQ_HOST: rabbitmq
+      POSTAL_RABBITMQ_USERNAME: postal
+      POSTAL_RABBITMQ_PASSWORD: postal
+      POSTAL_RABBITMQ_VHOST: postal
+      POSTAL_SMTP_HOSTNAME: localhost
+      POSTAL_SMTP_PORT: 25
+    depends_on:
+      - postal
+
+  db:
+    image: mariadb:10.6
+    container_name: mailgoat-postal-db
+    environment:
+      MYSQL_ROOT_PASSWORD: postal
+      MYSQL_DATABASE: postal
+      MYSQL_USER: postal
+      MYSQL_PASSWORD: postal
+    volumes:
+      - db-data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: mailgoat-postal-redis
+
+  rabbitmq:
+    image: rabbitmq:3.12-alpine
+    container_name: mailgoat-postal-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: postal
+      RABBITMQ_DEFAULT_PASS: postal
+      RABBITMQ_DEFAULT_VHOST: postal
+
+volumes:
+  db-data:
