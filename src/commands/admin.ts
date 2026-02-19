@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { timingSafeEqual } from 'crypto';
 import chalk from 'chalk';
+import { createAdminApiRouter } from './admin-api';
 
 declare module 'express-session' {
   interface SessionData {
@@ -191,6 +192,9 @@ export function createAdminCommand(): Command {
       app.get('/api/admin/status', requireAuth, (_req: Request, res: Response) => {
         res.json({ ok: true, data: buildStatusPayload() });
       });
+
+      // Mount admin API router
+      app.use('/api/admin', requireAuth, createAdminApiRouter());
 
       app.use('/assets', express.static(path.join(distPath, 'assets')));
       app.use(express.static(distPath));
