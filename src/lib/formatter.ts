@@ -1,5 +1,6 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
+import { formatUserError } from './errors';
 import { MessageDetails, RateLimitInfo } from './postal-client';
 
 /**
@@ -37,11 +38,12 @@ export class Formatter {
   /**
    * Format error message
    */
-  error(message: string): string {
+  error(message: unknown): string {
+    const friendly = formatUserError(message);
     if (this.jsonMode) {
-      return JSON.stringify({ status: 'error', message });
+      return JSON.stringify({ status: 'error', message: friendly });
     }
-    return chalk.red('✗') + ' ' + message;
+    return chalk.red('✗') + ' ' + friendly;
   }
 
   /**

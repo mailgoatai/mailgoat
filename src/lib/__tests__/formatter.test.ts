@@ -46,6 +46,15 @@ describe('Formatter', () => {
     expect(() => JSON.parse(json.error('bad'))).not.toThrow();
   });
 
+  it('formats common errors with actionable messages', () => {
+    const formatter = new Formatter(false);
+
+    expect(formatter.error('Error: connect ECONNREFUSED')).toContain('Cannot connect to Postal');
+    expect(formatter.error('401 Unauthorized')).toContain('Invalid API key');
+    expect(formatter.error('ENOENT: no such file or directory')).toContain('Not configured yet');
+    expect(formatter.error('ETIMEDOUT')).toContain('Request timed out');
+  });
+
   it('formats inbox list', () => {
     const formatter = new Formatter(false);
     const output = formatter.formatInboxList([message]);
