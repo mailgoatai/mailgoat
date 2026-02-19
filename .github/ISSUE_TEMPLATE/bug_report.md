@@ -1,31 +1,28 @@
 ---
 name: Bug report
-about: Report a reproducible bug
-title: '[Bug] '
+about: Create a report to help us improve
+title: '[BUG] '
 labels: bug
 assignees: ''
 ---
 
-## Description
+**Describe the bug**
+A clear description of what the bug is.
 
-What happened?
+**To Reproduce**
+Steps to reproduce:
 
-## Steps to Reproduce
+1. Run command '...'
+2. See error
 
-1.
-2.
-3.
+**Expected behavior**
+What you expected to happen.
 
-## Expected Behavior
+**Environment:**
 
-What should have happened?
+- OS: [e.g. macOS 14.1]
+- Node version: [e.g. 20.x]
+- mailgoat version: [e.g. 1.2.0]
 
-## Environment
-
-- OS:
-- Node version:
-- MailGoat version:
-
-## Logs / Screenshots
-
-Include relevant output, stack traces, or screenshots.
+**Additional context**
+Any other context about the problem.

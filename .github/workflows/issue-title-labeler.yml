@@ -1,0 +1,60 @@
+name: Issue Title Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label-by-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply label from issue title prefix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title || '';
+            const mapping = [
+              { prefix: '[BUG]', label: 'bug', color: 'd73a4a', description: 'Something is broken' },
+              { prefix: '[FEATURE]', label: 'enhancement', color: 'a2eeef', description: 'New feature or request' },
+              { prefix: '[Q]', label: 'question', color: 'd876e3', description: 'Further information is requested' }
+            ];
+
+            const match = mapping.find((m) => title.toUpperCase().startsWith(m.prefix));
+            if (!match) {
+              core.info('No title prefix match.');
+              return;
+            }
+
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: match.label
+              });
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: match.label,
+                  color: match.color,
+                  description: match.description
+                });
+              } else {
+                throw error;
+              }
+            }
+
+            const current = new Set((issue.labels || []).map((l) => l.name));
+            if (!current.has(match.label)) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [match.label]
+              });
+            }

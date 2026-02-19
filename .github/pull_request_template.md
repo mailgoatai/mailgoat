@@ -1,21 +1,23 @@
-## Summary
+## Description
 
-Describe what this PR changes and why.
+What does this PR do?
 
-## Changes
+## Type of change
 
--
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
 
-## Validation
+## Testing
 
-- [ ] `npm run lint`
-- [ ] `npm test`
-- [ ] `npm run build`
-- [ ] Other checks (describe):
+- [ ] Tests added/updated
+- [ ] All tests passing
+- [ ] Manually tested
 
-## Checklist
+## Checklist:
 
-- [ ] Linked related issue/task
-- [ ] Updated docs if needed
-- [ ] Added/updated tests
-- [ ] No breaking changes, or migration notes included
+- [ ] Code follows style guidelines
+- [ ] Self-review completed
+- [ ] Documentation updated
+- [ ] No new warnings

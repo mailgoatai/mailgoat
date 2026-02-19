@@ -1,0 +1,45 @@
+name: First Issue Welcome
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  welcome-first-time-issue-author:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Welcome first-time issue authors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const author = issue.user.login;
+
+            const result = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue author:${author}`,
+              per_page: 100
+            });
+
+            if (result.data.total_count !== 1) {
+              core.info(`Author ${author} has ${result.data.total_count} issues. Skipping.`);
+              return;
+            }
+
+            const message = [
+              `Thanks for opening your first issue in ${context.repo.repo}, @${author}.`,
+              '',
+              'A maintainer will review this soon. In the meantime:',
+              '- Include reproduction steps and relevant logs.',
+              '- Share your environment details (OS, Node version, mailgoat version).',
+              '- For usage questions, check `docs/faq.md` and `docs/COMMUNITY.md`.'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: message
+            });
