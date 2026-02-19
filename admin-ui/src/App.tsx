@@ -14,6 +14,7 @@ import {
   Bell,
   Volume2,
   Monitor,
+  Settings,
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
@@ -90,6 +91,17 @@ type AdminRealtimeEvent = {
   message?: string;
 };
 
+type SettingsPayload = {
+  ok: boolean;
+  data?: {
+    postalDbUrl: string | null;
+    postalDbUrlRedacted: string | null;
+    postalConnectionOk: boolean;
+    sessionTimeoutMinutes: number;
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
 const ADMIN_NOTIFICATION_PREFS_KEY = 'mailgoat.admin.notifications.enabled';
 const ADMIN_SOUND_PREFS_KEY = 'mailgoat.admin.notifications.sound';
 const ADMIN_DESKTOP_PREFS_KEY = 'mailgoat.admin.notifications.desktop';
@@ -158,6 +170,10 @@ function isInboxesPath(pathname: string): boolean {
   return pathname === '/admin/inboxes';
 }
 
+function isSettingsPath(pathname: string): boolean {
+  return pathname === '/admin/settings';
+}
+
 function goToAdminHome() {
   window.history.pushState({}, '', '/admin');
 }
@@ -168,6 +184,10 @@ function goToInboxesRoute() {
 
 function goToInboxRoute(inboxId: string) {
   window.history.pushState({}, '', `/admin/inbox/${encodeURIComponent(inboxId)}`);
+}
+
+function goToSettingsRoute() {
+  window.history.pushState({}, '', '/admin/settings');
 }
 
 function EmailListItem({
@@ -810,17 +830,288 @@ function InboxesPage({
   );
 }
 
+function getPasswordStrengthLabel(value: string): string {
+  if (value.length < 12) return 'Weak';
+  const hasUpper = /[A-Z]/.test(value);
+  const hasLower = /[a-z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  const score = [hasUpper, hasLower, hasNumber, hasSymbol].filter(Boolean).length;
+  if (score >= 3 && value.length >= 16) return 'Strong';
+  if (score >= 2) return 'Medium';
+  return 'Weak';
+}
+
+function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [postalDbUrl, setPostalDbUrl] = useState('');
+  const [postalDbUrlRedacted, setPostalDbUrlRedacted] = useState<string | null>(null);
+  const [postalConnectionOk, setPostalConnectionOk] = useState(false);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(1440);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [postalConfirm, setPostalConfirm] = useState(false);
+  const [passwordConfirm, setPasswordConfirm] = useState(false);
+  const [sessionConfirm, setSessionConfirm] = useState(false);
+  const [logoutAllConfirm, setLogoutAllConfirm] = useState(false);
+
+  async function loadSettings() {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/settings', { credentials: 'include' });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load settings');
+      }
+      setPostalDbUrl(payload.data.postalDbUrl || '');
+      setPostalDbUrlRedacted(payload.data.postalDbUrlRedacted || null);
+      setPostalConnectionOk(payload.data.postalConnectionOk);
+      setSessionTimeoutMinutes(payload.data.sessionTimeoutMinutes);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load settings');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadSettings();
+  }, []);
+
+  async function savePostalSettings() {
+    if (!postalConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/postal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dbUrl: postalDbUrl, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to update Postal connection');
+      }
+      toast.success('Postal connection updated');
+      setPostalConfirm(false);
+      await loadSettings();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update Postal connection');
+    }
+  }
+
+  async function savePasswordSettings() {
+    if (!passwordConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to change password');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordConfirm(false);
+      toast.success('Admin password changed. Login again on other sessions.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to change password');
+    }
+  }
+
+  async function saveSessionSettings() {
+    if (!sessionConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/session', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionTimeoutMinutes, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to update session timeout');
+      }
+      setSessionConfirm(false);
+      toast.success('Session timeout updated');
+      await loadSettings();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update session timeout');
+    }
+  }
+
+  async function forceLogoutAll() {
+    if (!logoutAllConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/logout-all', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to logout all sessions');
+      }
+      setLogoutAllConfirm(false);
+      toast.success('All other sessions have been logged out');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to logout all sessions');
+    }
+  }
+
+  const passwordStrength = getPasswordStrengthLabel(newPassword);
+
+  return (
+    <main className="min-h-screen px-4 py-6 md:px-8">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <header className="rounded-xl border border-border bg-card/80 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Admin</p>
+          <h1 className="text-xl font-semibold text-slate-100">Settings</h1>
+        </header>
+
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">Loading settings...</CardContent>
+          </Card>
+        ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Postal Database Connection</CardTitle>
+            <CardDescription>Update and test Postal DB connection used by the admin panel.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-300">
+              Status:{' '}
+              <span className={postalConnectionOk ? 'text-green-400' : 'text-amber-400'}>
+                {postalConnectionOk ? 'Connected' : 'Disconnected'}
+              </span>
+            </p>
+            <p className="text-xs text-slate-500">
+              Current (redacted): {postalDbUrlRedacted || 'Not configured'}
+            </p>
+            <Input
+              value={postalDbUrl}
+              onChange={(event) => setPostalDbUrl(event.target.value)}
+              placeholder="postgres://user:pass@host:5432/postal"
+            />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={postalConfirm}
+                onChange={(event) => setPostalConfirm(event.target.checked)}
+              />
+              I confirm I want to update the Postal DB connection.
+            </label>
+            <Button onClick={() => void savePostalSettings()}>Test & Save Connection</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Password</CardTitle>
+            <CardDescription>Change admin password. Minimum length is 12 characters.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="Current password"
+            />
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="New password"
+            />
+            <p className="text-sm text-slate-300">
+              Password strength:{' '}
+              <span className={passwordStrength === 'Strong' ? 'text-green-400' : 'text-amber-400'}>
+                {passwordStrength}
+              </span>
+            </p>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={passwordConfirm}
+                onChange={(event) => setPasswordConfirm(event.target.checked)}
+              />
+              I confirm I want to change the admin password.
+            </label>
+            <Button onClick={() => void savePasswordSettings()}>Change Password</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Session Settings</CardTitle>
+            <CardDescription>Control admin session timeout and force logout.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              type="number"
+              min={5}
+              max={10080}
+              value={sessionTimeoutMinutes}
+              onChange={(event) => setSessionTimeoutMinutes(Number(event.target.value))}
+            />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={sessionConfirm}
+                onChange={(event) => setSessionConfirm(event.target.checked)}
+              />
+              I confirm I want to update session timeout.
+            </label>
+            <Button onClick={() => void saveSessionSettings()}>Update Session Timeout</Button>
+
+            <label className="flex items-center gap-2 pt-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={logoutAllConfirm}
+                onChange={(event) => setLogoutAllConfirm(event.target.checked)}
+              />
+              I confirm I want to force logout all other sessions.
+            </label>
+            <Button variant="danger" onClick={() => void forceLogoutAll()}>
+              Force Logout All Sessions
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
 function AdminLayout({
   active,
   onOpenDashboard,
   onOpenInboxes,
+  onOpenSettings,
   onLogout,
   inboxNotificationCount,
   children,
 }: {
-  active: 'dashboard' | 'inboxes' | 'detail';
+  active: 'dashboard' | 'inboxes' | 'detail' | 'settings';
   onOpenDashboard: () => void;
   onOpenInboxes: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
   inboxNotificationCount: number;
   children: ReactNode;
@@ -849,6 +1140,14 @@ function AdminLayout({
               <Badge className="ml-2">{inboxNotificationCount}</Badge>
             ) : null}
           </Button>
+          <Button
+            variant={active === 'settings' ? 'default' : 'outline'}
+            className="w-full justify-start"
+            onClick={onOpenSettings}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
         </nav>
         <div className="mt-4">
           <Button variant="outline" className="w-full justify-start" onClick={onLogout}>
@@ -870,6 +1169,9 @@ export function App() {
   const [inboxId, setInboxId] = useState<string | null>(() => parseInboxIdFromPath(window.location.pathname));
   const [isInboxesView, setIsInboxesView] = useState<boolean>(() =>
     isInboxesPath(window.location.pathname)
+  );
+  const [isSettingsView, setIsSettingsView] = useState<boolean>(() =>
+    isSettingsPath(window.location.pathname)
   );
   const [inboxRefreshSignal, setInboxRefreshSignal] = useState(0);
   const [inboxNotificationCount, setInboxNotificationCount] = useState(0);
@@ -914,8 +1216,10 @@ export function App() {
     const onPopState = () => {
       const nextInboxId = parseInboxIdFromPath(window.location.pathname);
       const nextInboxesView = isInboxesPath(window.location.pathname);
+      const nextSettingsView = isSettingsPath(window.location.pathname);
       setInboxId(nextInboxId);
       setIsInboxesView(nextInboxesView);
+      setIsSettingsView(nextSettingsView);
       if (nextInboxId || nextInboxesView) {
         setInboxNotificationCount(0);
       }
@@ -1023,6 +1327,7 @@ export function App() {
       setStatus(null);
       setInboxId(null);
       setIsInboxesView(false);
+      setIsSettingsView(false);
       setInboxNotificationCount(0);
       goToAdminHome();
       toast.success('Logged out');
@@ -1035,18 +1340,21 @@ export function App() {
     goToInboxRoute(targetInboxId);
     setInboxId(targetInboxId);
     setIsInboxesView(false);
+    setIsSettingsView(false);
   }
 
   function handleBackFromInbox() {
     goToInboxesRoute();
     setInboxId(null);
     setIsInboxesView(true);
+    setIsSettingsView(false);
   }
 
   function handleOpenInboxes() {
     goToInboxesRoute();
     setInboxId(null);
     setIsInboxesView(true);
+    setIsSettingsView(false);
     setInboxNotificationCount(0);
   }
 
@@ -1054,6 +1362,14 @@ export function App() {
     goToAdminHome();
     setInboxId(null);
     setIsInboxesView(false);
+    setIsSettingsView(false);
+  }
+
+  function handleOpenSettings() {
+    goToSettingsRoute();
+    setInboxId(null);
+    setIsInboxesView(false);
+    setIsSettingsView(true);
   }
 
   if (isLoading) {
@@ -1122,6 +1438,7 @@ export function App() {
         active="detail"
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
+        onOpenSettings={handleOpenSettings}
         onLogout={handleLogout}
         inboxNotificationCount={inboxNotificationCount}
       >
@@ -1136,6 +1453,7 @@ export function App() {
         active="inboxes"
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
+        onOpenSettings={handleOpenSettings}
         onLogout={handleLogout}
         inboxNotificationCount={inboxNotificationCount}
       >
@@ -1148,11 +1466,27 @@ export function App() {
     );
   }
 
+  if (isSettingsView) {
+    return (
+      <AdminLayout
+        active="settings"
+        onOpenDashboard={handleBackFromInboxes}
+        onOpenInboxes={handleOpenInboxes}
+        onOpenSettings={handleOpenSettings}
+        onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
+      >
+        <SettingsPage />
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout
       active="dashboard"
       onOpenDashboard={handleBackFromInboxes}
       onOpenInboxes={handleOpenInboxes}
+      onOpenSettings={handleOpenSettings}
       onLogout={handleLogout}
       inboxNotificationCount={inboxNotificationCount}
     >

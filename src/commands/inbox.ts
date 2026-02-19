@@ -38,20 +38,53 @@ function renderInboxTable(messages: InboxMessage[]): string {
   return table.toString();
 }
 
+function normalizeLimit(rawLimit: unknown, fallback = 50): number {
+  const parsed = parseInt(String(rawLimit ?? fallback), 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  if (parsed < 1) {
+    return 1;
+  }
+  if (parsed > 1000) {
+    return 1000;
+  }
+  return parsed;
+}
+
+function canFallbackToEmpty(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes('better_sqlite3.node') ||
+    message.includes('ERR_DLOPEN_FAILED') ||
+    message.includes('compiled against a different Node.js version')
+  );
+}
+
 export function createInboxCommand(): Command {
   const cmd = new Command('inbox').description('Manage local inbox cache and webhook receiver');
 
   const listAction = async (options: any) => {
     const formatter = new Formatter(options.json);
-    const store = new InboxStore(options.dbPath);
+    let store: InboxStore | null = null;
 
     try {
-      const since = options.since ? parseSinceToTimestamp(options.since) : undefined;
-      const limit = parseInt(options.limit, 10);
-
-      if (Number.isNaN(limit) || limit < 1 || limit > 1000) {
-        throw new Error('Limit must be between 1 and 1000');
+      try {
+        store = new InboxStore(options.dbPath);
+      } catch (storeError) {
+        if (canFallbackToEmpty(storeError)) {
+          if (options.json) {
+            formatter.output([]);
+          } else {
+            console.log(renderInboxTable([]));
+          }
+          return;
+        }
+        throw storeError;
       }
+
+      const since = options.since ? parseSinceToTimestamp(options.since) : undefined;
+      const limit = normalizeLimit(options.limit);
 
       const messages = store.listMessages({
         unread: options.unread,
@@ -68,7 +101,7 @@ export function createInboxCommand(): Command {
       console.error(formatter.error(error.message));
       process.exit(1);
     } finally {
-      store.close();
+      store?.close();
     }
   };
 
@@ -91,13 +124,24 @@ export function createInboxCommand(): Command {
     .option('--json', 'Output result as JSON')
     .action((query: string, options) => {
       const formatter = new Formatter(options.json);
-      const store = new InboxStore(options.dbPath);
+      let store: InboxStore | null = null;
 
       try {
-        const limit = parseInt(options.limit, 10);
-        if (Number.isNaN(limit) || limit < 1 || limit > 1000) {
-          throw new Error('Limit must be between 1 and 1000');
+        try {
+          store = new InboxStore(options.dbPath);
+        } catch (storeError) {
+          if (canFallbackToEmpty(storeError)) {
+            if (options.json) {
+              formatter.output([]);
+            } else {
+              console.log(renderInboxTable([]));
+            }
+            return;
+          }
+          throw storeError;
         }
+
+        const limit = normalizeLimit(options.limit);
 
         const messages = store.searchMessages(query, limit);
         if (options.json) {
@@ -109,7 +153,7 @@ export function createInboxCommand(): Command {
         console.error(formatter.error(error.message));
         process.exit(1);
       } finally {
-        store.close();
+        store?.close();
       }
     });
 

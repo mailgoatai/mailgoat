@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 declare module 'express-session' {
   interface SessionData {
     authenticated: boolean;
+    authVersion?: number;
   }
 }
 
@@ -120,6 +121,19 @@ type PostalInboxRow = {
   last_message_at: string | Date | null;
 };
 
+type AdminSettingsState = {
+  postalDbUrl: string | null;
+  sessionTimeoutMinutes: number;
+  authVersion: number;
+};
+
+type AdminSettingsPayload = {
+  postalDbUrl: string | null;
+  postalDbUrlRedacted: string | null;
+  postalConnectionOk: boolean;
+  sessionTimeoutMinutes: number;
+};
+
 export function normalizeInboxId(rawInboxId: string): string {
   return decodeURIComponent(rawInboxId || '')
     .trim()
@@ -221,6 +235,50 @@ function buildDbPoolFromEnv(): Pool | null {
   }
 
   return new Pool({ host, database, user, password, port });
+}
+
+function buildDbPoolFromSettings(settings: AdminSettingsState): Pool | null {
+  const configuredDatabaseUrl = settings.postalDbUrl || process.env.POSTAL_DB_URL;
+  if (configuredDatabaseUrl) {
+    return new Pool({ connectionString: configuredDatabaseUrl });
+  }
+  return buildDbPoolFromEnv();
+}
+
+function redactConnectionString(rawValue: string | null): string | null {
+  if (!rawValue) return null;
+  try {
+    const parsed = new URL(rawValue);
+    if (parsed.password) {
+      parsed.password = '***';
+    }
+    if (parsed.username) {
+      parsed.username = parsed.username.slice(0, 2) + '***';
+    }
+    return parsed.toString();
+  } catch {
+    return '***';
+  }
+}
+
+function hasConfirmation(input: unknown): boolean {
+  return input === true;
+}
+
+function ensureAuthenticatedVersion(
+  req: Request,
+  res: Response,
+  settings: AdminSettingsState
+): boolean {
+  if (req.session.authVersion === settings.authVersion) {
+    return true;
+  }
+  req.session.destroy(() => undefined);
+  res.status(401).json({
+    ok: false,
+    error: { code: 'SESSION_EXPIRED', message: 'Session expired. Please login again.' },
+  });
+  return false;
 }
 
 async function listInboxesFromPostalDb(): Promise<AdminInboxSummary[]> {
@@ -379,6 +437,12 @@ export function createAdminCommand(): Command {
       }
 
       const app = express();
+      let currentAdminPassword = String(adminPassword);
+      const settingsState: AdminSettingsState = {
+        postalDbUrl: process.env.POSTAL_DB_URL || process.env.POSTAL_DATABASE_URL || null,
+        sessionTimeoutMinutes: 24 * 60,
+        authVersion: 1,
+      };
       app.disable('x-powered-by');
       app.set('trust proxy', 1);
       app.use(express.json());
@@ -400,9 +464,21 @@ export function createAdminCommand(): Command {
         })
       );
 
+      app.use((req: Request, res: Response, next: NextFunction) => {
+        if (!req.session?.authenticated) {
+          next();
+          return;
+        }
+        if (!ensureAuthenticatedVersion(req, res, settingsState)) {
+          return;
+        }
+        req.session.cookie.maxAge = settingsState.sessionTimeoutMinutes * 60 * 1000;
+        next();
+      });
+
       app.post('/admin/login', loginLimiter, (req: Request, res: Response) => {
         const password = String(req.body?.password || '');
-        if (!secureCompare(password, String(adminPassword))) {
+        if (!secureCompare(password, currentAdminPassword)) {
           res.status(401).json({
             ok: false,
             error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' },
@@ -419,6 +495,7 @@ export function createAdminCommand(): Command {
             return;
           }
           req.session.authenticated = true;
+          req.session.authVersion = settingsState.authVersion;
           res.json({ ok: true, data: { authenticated: true } });
         });
       });
@@ -438,6 +515,155 @@ export function createAdminCommand(): Command {
 
       app.get('/api/admin/status', requireAuth, (_req: Request, res: Response) => {
         res.json({ ok: true, data: buildStatusPayload() });
+      });
+
+      app.get('/api/admin/settings', requireAuth, async (_req: Request, res: Response) => {
+        let postalConnectionOk = false;
+        const pool = buildDbPoolFromSettings(settingsState);
+        if (pool) {
+          try {
+            await pool.query('SELECT 1');
+            postalConnectionOk = true;
+          } catch {
+            postalConnectionOk = false;
+          } finally {
+            await pool.end();
+          }
+        }
+        const payload: AdminSettingsPayload = {
+          postalDbUrl: settingsState.postalDbUrl,
+          postalDbUrlRedacted: redactConnectionString(settingsState.postalDbUrl),
+          postalConnectionOk,
+          sessionTimeoutMinutes: settingsState.sessionTimeoutMinutes,
+        };
+        res.json({ ok: true, data: payload });
+      });
+
+      app.post('/api/admin/settings/postal', requireAuth, async (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to update Postal connection',
+            },
+          });
+          return;
+        }
+        const dbUrl = String(req.body?.dbUrl || '').trim();
+        if (!dbUrl) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_DB_URL', message: 'dbUrl is required' },
+          });
+          return;
+        }
+        const pool = new Pool({ connectionString: dbUrl });
+        try {
+          await pool.query('SELECT 1');
+          settingsState.postalDbUrl = dbUrl;
+          res.json({
+            ok: true,
+            data: {
+              updated: true,
+              postalDbUrlRedacted: redactConnectionString(settingsState.postalDbUrl),
+              postalConnectionOk: true,
+            },
+          });
+        } catch (error) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'POSTAL_DB_CONNECTION_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to connect to Postal DB',
+            },
+          });
+        } finally {
+          await pool.end();
+        }
+      });
+
+      app.post('/api/admin/settings/password', requireAuth, async (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to change admin password',
+            },
+          });
+          return;
+        }
+        const currentPassword = String(req.body?.currentPassword || '');
+        const newPassword = String(req.body?.newPassword || '');
+        if (!secureCompare(currentPassword, currentAdminPassword)) {
+          res.status(401).json({
+            ok: false,
+            error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' },
+          });
+          return;
+        }
+        if (newPassword.length < 12) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'WEAK_PASSWORD',
+              message: 'New password must be at least 12 characters long',
+            },
+          });
+          return;
+        }
+        currentAdminPassword = newPassword;
+        settingsState.authVersion += 1;
+        res.json({ ok: true, data: { updated: true } });
+      });
+
+      app.post('/api/admin/settings/session', requireAuth, (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to update session timeout',
+            },
+          });
+          return;
+        }
+        const timeoutRaw = Number(req.body?.sessionTimeoutMinutes);
+        if (!Number.isFinite(timeoutRaw) || timeoutRaw < 5 || timeoutRaw > 10080) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'INVALID_SESSION_TIMEOUT',
+              message: 'sessionTimeoutMinutes must be between 5 and 10080',
+            },
+          });
+          return;
+        }
+        settingsState.sessionTimeoutMinutes = Math.floor(timeoutRaw);
+        req.session.cookie.maxAge = settingsState.sessionTimeoutMinutes * 60 * 1000;
+        res.json({
+          ok: true,
+          data: { updated: true, sessionTimeoutMinutes: settingsState.sessionTimeoutMinutes },
+        });
+      });
+
+      app.post('/api/admin/settings/logout-all', requireAuth, (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to logout all sessions',
+            },
+          });
+          return;
+        }
+        settingsState.authVersion += 1;
+        req.session.authenticated = true;
+        req.session.authVersion = settingsState.authVersion;
+        req.session.cookie.maxAge = settingsState.sessionTimeoutMinutes * 60 * 1000;
+        res.json({ ok: true, data: { updated: true, loggedOutAll: true } });
       });
 
       app.get('/api/admin/inboxes', requireAuth, async (_req: Request, res: Response) => {
