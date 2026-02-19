@@ -1,118 +1,73 @@
 # MailGoat Example Integrations
 
-This directory contains practical examples showing how AI agents can use MailGoat for various use cases.
+This directory contains practical examples showing how agents can automate workflows with MailGoat CLI.
 
-## Examples
+## New full examples
 
-### 1. Email Notification Agent
-**File:** `notification-agent.sh`
+### `simple-agent/` (Python)
 
-Monitors system resources and sends alert emails when thresholds are exceeded. Demonstrates basic email sending with dynamic content.
+- Polls inbox cache every 5 minutes (default)
+- Reads new messages and sends automated acknowledgments
+- Uses `mailgoat inbox list`, `mailgoat read`, and `mailgoat send`
+- Files:
+  - `agent.py`
+  - `README.md`
+  - `.env.example`
 
-**Use cases:**
-- Server monitoring
-- Resource alerts
-- Error notifications
-- Status updates
+### `nodejs-agent/` (Node.js)
 
-### 2. Inbox Processing Agent
-**File:** `inbox-processor.sh`
+- Monitors inbox in a polling loop
+- Parses incoming message data
+- Sends structured auto-responses
+- Files:
+  - `agent.js`
+  - `package.json`
+  - `README.md`
+  - `.env.example`
 
-Reads and processes incoming emails, extracting commands or data. Demonstrates inbox reading, filtering, and structured data extraction.
+### `docker-agent/`
 
-**Use cases:**
-- Email-based command execution
-- Automated ticket processing
-- Data extraction from emails
-- Email-triggered workflows
+- Containerized polling agent with cron inside container
+- Uses mounted MailGoat CLI config from host (`~/.mailgoat`)
+- Includes docker compose deployment
+- Files:
+  - `Dockerfile`
+  - `docker-compose.yml`
+  - `agent.sh`
+  - `entrypoint.sh`
+  - `README.md`
+  - `.env.example`
 
-### 3. Automated Response Agent
-**File:** `auto-responder.sh`
+### `notification-bot/`
 
-Analyzes incoming emails and sends intelligent responses based on content. Demonstrates reply functionality and content analysis.
+- Forwards important emails to Slack/Discord webhooks
+- Includes filtering logic by status and keywords
+- Files:
+  - `agent.js`
+  - `package.json`
+  - `README.md`
+  - `.env.example`
 
-**Use cases:**
-- Customer support automation
-- Out-of-office responses
-- FAQ automation
-- Email triage
+## Existing lightweight scripts
 
-### 4. Daily Digest Agent
-**File:** `digest-agent.sh`
+- `notification-agent.sh`
+- `inbox-processor.sh`
+- `auto-responder.sh`
+- `digest-agent.sh`
+- `openclaw-integration.js`
+- `delete-example.sh`
 
-Aggregates information from multiple sources and sends a formatted summary email. Demonstrates HTML email formatting and scheduled execution.
+## General prerequisites
 
-**Use cases:**
-- Daily reports
-- News summaries
-- Metric dashboards
-- Status roundups
+1. MailGoat CLI installed and configured.
+2. Inbox cache available (`mailgoat inbox serve` + Postal webhook setup).
+3. Required runtime per example (Python/Node/Docker).
 
-### 5. OpenClaw Integration
-**File:** `openclaw-integration.js`
-
-Shows how OpenClaw agents can use MailGoat within their workflows. Demonstrates error handling and JSON parsing.
-
-**Use cases:**
-- OpenClaw agent email capabilities
-- Task automation via email
-- Email-based triggers
-- Integration with other OpenClaw tools
-
-## Running the Examples
-
-### Prerequisites
-
-1. MailGoat CLI installed:
-   ```bash
-   npm install -g mailgoat
-   ```
-
-2. MailGoat configured with valid credentials:
-   ```bash
-   mailgoat config --email agent@example.com --api-key YOUR_KEY
-   ```
-
-3. For shell scripts: bash, jq, curl
-4. For Node.js examples: Node.js v14+
-
-### Running Individual Examples
-
-Each example includes instructions in its header. Generally:
+## Quick start
 
 ```bash
-# Make executable
-chmod +x examples/notification-agent.sh
-
-# Run with environment variables
-ALERT_EMAIL=admin@example.com ./examples/notification-agent.sh
-
-# Or edit the script to set defaults
+cd examples/simple-agent
+cp .env.example .env
+set -a; source .env; set +a
+python3 agent.py
 ```
-
-### Testing
-
-All examples can be tested with mock data before deploying to production. See `../tests/` for test scenarios.
-
-## Contributing Examples
-
-When adding new examples:
-
-1. Include a clear header with description and use cases
-2. Add error handling and validation
-3. Document environment variables and prerequisites
-4. Include example output
-5. Keep it simple - focus on demonstrating one concept
-6. Add to this README
-
-## Architecture
-
-These examples assume the **Direct Mode** architecture (CLI → Postal API).
-
-For managed/SaaS mode, the CLI commands remain the same - MailGoat handles the backend routing.
-
-## Support
-
-- Documentation: See `../docs/`
-- Issues: File in MailGoat repository
-- Questions: Check FAQ or ask in discussions

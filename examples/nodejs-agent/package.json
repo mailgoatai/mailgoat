@@ -1,0 +1,10 @@
+{
+  "name": "mailgoat-nodejs-agent-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js MailGoat auto-response example agent",
+  "type": "module",
+  "scripts": {
+    "start": "node agent.js"
+  }
+}

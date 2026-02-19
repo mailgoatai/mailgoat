@@ -1,0 +1,10 @@
+services:
+  mailgoat-docker-agent:
+    build: .
+    container_name: mailgoat-docker-agent
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ${HOME}/.mailgoat:/root/.mailgoat
+    restart: unless-stopped
