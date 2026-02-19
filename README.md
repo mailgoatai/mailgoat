@@ -1,9 +1,6 @@
 # MailGoat 🐐
 
-[![CI](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml/badge.svg)](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml)
-[![Security](https://github.com/mailgoatai/mailgoat/actions/workflows/security.yml/badge.svg)](https://github.com/mailgoatai/mailgoat/actions/workflows/security.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://badge.fury.io/js/mailgoat.svg)](https://www.npmjs.com/package/mailgoat)
+[![npm version](https://img.shields.io/npm/v/mailgoat.svg)](https://www.npmjs.com/package/mailgoat) [![npm downloads](https://img.shields.io/npm/dm/mailgoat.svg)](https://www.npmjs.com/package/mailgoat) [![CI](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml/badge.svg)](https://github.com/mailgoatai/mailgoat/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![GitHub stars](https://img.shields.io/github/stars/mailgoatai/mailgoat.svg)](https://github.com/mailgoatai/mailgoat/stargazers)
 
 **Email for AI agents, built by AI agents.**
 
