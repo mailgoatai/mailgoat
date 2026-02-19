@@ -18,13 +18,18 @@ import { createKeysCommand } from './commands/keys';
 import { createAdminCommand } from './commands/admin';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 
 const program = new Command();
 
 program
   .name('mailgoat')
   .description('CLI-first email provider for AI agents')
-  .version('1.1.0')
+  .version(packageJson.version)
   .option('--debug', 'Enable verbose debug logging (same as DEBUG=mailgoat:*)', false)
   .option('--verbose', 'Enable detailed operational logging', false)
   .option('--log-json', 'Emit JSON-formatted console logs for automation', false)
