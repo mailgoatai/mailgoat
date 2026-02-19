@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  postal-test:
+    image: ghcr.io/postalserver/postal:latest
+    ports:
+      - '5000:5000'
+    environment:
+      POSTAL_DB_HOST: db-test
+      POSTAL_DB_NAME: postal_test
+      POSTAL_DB_USERNAME: postal
+      POSTAL_DB_PASSWORD: postal
+    depends_on:
+      - db-test
+      - redis-test
+
+  db-test:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: postal
+      MYSQL_DATABASE: postal_test
+      MYSQL_USER: postal
+      MYSQL_PASSWORD: postal
+
+  redis-test:
+    image: redis:7-alpine

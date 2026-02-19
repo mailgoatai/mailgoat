@@ -1,4 +1,8 @@
-import { PostalClient, SendMessageParams, SendMessageResponse } from '../../../src/lib/postal-client';
+import {
+  PostalClient,
+  SendMessageParams,
+  SendMessageResponse,
+} from '../../../src/lib/postal-client';
 import { MailGoatConfig } from '../../../src/lib/config';
 import { getE2EEnv } from './env';
 
@@ -38,7 +42,11 @@ export function firstToken(result: SendMessageResponse): string {
   return first.token;
 }
 
-export async function waitFor<T>(fn: () => Promise<T>, timeoutMs: number, intervalMs = 1000): Promise<T> {
+export async function waitFor<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number,
+  intervalMs = 1000
+): Promise<T> {
   const start = Date.now();
   let lastError: unknown;
   while (Date.now() - start < timeoutMs) {
@@ -62,6 +70,7 @@ export function tinyPngBase64(): string {
 }
 
 export function tinyPdfBase64(): string {
-  const pdf = '%PDF-1.1\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF';
+  const pdf =
+    '%PDF-1.1\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF';
   return Buffer.from(pdf, 'utf8').toString('base64');
 }

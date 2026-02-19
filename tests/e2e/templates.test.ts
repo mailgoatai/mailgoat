@@ -40,7 +40,10 @@ describeE2E('E2E template flows', () => {
       body: 'Agent {{agent}} deployed',
     };
 
-    const rendered = templateManager.render(template as never, { build: 'v1.1.0', agent: 'developer-2' });
+    const rendered = templateManager.render(template as never, {
+      build: 'v1.1.0',
+      agent: 'developer-2',
+    });
 
     const send = await sendBasic(client, {
       to: [env.receiver],

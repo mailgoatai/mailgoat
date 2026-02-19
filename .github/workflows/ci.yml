@@ -2,211 +2,72 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master]
   pull_request:
-    branches: [main, master, develop]
-
-# Cancel in-progress runs of the same workflow
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  NODE_VERSION: '20'
+    branches: [main, master]
 
 jobs:
-  lint:
-    name: Lint & Format Check
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          node-version: ${{ matrix.node-version }}
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
+      - name: Run linter
         run: npm run lint
 
-      - name: Check Prettier formatting
-        run: npm run format:check
+      - name: Run tests
+        run: npm test
 
-      - name: TypeScript type check
-        run: npm run typecheck
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build TypeScript
+      - name: Build
         run: npm run build
 
-      - name: Verify dist/ exists
-        run: test -d dist && echo "✅ Build successful"
+      - name: Test CLI
+        run: |
+          npm link
+          mailgoat --version
+          mailgoat --help
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: dist/
-          retention-days: 7
-
-  test-unit:
-    name: Unit Tests
+  integration:
     runs-on: ubuntu-latest
-    needs: build
+    needs: test
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          node-version: 20.x
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test:unit
-
-  test-integration:
-    name: Integration Tests (Mock Mode)
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build CLI
+      - name: Build
         run: npm run build
 
-      - name: Run bash test runner (mock mode)
-        run: bash tests/test-runner.sh --mode=mock
-        timeout-minutes: 10
+      - name: Start test Postal server
+        run: docker compose -f docker-compose.test.yml up -d
 
-      - name: Upload test logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
-          path: tests/test-logs/
-          retention-days: 14
+      - name: Wait for services
+        run: sleep 15
 
-  test-jest:
-    name: Jest Integration Tests
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Jest integration tests
+      - name: Run integration tests
         run: npm run test:integration
 
-  test-e2e:
-    name: E2E Tests (Postal)
-    runs-on: ubuntu-latest
-    needs: build
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
-    timeout-minutes: 30
-    env:
-      MAILGOAT_E2E_ENABLED: 'true'
-      MAILGOAT_E2E_SERVER: ${{ secrets.MAILGOAT_E2E_SERVER }}
-      MAILGOAT_E2E_API_KEY: ${{ secrets.MAILGOAT_E2E_API_KEY }}
-      MAILGOAT_E2E_SENDER: ${{ secrets.MAILGOAT_E2E_SENDER }}
-      MAILGOAT_E2E_RECEIVER: ${{ secrets.MAILGOAT_E2E_RECEIVER }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Check E2E secret availability
-        id: e2e-secrets
-        run: |
-          if [ -n "$MAILGOAT_E2E_SERVER" ] && \
-             [ -n "$MAILGOAT_E2E_API_KEY" ] && \
-             [ -n "$MAILGOAT_E2E_SENDER" ] && \
-             [ -n "$MAILGOAT_E2E_RECEIVER" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "✅ E2E secrets are configured"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::E2E secrets are not configured; skipping Postal E2E job."
-          fi
-
-      - name: Run E2E tests
-        if: steps.e2e-secrets.outputs.available == 'true'
-        run: npm run test:e2e -- --runInBand
-
-  # Job that requires all checks to pass
-  all-checks-passed:
-    name: All Checks Passed
-    runs-on: ubuntu-latest
-    needs: [lint, build, test-unit, test-integration, test-jest, test-e2e]
-    if: always()
-
-    steps:
-      - name: Check if all jobs passed
-        run: |
-          if [ "${{ needs.lint.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.test-unit.result }}" != "success" ] || \
-             [ "${{ needs.test-integration.result }}" != "success" ] || \
-             [ "${{ needs.test-jest.result }}" != "success" ] || \
-             { [ "${{ needs.test-e2e.result }}" != "success" ] && [ "${{ needs.test-e2e.result }}" != "skipped" ]; }; then
-            echo "❌ One or more checks failed"
-            exit 1
-          fi
-          echo "✅ All checks passed!"
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.test.yml down

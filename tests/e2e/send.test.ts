@@ -1,5 +1,12 @@
 import { describeE2E } from './setup';
-import { createE2EClient, firstToken, sendBasic, tinyPdfBase64, tinyPngBase64, uniqueSubject } from './helpers/client';
+import {
+  createE2EClient,
+  firstToken,
+  sendBasic,
+  tinyPdfBase64,
+  tinyPngBase64,
+  uniqueSubject,
+} from './helpers/client';
 import { getE2EEnv } from './helpers/env';
 import { cleanupMessages, registerCleanup } from './teardown';
 
@@ -46,7 +53,13 @@ describeE2E('E2E send flows', () => {
       to: [env.receiver],
       subject,
       plain_body: 'Attachment test',
-      attachments: [{ name: 'note.txt', content_type: 'text/plain', data: Buffer.from('hello').toString('base64') }],
+      attachments: [
+        {
+          name: 'note.txt',
+          content_type: 'text/plain',
+          data: Buffer.from('hello').toString('base64'),
+        },
+      ],
     });
 
     const token = firstToken(result);
