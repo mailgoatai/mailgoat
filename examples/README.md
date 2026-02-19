@@ -4,7 +4,7 @@ This directory contains practical examples showing how agents can automate workf
 
 ## New full examples
 
-### `simple-agent/` (Python)
+### `simple-python-agent/` (Python)
 
 - Polls inbox cache every 5 minutes (default)
 - Reads new messages and sends automated acknowledgments

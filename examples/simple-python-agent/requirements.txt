@@ -1,0 +1,2 @@
+# Standard-library only example. Keep file for consistency in automation workflows.
+# Install with: pip install -r requirements.txt
