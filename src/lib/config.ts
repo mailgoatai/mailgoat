@@ -10,6 +10,7 @@ export interface MailGoatConfig {
   server: string;
   fromAddress: string;
   fromName?: string;
+  telemetry?: boolean;
   // Backward compatibility for older config keys
   email?: string;
   api_key: string;
@@ -68,6 +69,8 @@ export class ConfigManager {
       fromAddress: parsed.fromAddress || parsed.email || '',
     };
 
+    this.applyEnvironmentOverrides(config);
+
     debugLogger.log(
       'config',
       `Parsed config - server: ${config.server}, fromAddress: ${config.fromAddress}`
@@ -81,6 +84,25 @@ export class ConfigManager {
     cacheManager.set(cacheKey, config, CacheTTL.MEDIUM);
 
     return config;
+  }
+
+  /**
+   * Apply MAILGOAT_* environment variable overrides for runtime use.
+   */
+  private applyEnvironmentOverrides(config: MailGoatConfig): void {
+    if (process.env.MAILGOAT_SERVER) {
+      config.server = process.env.MAILGOAT_SERVER;
+    }
+
+    if (process.env.MAILGOAT_FROM_ADDRESS) {
+      config.fromAddress = process.env.MAILGOAT_FROM_ADDRESS;
+    } else if (process.env.MAILGOAT_EMAIL) {
+      config.fromAddress = process.env.MAILGOAT_EMAIL;
+    }
+
+    if (process.env.MAILGOAT_API_KEY) {
+      config.api_key = process.env.MAILGOAT_API_KEY;
+    }
   }
 
   /**
