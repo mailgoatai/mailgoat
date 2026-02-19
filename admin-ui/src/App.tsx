@@ -53,6 +53,16 @@ type InboxMessagesPayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
+type AdminActionPayload = {
+  ok: boolean;
+  data?: {
+    deleted?: boolean;
+    deletedCount?: number;
+    requestedCount?: number;
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
 type InboxSummary = {
   id: string;
   address: string;
@@ -117,10 +127,16 @@ function EmailListItem({
   email,
   selected,
   onSelect,
+  multiSelectMode,
+  checked,
+  onToggleChecked,
 }: {
   email: AdminMessage;
   selected: boolean;
   onSelect: () => void;
+  multiSelectMode: boolean;
+  checked: boolean;
+  onToggleChecked: () => void;
 }) {
   return (
     <button
@@ -132,7 +148,22 @@ function EmailListItem({
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <p className="truncate text-sm font-medium text-slate-100">{email.from || '(unknown sender)'}</p>
-        <Badge variant={email.read ? 'outline' : 'default'}>{email.read ? 'Read' : 'Unread'}</Badge>
+        <div className="flex items-center gap-2">
+          {multiSelectMode ? (
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(event) => {
+                event.stopPropagation();
+                onToggleChecked();
+              }}
+              onClick={(event) => event.stopPropagation()}
+              className="h-4 w-4"
+              aria-label={`Select email ${email.subject || email.id}`}
+            />
+          ) : null}
+          <Badge variant={email.read ? 'outline' : 'default'}>{email.read ? 'Read' : 'Unread'}</Badge>
+        </div>
       </div>
       <p className="truncate text-sm text-slate-200">{email.subject || '(no subject)'}</p>
       <p className="mt-1 line-clamp-2 text-xs text-slate-400">{email.preview || '(no preview available)'}</p>
@@ -202,7 +233,18 @@ function EmailContent({ email }: { email: AdminMessage }) {
 function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void }) {
   const [emails, setEmails] = useState<AdminMessage[]>([]);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  function getDownloadFilename(dispositionHeader: string | null, fallback: string): string {
+    if (!dispositionHeader) return fallback;
+    const match = dispositionHeader.match(/filename=\"?([^\";]+)\"?/i);
+    return match?.[1] || fallback;
+  }
 
   useEffect(() => {
     let active = true;
@@ -219,6 +261,9 @@ function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void 
         if (!active) return;
         setEmails(payload.data.messages);
         setSelectedEmailId(payload.data.messages[0]?.id || null);
+        setSelectedEmailIds((current) =>
+          current.filter((id) => payload.data?.messages.some((message) => message.id === id))
+        );
       } catch (error) {
         if (!active) return;
         toast.error(error instanceof Error ? error.message : 'Failed to load inbox');
@@ -239,6 +284,121 @@ function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void 
 
   const selectedEmail = emails.find((email) => email.id === selectedEmailId) || null;
 
+  function toggleSelectedEmailId(emailId: string) {
+    setSelectedEmailIds((current) =>
+      current.includes(emailId) ? current.filter((id) => id !== emailId) : [...current, emailId]
+    );
+  }
+
+  async function refreshMessagesAfterMutation(preferredSelectedId?: string | null) {
+    const response = await fetch(`/api/admin/inbox/${encodeURIComponent(inboxId)}/messages`, {
+      credentials: 'include',
+    });
+    const payload = (await response.json()) as InboxMessagesPayload;
+    if (!response.ok || !payload.ok || !payload.data) {
+      throw new Error(payload.error?.message || 'Failed to refresh inbox messages');
+    }
+    const nextMessages = payload.data.messages;
+    setEmails(nextMessages);
+
+    const hasPreferred =
+      preferredSelectedId && nextMessages.some((message) => message.id === preferredSelectedId);
+    setSelectedEmailId(hasPreferred ? preferredSelectedId : nextMessages[0]?.id || null);
+    setSelectedEmailIds((current) =>
+      current.filter((id) => nextMessages.some((message) => message.id === id))
+    );
+  }
+
+  async function deleteSingleEmail() {
+    if (!selectedEmail) return;
+    const confirmed = window.confirm('Delete this email permanently?');
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/email/${encodeURIComponent(selectedEmail.id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const payload = (await response.json()) as AdminActionPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to delete email');
+      }
+      await refreshMessagesAfterMutation(null);
+      setSelectedEmailIds((current) => current.filter((id) => id !== selectedEmail.id));
+      toast.success('Email deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete email');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function bulkDeleteSelected() {
+    if (selectedEmailIds.length === 0) {
+      toast.error('Select at least one email');
+      return;
+    }
+    const confirmed = window.confirm(`Delete ${selectedEmailIds.length} selected email(s)?`);
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const response = await fetch('/api/admin/emails/bulk-delete', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailIds: selectedEmailIds }),
+      });
+      const payload = (await response.json()) as AdminActionPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to delete selected emails');
+      }
+      await refreshMessagesAfterMutation(selectedEmailId);
+      toast.success(`Deleted ${payload.data?.deletedCount ?? selectedEmailIds.length} email(s)`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete selected emails');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }
+
+  async function exportSelected(format: 'json' | 'csv') {
+    if (selectedEmailIds.length === 0) {
+      toast.error('Select at least one email');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/admin/emails/export', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailIds: selectedEmailIds, format }),
+      });
+      if (!response.ok) {
+        const maybeError = (await response.json()) as AdminActionPayload;
+        throw new Error(maybeError.error?.message || 'Failed to export emails');
+      }
+      const blob = await response.blob();
+      const fallbackName = `mailgoat-export.${format}`;
+      const filename = getDownloadFilename(response.headers.get('content-disposition'), fallbackName);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${selectedEmailIds.length} email(s) as ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export emails');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 md:px-8">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -247,13 +407,52 @@ function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void 
             <p className="text-xs uppercase tracking-wide text-slate-400">Inbox Detail</p>
             <h1 className="text-xl font-semibold text-slate-100">Inbox: {inboxId}</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={multiSelectMode ? 'default' : 'outline'}
+              onClick={() => {
+                setMultiSelectMode((current) => !current);
+                setSelectedEmailIds([]);
+              }}
+            >
+              {multiSelectMode ? 'Exit Select Mode' : 'Select Multiple'}
+            </Button>
             <Button variant="outline" onClick={onBack}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to dashboard
             </Button>
           </div>
         </header>
+
+        {multiSelectMode ? (
+          <Card>
+            <CardContent className="flex flex-wrap items-center gap-2 p-4">
+              <span className="text-sm text-slate-300">Selected: {selectedEmailIds.length}</span>
+              <Button
+                variant="danger"
+                onClick={() => void bulkDeleteSelected()}
+                disabled={isBulkDeleting || selectedEmailIds.length === 0}
+              >
+                {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void exportSelected('json')}
+                disabled={isExporting || selectedEmailIds.length === 0}
+              >
+                Export JSON
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void exportSelected('csv')}
+                disabled={isExporting || selectedEmailIds.length === 0}
+              >
+                Export CSV
+              </Button>
+              {isExporting ? <span className="text-sm text-slate-400">Preparing download...</span> : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <section className="grid h-[calc(100vh-11rem)] gap-4 md:grid-cols-3">
           <Card className="overflow-hidden md:col-span-1">
@@ -274,6 +473,9 @@ function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void 
                     email={email}
                     selected={selectedEmailId === email.id}
                     onSelect={() => setSelectedEmailId(email.id)}
+                    multiSelectMode={multiSelectMode}
+                    checked={selectedEmailIds.includes(email.id)}
+                    onToggleChecked={() => toggleSelectedEmailId(email.id)}
                   />
                 ))
               )}
@@ -282,9 +484,18 @@ function InboxDetail({ inboxId, onBack }: { inboxId: string; onBack: () => void 
 
           <Card className="overflow-hidden md:col-span-2">
             <CardHeader className="border-b border-border p-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Mail className="h-4 w-4 text-primary" /> Message Content
-              </CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Mail className="h-4 w-4 text-primary" /> Message Content
+                </CardTitle>
+                <Button
+                  variant="danger"
+                  onClick={() => void deleteSingleEmail()}
+                  disabled={!selectedEmail || isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Email'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="h-full overflow-y-auto p-4">
               {selectedEmail ? (

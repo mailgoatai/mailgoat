@@ -186,6 +186,23 @@ export class InboxStore {
     return result.changes > 0;
   }
 
+  deleteMessage(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM inbox_messages WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
+  deleteMessages(ids: string[]): number {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return 0;
+    }
+
+    const placeholders = ids.map(() => '?').join(', ');
+    const result = this.db
+      .prepare(`DELETE FROM inbox_messages WHERE id IN (${placeholders})`)
+      .run(...ids);
+    return Number(result.changes || 0);
+  }
+
   close(): void {
     this.db.close();
   }

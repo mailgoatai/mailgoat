@@ -103,6 +103,8 @@ type AdminInboxMessage = {
   attachments: Array<{ filename: string; size: number; contentType: string }>;
 };
 
+type AdminEmailExportFormat = 'json' | 'csv';
+
 type AdminInboxSummary = {
   id: string;
   address: string;
@@ -162,6 +164,37 @@ export function mapInboxMessageToAdminMessage(message: InboxMessage): AdminInbox
     },
     attachments: [],
   };
+}
+
+function normalizeEmailIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const unique = new Set<string>();
+  for (const item of raw) {
+    const value = String(item || '').trim();
+    if (value) {
+      unique.add(value);
+    }
+  }
+  return Array.from(unique);
+}
+
+function toCsv(messages: AdminInboxMessage[]): string {
+  const escapeValue = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+  const header = ['id', 'from', 'to', 'subject', 'date', 'read', 'preview'];
+  const rows = messages.map((message) => [
+    message.id,
+    message.from || '',
+    message.to.join(';'),
+    message.subject || '',
+    message.date || '',
+    String(message.read),
+    message.preview || '',
+  ]);
+  return [header, ...rows]
+    .map((row) => row.map((cell) => escapeValue(String(cell))).join(','))
+    .join('\n');
 }
 
 function inferNameFromAddress(address: string): string {
@@ -448,6 +481,137 @@ export function createAdminCommand(): Command {
                 error instanceof Error
                   ? error.message
                   : 'Failed to fetch inbox messages from local cache',
+            },
+          });
+        } finally {
+          store.close();
+        }
+      });
+
+      app.delete('/api/admin/email/:id', requireAuth, (req: Request, res: Response) => {
+        const id = String(req.params.id || '').trim();
+        if (!id) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_EMAIL_ID', message: 'Email id is required' },
+          });
+          return;
+        }
+
+        const store = new InboxStore();
+        try {
+          const deleted = store.deleteMessage(id);
+          if (!deleted) {
+            res.status(404).json({
+              ok: false,
+              error: { code: 'EMAIL_NOT_FOUND', message: 'Email not found' },
+            });
+            return;
+          }
+          res.json({ ok: true, data: { deleted: true, deletedCount: 1 } });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'EMAIL_DELETE_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to delete email',
+            },
+          });
+        } finally {
+          store.close();
+        }
+      });
+
+      app.post('/api/admin/emails/bulk-delete', requireAuth, (req: Request, res: Response) => {
+        const emailIds = normalizeEmailIds(req.body?.emailIds);
+        if (emailIds.length === 0) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_EMAIL_IDS', message: 'emailIds must contain at least one id' },
+          });
+          return;
+        }
+
+        const store = new InboxStore();
+        try {
+          const deletedCount = store.deleteMessages(emailIds);
+          res.json({
+            ok: true,
+            data: { deleted: true, deletedCount, requestedCount: emailIds.length },
+          });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'EMAIL_BULK_DELETE_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to delete selected emails',
+            },
+          });
+        } finally {
+          store.close();
+        }
+      });
+
+      app.post('/api/admin/emails/export', requireAuth, (req: Request, res: Response) => {
+        const emailIds = normalizeEmailIds(req.body?.emailIds);
+        const format = String(req.body?.format || 'json').toLowerCase() as AdminEmailExportFormat;
+        if (emailIds.length === 0) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_EMAIL_IDS', message: 'emailIds must contain at least one id' },
+          });
+          return;
+        }
+        if (format !== 'json' && format !== 'csv') {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_EXPORT_FORMAT', message: "format must be 'json' or 'csv'" },
+          });
+          return;
+        }
+
+        const store = new InboxStore();
+        try {
+          const selected = store
+            .listMessages({ limit: 10000 })
+            .filter((message) => emailIds.includes(message.id))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .map(mapInboxMessageToAdminMessage);
+
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          if (format === 'csv') {
+            const csv = toCsv(selected);
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader(
+              'Content-Disposition',
+              `attachment; filename="mailgoat-export-${timestamp}.csv"`
+            );
+            res.send(csv);
+            return;
+          }
+
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="mailgoat-export-${timestamp}.json"`
+          );
+          res.send(
+            JSON.stringify(
+              {
+                exportedAt: new Date().toISOString(),
+                count: selected.length,
+                messages: selected,
+              },
+              null,
+              2
+            )
+          );
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'EMAIL_EXPORT_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to export selected emails',
             },
           });
         } finally {
