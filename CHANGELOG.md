@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.8] - 2026-02-19
+
+### Fixed
+
+- CLI `--version` now correctly reports version from package.json instead of hardcoded value
+- Version is now dynamically read from package.json at runtime
+
 ## [1.1.7] - 2026-02-19
 
 ### Added
