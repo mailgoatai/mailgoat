@@ -324,6 +324,14 @@ function listInboxesFromLocalStore(): AdminInboxSummary[] {
   }
 }
 
+async function getInboxesForRealtimeEvents(): Promise<AdminInboxSummary[]> {
+  const fromPostal = await listInboxesFromPostalDb();
+  if (fromPostal.length > 0) {
+    return fromPostal;
+  }
+  return listInboxesFromLocalStore();
+}
+
 export function createAdminCommand(): Command {
   const cmd = new Command('admin').description('Manage admin panel with authentication');
 
@@ -617,6 +625,80 @@ export function createAdminCommand(): Command {
         } finally {
           store.close();
         }
+      });
+
+      app.get('/api/admin/events', requireAuth, (req: Request, res: Response) => {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders();
+
+        let closed = false;
+        let lastTotalMessages: number | null = null;
+
+        const sendEvent = (type: string, payload: Record<string, unknown>) => {
+          res.write(`event: ${type}\n`);
+          res.write(`data: ${JSON.stringify(payload)}\n\n`);
+        };
+
+        const sendHeartbeat = () => {
+          res.write(`event: heartbeat\n`);
+          res.write(`data: ${JSON.stringify({ checkedAt: new Date().toISOString() })}\n\n`);
+        };
+
+        const pollForNewEmails = async () => {
+          if (closed) return;
+
+          try {
+            const inboxes = await getInboxesForRealtimeEvents();
+            const totalMessages = inboxes.reduce(
+              (sum, inbox) => sum + Number(inbox.messageCount || 0),
+              0
+            );
+
+            if (lastTotalMessages === null) {
+              lastTotalMessages = totalMessages;
+              sendEvent('ready', {
+                type: 'ready',
+                checkedAt: new Date().toISOString(),
+                totalMessages,
+              });
+              return;
+            }
+
+            const delta = totalMessages - lastTotalMessages;
+            lastTotalMessages = totalMessages;
+
+            if (delta > 0) {
+              sendEvent('new_email', {
+                type: 'new_email',
+                count: delta,
+                totalMessages,
+                checkedAt: new Date().toISOString(),
+              });
+            } else {
+              sendHeartbeat();
+            }
+          } catch (error) {
+            sendEvent('error', {
+              type: 'error',
+              message:
+                error instanceof Error ? error.message : 'Failed to poll inboxes for new emails',
+              checkedAt: new Date().toISOString(),
+            });
+          }
+        };
+
+        const interval = setInterval(() => {
+          void pollForNewEmails();
+        }, 5000);
+
+        req.on('close', () => {
+          closed = true;
+          clearInterval(interval);
+          res.end();
+        });
       });
 
       app.use('/assets', express.static(path.join(distPath, 'assets')));

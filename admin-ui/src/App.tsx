@@ -11,6 +11,9 @@ import {
   Mail,
   Inbox,
   Paperclip,
+  Bell,
+  Volume2,
+  Monitor,
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
@@ -79,6 +82,18 @@ type InboxesPayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
+type AdminRealtimeEvent = {
+  type: 'new_email' | 'ready' | 'error' | 'heartbeat';
+  count?: number;
+  totalMessages?: number;
+  checkedAt?: string;
+  message?: string;
+};
+
+const ADMIN_NOTIFICATION_PREFS_KEY = 'mailgoat.admin.notifications.enabled';
+const ADMIN_SOUND_PREFS_KEY = 'mailgoat.admin.notifications.sound';
+const ADMIN_DESKTOP_PREFS_KEY = 'mailgoat.admin.notifications.desktop';
+
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -97,6 +112,38 @@ function formatFileSize(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function loadBooleanPreference(key: string, fallbackValue: boolean): boolean {
+  const raw = window.localStorage.getItem(key);
+  if (raw === null) {
+    return fallbackValue;
+  }
+  return raw === '1';
+}
+
+function saveBooleanPreference(key: string, value: boolean): void {
+  window.localStorage.setItem(key, value ? '1' : '0');
+}
+
+function playNotificationTone(): void {
+  try {
+    const audioContext = new AudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gain.gain.value = 0.05;
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    setTimeout(() => {
+      oscillator.stop();
+      void audioContext.close();
+    }, 160);
+  } catch {
+    // Audio is optional; ignore failures.
+  }
 }
 
 function parseInboxIdFromPath(pathname: string): string | null {
@@ -162,7 +209,9 @@ function EmailListItem({
               aria-label={`Select email ${email.subject || email.id}`}
             />
           ) : null}
-          <Badge variant={email.read ? 'outline' : 'default'}>{email.read ? 'Read' : 'Unread'}</Badge>
+          <Badge className={email.read ? 'border border-border bg-transparent' : ''}>
+            {email.read ? 'Read' : 'Unread'}
+          </Badge>
         </div>
       </div>
       <p className="truncate text-sm text-slate-200">{email.subject || '(no subject)'}</p>
@@ -518,11 +567,23 @@ function Dashboard({
   onLogout,
   onRefreshStatus,
   onOpenInboxes,
+  notificationsEnabled,
+  soundEnabled,
+  desktopEnabled,
+  onNotificationsEnabledChange,
+  onSoundEnabledChange,
+  onDesktopEnabledChange,
 }: {
-  status: StatusPayload['data'];
+  status: NonNullable<StatusPayload['data']>;
   onLogout: () => void;
   onRefreshStatus: () => Promise<void>;
   onOpenInboxes: () => void;
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+  desktopEnabled: boolean;
+  onNotificationsEnabledChange: (enabled: boolean) => void;
+  onSoundEnabledChange: (enabled: boolean) => void;
+  onDesktopEnabledChange: (enabled: boolean) => void;
 }) {
   const statusCards = useMemo(
     () => [
@@ -595,12 +656,45 @@ function Dashboard({
 
           <Card>
             <CardHeader>
-              <CardTitle>Operational Status</CardTitle>
-              <CardDescription>Current API and service heartbeat</CardDescription>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>Real-time alerts when new emails arrive</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>Checked at: {new Date(status.checkedAt).toLocaleString()}</p>
-              <p>Dashboard connectivity: Active</p>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                  Enable notifications
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(event) => onNotificationsEnabledChange(event.target.checked)}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-primary" />
+                  Enable sound
+                </span>
+                <input
+                  type="checkbox"
+                  checked={soundEnabled}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => onSoundEnabledChange(event.target.checked)}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4 text-primary" />
+                  Enable desktop alerts
+                </span>
+                <input
+                  type="checkbox"
+                  checked={desktopEnabled}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => onDesktopEnabledChange(event.target.checked)}
+                />
+              </label>
               <Button variant="outline" onClick={() => void onRefreshStatus()}>
                 Refresh Status
               </Button>
@@ -630,9 +724,11 @@ function Dashboard({
 function InboxesPage({
   onBack,
   onOpenInbox,
+  refreshSignal,
 }: {
   onBack: () => void;
   onOpenInbox: (inboxId: string) => void;
+  refreshSignal: number;
 }) {
   const [inboxes, setInboxes] = useState<InboxSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -662,7 +758,7 @@ function InboxesPage({
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshSignal]);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8">
@@ -719,12 +815,14 @@ function AdminLayout({
   onOpenDashboard,
   onOpenInboxes,
   onLogout,
+  inboxNotificationCount,
   children,
 }: {
   active: 'dashboard' | 'inboxes' | 'detail';
   onOpenDashboard: () => void;
   onOpenInboxes: () => void;
   onLogout: () => void;
+  inboxNotificationCount: number;
   children: ReactNode;
 }) {
   return (
@@ -743,10 +841,13 @@ function AdminLayout({
           </Button>
           <Button
             variant={active === 'inboxes' || active === 'detail' ? 'default' : 'outline'}
-            className="w-full justify-start"
+            className="w-full justify-between"
             onClick={onOpenInboxes}
           >
-            Inboxes
+            <span>Inboxes</span>
+            {inboxNotificationCount > 0 ? (
+              <Badge className="ml-2">{inboxNotificationCount}</Badge>
+            ) : null}
           </Button>
         </nav>
         <div className="mt-4">
@@ -769,6 +870,17 @@ export function App() {
   const [inboxId, setInboxId] = useState<string | null>(() => parseInboxIdFromPath(window.location.pathname));
   const [isInboxesView, setIsInboxesView] = useState<boolean>(() =>
     isInboxesPath(window.location.pathname)
+  );
+  const [inboxRefreshSignal, setInboxRefreshSignal] = useState(0);
+  const [inboxNotificationCount, setInboxNotificationCount] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_NOTIFICATION_PREFS_KEY, true)
+  );
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_SOUND_PREFS_KEY, false)
+  );
+  const [desktopEnabled, setDesktopEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_DESKTOP_PREFS_KEY, false)
   );
 
   async function fetchStatus(silent = false) {
@@ -800,12 +912,82 @@ export function App() {
   useEffect(() => {
     void fetchStatus(true);
     const onPopState = () => {
-      setInboxId(parseInboxIdFromPath(window.location.pathname));
-      setIsInboxesView(isInboxesPath(window.location.pathname));
+      const nextInboxId = parseInboxIdFromPath(window.location.pathname);
+      const nextInboxesView = isInboxesPath(window.location.pathname);
+      setInboxId(nextInboxId);
+      setIsInboxesView(nextInboxesView);
+      if (nextInboxId || nextInboxesView) {
+        setInboxNotificationCount(0);
+      }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_NOTIFICATION_PREFS_KEY, notificationsEnabled);
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_SOUND_PREFS_KEY, soundEnabled);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_DESKTOP_PREFS_KEY, desktopEnabled);
+  }, [desktopEnabled]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !notificationsEnabled) {
+      return;
+    }
+
+    const eventSource = new EventSource('/api/admin/events');
+    const handleEvent = (event: MessageEvent) => {
+      try {
+        const payload = JSON.parse(String(event.data || '{}')) as AdminRealtimeEvent;
+        if (payload.type !== 'new_email') {
+          return;
+        }
+        const count = Number(payload.count || 0);
+        if (count < 1) {
+          return;
+        }
+
+        setInboxNotificationCount((current) => current + count);
+        setInboxRefreshSignal((current) => current + 1);
+        toast.success(`${count} new email${count > 1 ? 's' : ''} received`);
+
+        if (soundEnabled) {
+          playNotificationTone();
+        }
+
+        if (
+          desktopEnabled &&
+          typeof window !== 'undefined' &&
+          'Notification' in window &&
+          Notification.permission === 'granted'
+        ) {
+          new Notification('MailGoat Admin', {
+            body: `${count} new email${count > 1 ? 's' : ''} received`,
+          });
+        }
+      } catch {
+        // Ignore malformed payloads.
+      }
+    };
+
+    const handleError = () => {
+      eventSource.close();
+    };
+
+    eventSource.addEventListener('new_email', handleEvent as EventListener);
+    eventSource.onerror = handleError;
+
+    return () => {
+      eventSource.removeEventListener('new_email', handleEvent as EventListener);
+      eventSource.close();
+    };
+  }, [isAuthenticated, notificationsEnabled, soundEnabled, desktopEnabled]);
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
@@ -841,6 +1023,7 @@ export function App() {
       setStatus(null);
       setInboxId(null);
       setIsInboxesView(false);
+      setInboxNotificationCount(0);
       goToAdminHome();
       toast.success('Logged out');
     } catch (error) {
@@ -864,6 +1047,7 @@ export function App() {
     goToInboxesRoute();
     setInboxId(null);
     setIsInboxesView(true);
+    setInboxNotificationCount(0);
   }
 
   function handleBackFromInboxes() {
@@ -939,6 +1123,7 @@ export function App() {
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
         onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
       >
         <InboxDetail inboxId={inboxId} onBack={handleBackFromInbox} />
       </AdminLayout>
@@ -952,8 +1137,13 @@ export function App() {
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
         onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
       >
-        <InboxesPage onBack={handleBackFromInboxes} onOpenInbox={handleOpenInbox} />
+        <InboxesPage
+          onBack={handleBackFromInboxes}
+          onOpenInbox={handleOpenInbox}
+          refreshSignal={inboxRefreshSignal}
+        />
       </AdminLayout>
     );
   }
@@ -964,12 +1154,44 @@ export function App() {
       onOpenDashboard={handleBackFromInboxes}
       onOpenInboxes={handleOpenInboxes}
       onLogout={handleLogout}
+      inboxNotificationCount={inboxNotificationCount}
     >
       <Dashboard
         status={status}
         onLogout={handleLogout}
         onRefreshStatus={async () => fetchStatus()}
         onOpenInboxes={handleOpenInboxes}
+        notificationsEnabled={notificationsEnabled}
+        soundEnabled={soundEnabled}
+        desktopEnabled={desktopEnabled}
+        onNotificationsEnabledChange={(enabled) => setNotificationsEnabled(enabled)}
+        onSoundEnabledChange={(enabled) => setSoundEnabled(enabled)}
+        onDesktopEnabledChange={async (enabled) => {
+          if (
+            enabled &&
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'default'
+          ) {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+              setDesktopEnabled(false);
+              toast.error('Desktop notification permission was denied.');
+              return;
+            }
+          }
+          if (
+            enabled &&
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'denied'
+          ) {
+            toast.error('Desktop notifications are blocked in your browser settings.');
+            setDesktopEnabled(false);
+            return;
+          }
+          setDesktopEnabled(enabled);
+        }}
       />
     </AdminLayout>
   );

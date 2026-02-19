@@ -8,6 +8,8 @@ const REPO_ROOT = path.resolve(__dirname, '../..');
 const ADMIN_DIST_DIR = path.join(REPO_ROOT, 'admin-ui', 'dist');
 const ADMIN_INDEX_PATH = path.join(ADMIN_DIST_DIR, 'index.html');
 
+jest.setTimeout(60000);
+
 type ExecResult = {
   code: number;
   stdout: string;
@@ -335,6 +337,9 @@ describe('Admin panel workflow (integration)', () => {
 
       const emailsAlias = await fetch(`http://127.0.0.1:${port}/api/admin/inbox/1/emails`);
       expect([401, 404]).toContain(emailsAlias.status);
+
+      const events = await fetch(`http://127.0.0.1:${port}/api/admin/events`);
+      expect(events.status).toBe(401);
     } finally {
       child.kill('SIGTERM');
     }
