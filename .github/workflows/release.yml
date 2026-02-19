@@ -135,10 +135,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ env.NODE_VERSION }}
+      - name: Use Node.js 24 (npm >=11.5.1 required for trusted publishing)
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -147,27 +147,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Check npm token
-        id: npm-token
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -n "$NPM_TOKEN" ]; then
-            echo "mode=token" >> "$GITHUB_OUTPUT"
-            echo "✅ Publishing with NPM_TOKEN"
-          else
-            echo "mode=trusted" >> "$GITHUB_OUTPUT"
-            echo "ℹ️ NPM_TOKEN missing, attempting trusted publishing via OIDC."
-          fi
+      - name: Show npm version
+        run: npm --version
 
-      - name: Publish to npm with token
-        if: steps.npm-token.outputs.mode == 'token'
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish to npm with trusted publishing
-        if: steps.npm-token.outputs.mode == 'trusted'
+      - name: Publish to npm with trusted publishing (OIDC, no token)
         run: npm publish --provenance --access public
 
   announce-release:
