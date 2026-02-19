@@ -80,7 +80,7 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
-    "@eslint/js": "^9.15.0",
+    "@eslint/js": "^10.0.1",
     "@jest/globals": "^30.2.0",
     "@types/benchmark": "^2.1.5",
     "@types/better-sqlite3": "^7.6.13",
