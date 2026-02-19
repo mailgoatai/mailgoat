@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Growth Analytics Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 Growth Analytics Dashboard</h1>
+      <p class="subtitle">Real-time metrics for package growth and community engagement</p>
+      <p class="last-updated">Last updated: <span id="lastUpdated">Loading...</span></p>
+    </header>
+
+    <!-- Key Metrics Cards -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon">📦</div>
+        <div class="metric-value" id="npmWeekly">-</div>
+        <div class="metric-label">npm Downloads (Week)</div>
+        <div class="metric-change" id="npmChange">-</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">⭐</div>
+        <div class="metric-value" id="githubStars">-</div>
+        <div class="metric-label">GitHub Stars</div>
+        <div class="metric-change" id="starsChange">-</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">🍴</div>
+        <div class="metric-value" id="githubForks">-</div>
+        <div class="metric-label">Forks</div>
+        <div class="metric-change" id="forksChange">-</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon">👥</div>
+        <div class="metric-value" id="contributors">-</div>
+        <div class="metric-label">Contributors</div>
+        <div class="metric-change" id="contributorsChange">-</div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-section">
+      <div class="chart-container">
+        <h2>📈 npm Downloads Trend (30 Days)</h2>
+        <canvas id="npmChart"></canvas>
+      </div>
+
+      <div class="chart-container">
+        <h2>⭐ GitHub Stars Growth (30 Days)</h2>
+        <canvas id="starsChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Additional Info -->
+    <section class="info-section">
+      <div class="info-card">
+        <h3>📋 Repository Status</h3>
+        <ul id="repoStatus">
+          <li>Loading...</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h3>🏆 Top Contributors</h3>
+        <ul id="topContributors">
+          <li>Loading...</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      <p>Auto-updates daily via GitHub Actions</p>
+      <p><a href="https://github.com/mailgoat/mailgoat" target="_blank">View Repository</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
