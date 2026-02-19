@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { timingSafeEqual } from 'crypto';
 import chalk from 'chalk';
+import { InboxStore, type InboxMessage } from '../lib/inbox-store';
 
 declare module 'express-session' {
   interface SessionData {
@@ -81,6 +82,69 @@ function buildStatusPayload() {
       maxAttemptsPerHour: 5,
       windowSeconds: 3600,
     },
+  };
+}
+
+type AdminInboxMessage = {
+  id: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  date: string;
+  read: boolean;
+  preview: string;
+  body: {
+    text: string;
+    html: string | null;
+  };
+  attachments: Array<{ filename: string; size: number; contentType: string }>;
+};
+
+export function normalizeInboxId(rawInboxId: string): string {
+  return decodeURIComponent(rawInboxId || '')
+    .trim()
+    .toLowerCase();
+}
+
+export function matchesInboxIdentifier(message: InboxMessage, inboxId: string): boolean {
+  const normalizedInboxId = normalizeInboxId(inboxId);
+  if (!normalizedInboxId) {
+    return false;
+  }
+
+  const localPart = normalizedInboxId.split('@')[0];
+  return message.to.some((recipient) => {
+    const normalizedRecipient = String(recipient || '')
+      .trim()
+      .toLowerCase();
+    if (normalizedRecipient === normalizedInboxId) {
+      return true;
+    }
+    if (!normalizedRecipient.includes('@') && normalizedRecipient === localPart) {
+      return true;
+    }
+    return normalizedRecipient.split('@')[0] === localPart;
+  });
+}
+
+export function mapInboxMessageToAdminMessage(message: InboxMessage): AdminInboxMessage {
+  return {
+    id: message.id,
+    from: message.from,
+    to: message.to,
+    cc: [],
+    bcc: [],
+    subject: message.subject,
+    date: message.timestamp,
+    read: message.read,
+    preview: message.snippet || '',
+    body: {
+      text: message.snippet || '',
+      html: null,
+    },
+    attachments: [],
   };
 }
 
@@ -190,6 +254,41 @@ export function createAdminCommand(): Command {
 
       app.get('/api/admin/status', requireAuth, (_req: Request, res: Response) => {
         res.json({ ok: true, data: buildStatusPayload() });
+      });
+
+      app.get('/api/admin/inbox/:id/messages', requireAuth, (req: Request, res: Response) => {
+        const inboxId = normalizeInboxId(String(req.params.id || ''));
+        if (!inboxId) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_INBOX_ID', message: 'Inbox id is required' },
+          });
+          return;
+        }
+
+        const store = new InboxStore();
+        try {
+          const messages = store
+            .listMessages({ limit: 500 })
+            .filter((message) => matchesInboxIdentifier(message, inboxId))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .map(mapInboxMessageToAdminMessage);
+
+          res.json({ ok: true, data: { inboxId, messages } });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'INBOX_MESSAGES_FETCH_FAILED',
+              message:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to fetch inbox messages from local cache',
+            },
+          });
+        } finally {
+          store.close();
+        }
       });
 
       app.use('/assets', express.static(path.join(distPath, 'assets')));
