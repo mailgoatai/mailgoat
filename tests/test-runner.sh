@@ -29,6 +29,7 @@ DRY_RUN=false
 FILTER_PATTERN=""
 TEST_SUITE=""
 TEST_ID=""
+CAN_SEND_LIVE=""
 
 # Test results
 TOTAL_TESTS=0
@@ -257,12 +258,40 @@ measure_time_ms() {
   echo $((end_ms - start_ms))
 }
 
+can_send_live() {
+  if [ "$TEST_MODE" = "mock" ]; then
+    return 0
+  fi
+
+  if [ -n "$CAN_SEND_LIVE" ]; then
+    [ "$CAN_SEND_LIVE" = "true" ]
+    return
+  fi
+
+  local health_json
+  local health_exit=0
+  health_json=$(mailgoat_exec "health --json" 15) || health_exit=$?
+
+  if [ $health_exit -eq 0 ] && echo "$health_json" | jq -e '.checks.api.ok == true' > /dev/null 2>&1; then
+    CAN_SEND_LIVE="true"
+    return 0
+  fi
+
+  CAN_SEND_LIVE="false"
+  return 1
+}
+
 # ============================================================================
 # Send Tests (T001-T020)
 # ============================================================================
 
 test_T001_send_simple() {
   test_start "T001" "Send simple email"
+
+  if ! can_send_live; then
+    test_skip "T001" "Postal API unavailable in this environment"
+    return
+  fi
   
   local start=$(now_ms)
   local output
@@ -286,12 +315,17 @@ test_T001_send_simple() {
 
 test_T002_send_multiple_recipients() {
   test_start "T002" "Send to multiple recipients"
+
+  if ! can_send_live; then
+    test_skip "T002" "Postal API unavailable in this environment"
+    return
+  fi
   
   local start=$(now_ms)
   local output
   local exit_code=0
   
-  output=$(mailgoat_exec "send --to test1@example.com,test2@example.com --subject 'Test' --body 'Test' --json") || exit_code=$?
+  output=$(mailgoat_exec "send --to test1@example.com test2@example.com --subject 'Test' --body 'Test' --json") || exit_code=$?
   
   local end=$(now_ms)
   local duration=$(echo "scale=1; ($end - $start) / 1000" | bc)
@@ -305,6 +339,11 @@ test_T002_send_multiple_recipients() {
 
 test_T003_send_with_cc_bcc() {
   test_start "T003" "Send with CC/BCC"
+
+  if ! can_send_live; then
+    test_skip "T003" "Postal API unavailable in this environment"
+    return
+  fi
   
   local start=$(now_ms)
   local output

@@ -38,3 +38,8 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 ---
 
 Add whatever helps you do your job. This is your cheat sheet.
+
+## Delivery Guardrail
+
+- Never mark any task `done` unless related changes are committed and pushed.
+- Treat local-only changes as incomplete work.
