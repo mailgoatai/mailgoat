@@ -133,10 +133,9 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -148,7 +147,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish to npm (with provenance)
+      - name: Publish to npm
         run: npm publish --provenance --access public
 
   announce-release:
