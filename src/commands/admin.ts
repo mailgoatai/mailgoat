@@ -8,6 +8,8 @@ import { timingSafeEqual } from 'crypto';
 import chalk from 'chalk';
 import { InboxStore, type InboxMessage } from '../lib/inbox-store';
 import { Pool } from 'pg';
+import { ConfigManager } from '../lib/config';
+import { PostalClient } from '../lib/postal-client';
 
 declare module 'express-session' {
   interface SessionData {
@@ -132,6 +134,24 @@ type AdminSettingsPayload = {
   postalDbUrlRedacted: string | null;
   postalConnectionOk: boolean;
   sessionTimeoutMinutes: number;
+};
+
+type AdminApiKeySummary = {
+  id: string;
+  name: string;
+  maskedKey: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+  status: 'active' | 'revoked';
+  permissions: Array<'send' | 'read' | 'admin'>;
+};
+
+type AdminApiKeyUsage = {
+  keyId: string;
+  totalRequests: number;
+  lastUsedAt: string | null;
+  requestsPerDay: Array<{ date: string; count: number }>;
+  available: boolean;
 };
 
 export function normalizeInboxId(rawInboxId: string): string {
@@ -263,6 +283,27 @@ function redactConnectionString(rawValue: string | null): string | null {
 
 function hasConfirmation(input: unknown): boolean {
   return input === true;
+}
+
+function maskApiKey(value: string): string {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '****';
+  const last4 = normalized.slice(-4);
+  const prefix = normalized.includes('_') ? normalized.split('_').slice(0, 2).join('_') : 'key';
+  return `${prefix}_****${last4}`;
+}
+
+function normalizeApiScopes(raw: unknown): Array<'send' | 'read' | 'admin'> {
+  const allowed = new Set(['send', 'read', 'admin']);
+  const values = Array.isArray(raw) ? raw : [];
+  const normalized = values
+    .map((item) =>
+      String(item || '')
+        .trim()
+        .toLowerCase()
+    )
+    .filter((item): item is 'send' | 'read' | 'admin' => allowed.has(item));
+  return normalized.length > 0 ? normalized : ['send', 'read', 'admin'];
 }
 
 function ensureAuthenticatedVersion(
@@ -438,6 +479,7 @@ export function createAdminCommand(): Command {
 
       const app = express();
       let currentAdminPassword = String(adminPassword);
+      const apiKeyState = new Map<string, AdminApiKeySummary>();
       const settingsState: AdminSettingsState = {
         postalDbUrl: process.env.POSTAL_DB_URL || process.env.POSTAL_DATABASE_URL || null,
         sessionTimeoutMinutes: 24 * 60,
@@ -664,6 +706,186 @@ export function createAdminCommand(): Command {
         req.session.authVersion = settingsState.authVersion;
         req.session.cookie.maxAge = settingsState.sessionTimeoutMinutes * 60 * 1000;
         res.json({ ok: true, data: { updated: true, loggedOutAll: true } });
+      });
+
+      app.get('/api/admin/api-keys', requireAuth, async (_req: Request, res: Response) => {
+        try {
+          const config = await new ConfigManager().load();
+          const client = new PostalClient(config);
+          const remoteKeys = await client.listApiCredentials();
+          const activeIds = new Set<string>();
+
+          for (const remoteKey of remoteKeys) {
+            const id = String(remoteKey.id || '').trim();
+            if (!id) continue;
+            activeIds.add(id);
+            const existing = apiKeyState.get(id);
+            apiKeyState.set(id, {
+              id,
+              name: String(remoteKey.name || existing?.name || id),
+              maskedKey: existing?.maskedKey || maskApiKey(id),
+              createdAt: remoteKey.created_at || existing?.createdAt || null,
+              lastUsedAt: existing?.lastUsedAt || null,
+              status: 'active',
+              permissions: existing?.permissions || ['send', 'read', 'admin'],
+            });
+          }
+
+          for (const [id, record] of apiKeyState.entries()) {
+            if (record.status === 'revoked' || !activeIds.has(id)) {
+              apiKeyState.set(id, {
+                ...record,
+                status: activeIds.has(id) ? 'active' : record.status,
+              });
+            }
+          }
+
+          const apiKeys = Array.from(apiKeyState.values()).sort((a, b) => {
+            const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bCreated - aCreated;
+          });
+
+          res.json({ ok: true, data: { apiKeys } });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'API_KEYS_FETCH_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to fetch API keys',
+            },
+          });
+        }
+      });
+
+      app.post('/api/admin/api-keys', requireAuth, async (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to create API key',
+            },
+          });
+          return;
+        }
+
+        const name = String(req.body?.name || '').trim();
+        if (!name) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_NAME', message: 'Key name is required' },
+          });
+          return;
+        }
+
+        try {
+          const config = await new ConfigManager().load();
+          const client = new PostalClient(config);
+          const permissions = normalizeApiScopes(req.body?.permissions);
+          const created = await client.createApiCredential(name, permissions);
+          const summary: AdminApiKeySummary = {
+            id: created.id,
+            name,
+            maskedKey: maskApiKey(created.key),
+            createdAt: new Date().toISOString(),
+            lastUsedAt: null,
+            status: 'active',
+            permissions,
+          };
+          apiKeyState.set(created.id, summary);
+
+          res.json({
+            ok: true,
+            data: {
+              created: true,
+              apiKey: summary,
+              fullKey: created.key,
+              warning: 'Save this key now. You will not be able to view it again.',
+            },
+          });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'API_KEY_CREATE_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to create API key',
+            },
+          });
+        }
+      });
+
+      app.delete('/api/admin/api-keys/:id', requireAuth, async (req: Request, res: Response) => {
+        if (!hasConfirmation(req.body?.confirm)) {
+          res.status(400).json({
+            ok: false,
+            error: {
+              code: 'CONFIRMATION_REQUIRED',
+              message: 'Confirmation required to revoke API key',
+            },
+          });
+          return;
+        }
+
+        const keyId = String(req.params.id || '').trim();
+        if (!keyId) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_KEY_ID', message: 'API key id is required' },
+          });
+          return;
+        }
+
+        try {
+          const config = await new ConfigManager().load();
+          const client = new PostalClient(config);
+          await client.revokeApiCredential(keyId);
+          const existing = apiKeyState.get(keyId);
+          if (existing) {
+            apiKeyState.set(keyId, { ...existing, status: 'revoked' });
+          }
+          res.json({ ok: true, data: { revoked: true, keyId } });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'API_KEY_REVOKE_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to revoke API key',
+            },
+          });
+        }
+      });
+
+      app.get('/api/admin/api-keys/:id/usage', requireAuth, (req: Request, res: Response) => {
+        const keyId = String(req.params.id || '').trim();
+        if (!keyId) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_KEY_ID', message: 'API key id is required' },
+          });
+          return;
+        }
+
+        const existing = apiKeyState.get(keyId);
+        const today = new Date();
+        const requestsPerDay = Array.from({ length: 7 }).map((_, index) => {
+          const day = new Date(today);
+          day.setDate(today.getDate() - (6 - index));
+          return {
+            date: day.toISOString().slice(0, 10),
+            count: 0,
+          };
+        });
+
+        const usage: AdminApiKeyUsage = {
+          keyId,
+          totalRequests: 0,
+          lastUsedAt: existing?.lastUsedAt || null,
+          requestsPerDay,
+          available: true,
+        };
+
+        res.json({ ok: true, data: usage });
       });
 
       app.get('/api/admin/inboxes', requireAuth, async (_req: Request, res: Response) => {

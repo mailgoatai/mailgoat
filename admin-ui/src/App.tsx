@@ -102,6 +102,41 @@ type SettingsPayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
+type ApiKeyRecord = {
+  id: string;
+  name: string;
+  maskedKey: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+  status: 'active' | 'revoked';
+  permissions: Array<'send' | 'read' | 'admin'>;
+};
+
+type ApiKeysPayload = {
+  ok: boolean;
+  data?: {
+    apiKeys: ApiKeyRecord[];
+    apiKey?: ApiKeyRecord;
+    fullKey?: string;
+    warning?: string;
+    revoked?: boolean;
+    keyId?: string;
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
+type ApiKeyUsagePayload = {
+  ok: boolean;
+  data?: {
+    keyId: string;
+    totalRequests: number;
+    lastUsedAt: string | null;
+    requestsPerDay: Array<{ date: string; count: number }>;
+    available: boolean;
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
 const ADMIN_NOTIFICATION_PREFS_KEY = 'mailgoat.admin.notifications.enabled';
 const ADMIN_SOUND_PREFS_KEY = 'mailgoat.admin.notifications.sound';
 const ADMIN_DESKTOP_PREFS_KEY = 'mailgoat.admin.notifications.desktop';
@@ -854,6 +889,18 @@ function SettingsPage() {
   const [passwordConfirm, setPasswordConfirm] = useState(false);
   const [sessionConfirm, setSessionConfirm] = useState(false);
   const [logoutAllConfirm, setLogoutAllConfirm] = useState(false);
+  const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
+  const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [newApiPermissions, setNewApiPermissions] = useState<Array<'send' | 'read' | 'admin'>>([
+    'send',
+    'read',
+  ]);
+  const [createApiConfirm, setCreateApiConfirm] = useState(false);
+  const [createdFullKey, setCreatedFullKey] = useState<string | null>(null);
+  const [revokeConfirmById, setRevokeConfirmById] = useState<Record<string, boolean>>({});
+  const [selectedUsageKeyId, setSelectedUsageKeyId] = useState<string | null>(null);
+  const [usageDetails, setUsageDetails] = useState<ApiKeyUsagePayload['data'] | null>(null);
+  const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
 
   async function loadSettings() {
     setIsLoading(true);
@@ -877,6 +924,117 @@ function SettingsPage() {
   useEffect(() => {
     void loadSettings();
   }, []);
+
+  async function loadApiKeys() {
+    setIsApiKeysLoading(true);
+    try {
+      const response = await fetch('/api/admin/api-keys', { credentials: 'include' });
+      const payload = (await response.json()) as ApiKeysPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load API keys');
+      }
+      setApiKeys(payload.data.apiKeys);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load API keys');
+    } finally {
+      setIsApiKeysLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadApiKeys();
+  }, []);
+
+  async function createApiKey() {
+    if (!createApiConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/api-keys', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newApiKeyName,
+          permissions: newApiPermissions,
+          confirm: true,
+        }),
+      });
+      const payload = (await response.json()) as ApiKeysPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to create API key');
+      }
+      setCreatedFullKey(payload.data.fullKey || null);
+      setNewApiKeyName('');
+      setNewApiPermissions(['send', 'read']);
+      setCreateApiConfirm(false);
+      toast.success('API key created');
+      await loadApiKeys();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create API key');
+    }
+  }
+
+  async function revokeApiKey(id: string) {
+    if (!revokeConfirmById[id]) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/admin/api-keys/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const payload = (await response.json()) as ApiKeysPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to revoke API key');
+      }
+      setRevokeConfirmById((current) => ({ ...current, [id]: false }));
+      toast.success('API key revoked');
+      await loadApiKeys();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke API key');
+    }
+  }
+
+  async function loadUsageForKey(id: string) {
+    try {
+      const response = await fetch(`/api/admin/api-keys/${encodeURIComponent(id)}/usage`, {
+        credentials: 'include',
+      });
+      const payload = (await response.json()) as ApiKeyUsagePayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load usage');
+      }
+      setSelectedUsageKeyId(id);
+      setUsageDetails(payload.data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load usage');
+    }
+  }
+
+  async function copyCreatedKey() {
+    if (!createdFullKey) return;
+    try {
+      await navigator.clipboard.writeText(createdFullKey);
+      toast.success('API key copied to clipboard');
+    } catch {
+      toast.error('Failed to copy key');
+    }
+  }
+
+  function togglePermission(scope: 'send' | 'read' | 'admin') {
+    setNewApiPermissions((current) => {
+      if (current.includes(scope)) {
+        const next = current.filter((item) => item !== scope);
+        return next.length > 0 ? next : current;
+      }
+      return [...current, scope];
+    });
+  }
 
   async function savePostalSettings() {
     if (!postalConfirm) {
@@ -1092,6 +1250,125 @@ function SettingsPage() {
             <Button variant="danger" onClick={() => void forceLogoutAll()}>
               Force Logout All Sessions
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>API Keys</CardTitle>
+            <CardDescription>Manage Postal API keys used by agents and automation.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <p className="text-sm font-medium text-slate-200">Create API Key</p>
+              <Input
+                value={newApiKeyName}
+                onChange={(event) => setNewApiKeyName(event.target.value)}
+                placeholder="Key name (e.g. automation-prod)"
+              />
+              <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+                {(['send', 'read', 'admin'] as const).map((scope) => (
+                  <label key={scope} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newApiPermissions.includes(scope)}
+                      onChange={() => togglePermission(scope)}
+                    />
+                    {scope}
+                  </label>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={createApiConfirm}
+                  onChange={(event) => setCreateApiConfirm(event.target.checked)}
+                />
+                I confirm I want to create this API key.
+              </label>
+              <Button onClick={() => void createApiKey()}>Create API Key</Button>
+            </div>
+
+            {createdFullKey ? (
+              <div className="space-y-2 rounded-md border border-amber-600/40 bg-amber-950/20 p-3">
+                <p className="text-sm font-semibold text-amber-300">Save this key now, you will not see it again.</p>
+                <pre className="overflow-x-auto whitespace-pre-wrap break-all text-xs text-slate-100">
+                  {createdFullKey}
+                </pre>
+                <Button variant="outline" onClick={() => void copyCreatedKey()}>
+                  Copy to clipboard
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-200">Existing Keys</p>
+              {isApiKeysLoading ? (
+                <p className="text-sm text-slate-400">Loading API keys...</p>
+              ) : apiKeys.length === 0 ? (
+                <p className="text-sm text-slate-400">No API keys found.</p>
+              ) : (
+                apiKeys.map((apiKey) => (
+                  <div key={apiKey.id} className="rounded-md border border-border p-3 text-sm text-slate-300">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-slate-100">{apiKey.name}</p>
+                      <Badge className={apiKey.status === 'active' ? '' : 'bg-slate-700'}>
+                        {apiKey.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">{apiKey.maskedKey}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Created: {apiKey.createdAt ? formatDateTime(apiKey.createdAt) : 'N/A'} | Last used:{' '}
+                      {apiKey.lastUsedAt ? formatDateTime(apiKey.lastUsedAt) : 'Never'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Permissions: {apiKey.permissions.join(', ')}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={() => void loadUsageForKey(apiKey.id)}>
+                        View usage
+                      </Button>
+                      {apiKey.status === 'active' ? (
+                        <>
+                          <label className="flex items-center gap-2 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(revokeConfirmById[apiKey.id])}
+                              onChange={(event) =>
+                                setRevokeConfirmById((current) => ({
+                                  ...current,
+                                  [apiKey.id]: event.target.checked,
+                                }))
+                              }
+                            />
+                            Confirm revoke
+                          </label>
+                          <Button variant="danger" onClick={() => void revokeApiKey(apiKey.id)}>
+                            Revoke
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {usageDetails && selectedUsageKeyId ? (
+              <div className="rounded-md border border-border p-3 text-sm text-slate-300">
+                <p className="font-medium text-slate-100">Usage for {selectedUsageKeyId}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Total requests: {usageDetails.totalRequests} | Last used:{' '}
+                  {usageDetails.lastUsedAt ? formatDateTime(usageDetails.lastUsedAt) : 'Never'}
+                </p>
+                <div className="mt-2 space-y-1 text-xs">
+                  {usageDetails.requestsPerDay.map((item) => (
+                    <div key={item.date} className="flex items-center justify-between">
+                      <span>{item.date}</span>
+                      <span>{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
