@@ -1,6 +1,6 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
-import { MessageDetails } from './postal-client';
+import { MessageDetails, RateLimitInfo } from './postal-client';
 
 /**
  * Output formatting utilities
@@ -47,18 +47,47 @@ export class Formatter {
   /**
    * Format send message response
    */
-  formatSendResponse(data: { message_id: string; messages: any }): string | object {
+  formatSendResponse(data: {
+    message_id: string;
+    messages: any;
+    rate_limit?: RateLimitInfo;
+  }): string | object {
     if (this.jsonMode) {
       return data;
     }
 
     const recipientCount = Object.keys(data.messages).length;
-    return (
+    let output =
       chalk.green('✓') +
       ` Message sent successfully\n` +
       `  Message ID: ${chalk.cyan(data.message_id)}\n` +
-      `  Recipients: ${recipientCount}`
-    );
+      `  Recipients: ${recipientCount}`;
+
+    const buckets = data.rate_limit?.buckets;
+    if (buckets) {
+      const preferredBucket =
+        buckets.today ?? buckets.day ?? buckets.default ?? Object.values(buckets)[0];
+      if (
+        preferredBucket &&
+        typeof preferredBucket.remaining === 'number' &&
+        typeof preferredBucket.limit === 'number'
+      ) {
+        output += `\n  Remaining today: ${preferredBucket.remaining}/${preferredBucket.limit} emails`;
+
+        if (typeof preferredBucket.percentUsed === 'number' && preferredBucket.percentUsed >= 90) {
+          output += `\n${chalk.yellow('⚠')}  Rate limit warning: ${preferredBucket.used}/${preferredBucket.limit} emails sent`;
+          if (
+            typeof preferredBucket.resetInSeconds === 'number' &&
+            preferredBucket.resetInSeconds > 0
+          ) {
+            const minutes = Math.ceil(preferredBucket.resetInSeconds / 60);
+            output += `\n   Limit resets in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+          }
+        }
+      }
+    }
+
+    return output;
   }
 
   /**

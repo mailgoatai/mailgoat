@@ -39,6 +39,11 @@ describe('PostalClient', () => {
   it('sends message including attachments', async () => {
     axiosInstance.post.mockResolvedValue({
       data: { data: { message_id: 'm1', messages: { 'a@b.com': { id: 1, token: 't' } } } },
+      headers: {
+        'x-ratelimit-limit': '500',
+        'x-ratelimit-remaining': '487',
+        'x-ratelimit-reset': '900',
+      },
     });
 
     const result = await client.sendMessage({
@@ -53,6 +58,8 @@ describe('PostalClient', () => {
       expect.objectContaining({ attachments: expect.any(Array) })
     );
     expect(result.message_id).toBe('m1');
+    expect(result.rate_limit?.buckets.default?.remaining).toBe(487);
+    expect(client.getLastRateLimit()?.buckets.default?.limit).toBe(500);
   });
 
   it('gets message with default expansions', async () => {
@@ -121,5 +128,27 @@ describe('PostalClient', () => {
     expect(axiosInstance.post).toHaveBeenCalledTimes(2);
     expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
     timeoutSpy.mockRestore();
+  });
+
+  it('captures rate limit headers from error responses', async () => {
+    axiosInstance.post.mockRejectedValue({
+      response: {
+        status: 429,
+        statusText: 'Too Many Requests',
+        data: {},
+        headers: {
+          'x-ratelimit-limit-hour': '50',
+          'x-ratelimit-remaining-hour': '5',
+          'x-ratelimit-reset-hour': '900',
+        },
+      },
+    });
+
+    await expect(
+      client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
+    ).rejects.toThrow(/Rate limit exceeded/);
+
+    expect(client.getLastRateLimit()?.buckets.hour?.limit).toBe(50);
+    expect(client.getLastRateLimit()?.buckets.hour?.remaining).toBe(5);
   });
 });

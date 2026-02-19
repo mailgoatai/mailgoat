@@ -9,6 +9,7 @@ import * as os from 'os';
 import chalk from 'chalk';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
+import type { RateLimitBucket } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { debugLogger } from '../lib/debug';
 
@@ -340,6 +341,73 @@ async function checkSendTest(client: PostalClient, to: string): Promise<HealthCh
   }
 }
 
+function formatBucketSummary(name: string, bucket: RateLimitBucket): string | null {
+  if (typeof bucket.used !== 'number' || typeof bucket.limit !== 'number') {
+    return null;
+  }
+
+  const percent =
+    typeof bucket.percentUsed === 'number'
+      ? bucket.percentUsed
+      : Math.round((bucket.used / bucket.limit) * 1000) / 10;
+  const label =
+    name === 'today'
+      ? 'Emails today'
+      : name === 'hour'
+        ? 'Last hour'
+        : name === 'burst'
+          ? 'Burst'
+          : `Window (${name})`;
+
+  return `${label}: ${bucket.used}/${bucket.limit} (${percent}%)`;
+}
+
+function checkRateLimits(client: PostalClient): HealthCheckResult {
+  const start = Date.now();
+  const rate = client.getLastRateLimit();
+  const buckets = rate?.buckets;
+
+  if (!buckets || Object.keys(buckets).length === 0) {
+    return {
+      name: 'rate_limits',
+      status: 'pass',
+      message: 'Rate limit headers not available from Postal',
+      duration: Date.now() - start,
+    };
+  }
+
+  const entries = Object.entries(buckets);
+  const lines = entries
+    .map(([name, bucket]) => formatBucketSummary(name, bucket))
+    .filter((line): line is string => Boolean(line));
+
+  const nearLimit = entries.find(
+    ([, bucket]) => typeof bucket.percentUsed === 'number' && bucket.percentUsed >= 90
+  );
+
+  if (nearLimit) {
+    const [bucketName, bucket] = nearLimit;
+    return {
+      name: 'rate_limits',
+      status: 'warn',
+      message: `Rate limit warning: ${bucket.used}/${bucket.limit} in ${bucketName} window`,
+      duration: Date.now() - start,
+      details: {
+        lines,
+        resetInSeconds: bucket.resetInSeconds,
+      },
+    };
+  }
+
+  return {
+    name: 'rate_limits',
+    status: 'pass',
+    message: 'Rate limits within normal range',
+    duration: Date.now() - start,
+    details: { lines },
+  };
+}
+
 /**
  * Perform all health checks
  */
@@ -404,6 +472,10 @@ async function performHealthChecks(verbose: boolean, sendTest: boolean): Promise
       const sendTestCheck = await checkSendTest(client, config.fromAddress);
       checks.push(sendTestCheck);
     }
+
+    // Check 6: Rate limits (header-based, best-effort)
+    const rateLimitCheck = checkRateLimits(client);
+    checks.push(rateLimitCheck);
   }
 
   // Calculate summary
@@ -498,6 +570,20 @@ export function createHealthCommand(): Command {
 
             if (check.details?.solution) {
               console.log(chalk.yellow(`  Solution: ${check.details.solution}`));
+            }
+
+            if (check.name === 'rate_limits' && Array.isArray(check.details?.lines)) {
+              console.log(chalk.gray('  Rate limits:'));
+              for (const line of check.details.lines) {
+                console.log(chalk.gray(`  - ${line}`));
+              }
+              if (
+                typeof check.details.resetInSeconds === 'number' &&
+                check.details.resetInSeconds > 0
+              ) {
+                const minutes = Math.ceil(check.details.resetInSeconds / 60);
+                console.log(chalk.gray(`  Reset in: ${minutes} minute${minutes === 1 ? '' : 's'}`));
+              }
             }
 
             console.log();

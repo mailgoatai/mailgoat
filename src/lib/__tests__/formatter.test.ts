@@ -81,4 +81,25 @@ describe('Formatter', () => {
     const formatter = new Formatter(true);
     expect(formatter.formatMessage(message)).toEqual(message);
   });
+
+  it('formats send response with rate limit information', () => {
+    const formatter = new Formatter(false);
+    const output = formatter.formatSendResponse({
+      message_id: 'msg-rate',
+      messages: { 'to@example.com': { id: 1, token: 'tok' } },
+      rate_limit: {
+        buckets: {
+          today: {
+            limit: 500,
+            remaining: 487,
+            used: 13,
+            percentUsed: 2.6,
+          },
+        },
+      },
+    });
+
+    expect(typeof output).toBe('string');
+    expect(output).toContain('Remaining today: 487/500 emails');
+  });
 });

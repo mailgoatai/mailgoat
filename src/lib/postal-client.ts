@@ -99,6 +99,21 @@ export interface SendMessageResponse {
       token: string;
     }
   >;
+  /** Optional rate-limit metadata inferred from response headers */
+  rate_limit?: RateLimitInfo;
+}
+
+export interface RateLimitBucket {
+  limit?: number;
+  remaining?: number;
+  reset?: number;
+  used?: number;
+  percentUsed?: number;
+  resetInSeconds?: number;
+}
+
+export interface RateLimitInfo {
+  buckets: Record<string, RateLimitBucket>;
 }
 
 /**
@@ -170,6 +185,7 @@ export class PostalClient {
   private maxRetries: number;
   private baseDelay: number;
   private enableRetry: boolean;
+  private lastRateLimit?: RateLimitInfo;
 
   constructor(config: MailGoatConfig, options: PostalClientOptions = {}) {
     this.config = config;
@@ -304,6 +320,7 @@ export class PostalClient {
         return await fn();
       } catch (error: any) {
         lastError = error;
+        this.captureRateLimit(error?.response?.headers);
 
         // Don't retry on certain errors
         if (this.shouldNotRetry(error)) {
@@ -343,6 +360,80 @@ export class PostalClient {
     }
 
     throw lastError;
+  }
+
+  private parseNumericHeader(value: unknown): number | undefined {
+    if (value === undefined || value === null) return undefined;
+    const asString = Array.isArray(value) ? String(value[0]) : String(value);
+    const parsed = Number(asString);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private captureRateLimit(headers?: Record<string, unknown>): RateLimitInfo | undefined {
+    if (!headers || typeof headers !== 'object') {
+      return undefined;
+    }
+
+    const normalized: Record<string, unknown> = {};
+    for (const [rawKey, value] of Object.entries(headers)) {
+      normalized[rawKey.toLowerCase()] = value;
+    }
+
+    const buckets: Record<string, RateLimitBucket> = {};
+    const bucketOrder: string[] = [];
+    const ensureBucket = (name: string): RateLimitBucket => {
+      const key = name || 'default';
+      if (!buckets[key]) {
+        buckets[key] = {};
+        bucketOrder.push(key);
+      }
+      return buckets[key];
+    };
+
+    const limitPrefix = 'x-ratelimit-limit';
+    const remainingPrefix = 'x-ratelimit-remaining';
+    const resetPrefix = 'x-ratelimit-reset';
+
+    for (const [key, value] of Object.entries(normalized)) {
+      const numeric = this.parseNumericHeader(value);
+      if (numeric === undefined) continue;
+
+      if (key.startsWith(limitPrefix)) {
+        const suffix = key.slice(limitPrefix.length).replace(/^[-_]/, '');
+        ensureBucket(suffix).limit = numeric;
+      } else if (key.startsWith(remainingPrefix)) {
+        const suffix = key.slice(remainingPrefix.length).replace(/^[-_]/, '');
+        ensureBucket(suffix).remaining = numeric;
+      } else if (key.startsWith(resetPrefix)) {
+        const suffix = key.slice(resetPrefix.length).replace(/^[-_]/, '');
+        ensureBucket(suffix).reset = numeric;
+      }
+    }
+
+    if (bucketOrder.length === 0) {
+      return undefined;
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    for (const bucket of Object.values(buckets)) {
+      if (typeof bucket.limit === 'number' && typeof bucket.remaining === 'number') {
+        bucket.used = Math.max(0, bucket.limit - bucket.remaining);
+        bucket.percentUsed =
+          bucket.limit > 0 ? Math.round((bucket.used / bucket.limit) * 1000) / 10 : 0;
+      }
+      if (typeof bucket.reset === 'number') {
+        // Postal may return either an absolute epoch timestamp or relative seconds.
+        bucket.resetInSeconds =
+          bucket.reset > 1_000_000_000 ? Math.max(0, bucket.reset - nowSeconds) : bucket.reset;
+      }
+    }
+
+    this.lastRateLimit = { buckets };
+    return this.lastRateLimit;
+  }
+
+  getLastRateLimit(): RateLimitInfo | undefined {
+    return this.lastRateLimit;
   }
 
   /**
@@ -416,7 +507,11 @@ export class PostalClient {
         attachments: params.attachments,
       });
 
-      return response.data.data;
+      const rateLimit = this.captureRateLimit(response.headers as Record<string, unknown>);
+      return {
+        ...response.data.data,
+        ...(rateLimit ? { rate_limit: rateLimit } : {}),
+      };
     }, 'Send message');
   }
 

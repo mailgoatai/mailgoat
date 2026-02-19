@@ -5,6 +5,7 @@ const mockExists = jest.fn();
 const mockLoad = jest.fn();
 const mockGetPath = jest.fn(() => '/home/test/.mailgoat/config.json');
 const mockSendMessage = jest.fn();
+const mockGetLastRateLimit = jest.fn();
 
 jest.mock('../../lib/config', () => {
   const actual = jest.requireActual('../../lib/config');
@@ -21,6 +22,7 @@ jest.mock('../../lib/config', () => {
 jest.mock('../../lib/postal-client', () => ({
   PostalClient: jest.fn().mockImplementation(() => ({
     sendMessage: mockSendMessage,
+    getLastRateLimit: mockGetLastRateLimit,
   })),
 }));
 
@@ -68,6 +70,7 @@ describe('health command', () => {
 
     // connectivity + auth checks use sendMessage and should resolve in healthy flow
     mockSendMessage.mockResolvedValue({ status: 'ok' });
+    mockGetLastRateLimit.mockReturnValue(undefined);
 
     console.log = jest.fn();
     console.error = jest.fn();
@@ -123,5 +126,24 @@ describe('health command', () => {
         subject: '[MailGoat Health Check] Test Message',
       })
     );
+  });
+
+  it('exits 1 when rate limit usage is near capacity', async () => {
+    mockGetLastRateLimit.mockReturnValue({
+      buckets: {
+        hour: {
+          limit: 50,
+          remaining: 5,
+          used: 45,
+          percentUsed: 90,
+          resetInSeconds: 900,
+        },
+      },
+    });
+
+    const cmd = createHealthCommand();
+
+    await cmd.parseAsync([], { from: 'user' });
+    expect(process.exit).toHaveBeenCalledWith(1);
   });
 });
