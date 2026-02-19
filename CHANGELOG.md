@@ -2,7 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
-## [1.1.0] - 2026-02-19
+## [1.1.7] - 2026-02-19
+
+### Added
+
+- **Admin panel** via `mailgoat admin serve`:
+  - Web-based administration interface with authentication
+  - Inbox message viewer with filtering and detail pages
+  - Postal DB-backed API endpoints for message management
+  - Session-based authentication with configurable password
+  - Rate limiting for login attempts (5 attempts per hour)
+  - Responsive UI with message search and filtering
+- **Docker Compose templates**:
+  - `docker-compose.yml` - Basic MailGoat setup
+  - `docker-compose.full.yml` - Full-stack MailGoat + Postal deployment
+- **Analytics infrastructure**:
+  - Metrics collection and visualization dashboard
+  - npm and GitHub metrics tracking
+  - Automated metrics workflows
+
+### Changed
+
+- Enhanced release workflow with npm trusted publishing (OIDC)
+- Improved CI/CD pipeline with better secret handling
+- Updated dependencies for security and compatibility
+
+### Fixed
+
+- npm publish workflow now uses trusted publishing exclusively
+- Docker verification skips when publish is disabled
+- Workflow conditions handle missing external secrets gracefully
+
+## [1.1.0] - 2026-02-18
 
 ### Added
 

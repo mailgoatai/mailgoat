@@ -132,13 +132,13 @@ export function createAdminCommand(): Command {
       });
 
       // Admin panel (requires auth)
-      app.get('/admin', requireAuth, (req, res) => {
+      app.get('/admin', requireAuth, (req: Request, res: Response) => {
         const adminHtml = fs.readFileSync(path.join(adminUiPath, 'admin.html'), 'utf-8');
         res.send(adminHtml);
       });
 
       // Serve static CSS
-      app.get('/admin/styles.css', (req, res) => {
+      app.get('/admin/styles.css', (req: Request, res: Response) => {
         res.sendFile(path.join(adminUiPath, 'styles.css'));
       });
 
@@ -146,7 +146,7 @@ export function createAdminCommand(): Command {
       app.use('/api/admin', requireAuth);
 
       // Example API endpoint
-      app.get('/api/admin/status', (req, res) => {
+      app.get('/api/admin/status', (req: Request, res: Response) => {
         res.json({
           status: 'ok',
           authenticated: true,
@@ -155,12 +155,12 @@ export function createAdminCommand(): Command {
       });
 
       // Redirect root to admin
-      app.get('/', (req, res) => {
+      app.get('/', (req: Request, res: Response) => {
         res.redirect('/admin');
       });
 
       // 404 handler
-      app.use((req, res) => {
+      app.use((req: Request, res: Response) => {
         res.status(404).send('Not found');
       });
 
