@@ -138,6 +138,8 @@ describe('send command templating', () => {
       )
     ).rejects.toThrow('PROCESS_EXIT:1');
 
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Template rendering failed'));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Template rendering failed')
+    );
   });
 });

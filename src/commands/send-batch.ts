@@ -107,21 +107,18 @@ export function createSendBatchCommand(): Command {
         const stateStore = new SqliteBatchStateStore(options.stateDb);
 
         const batchId = createBatchId(filePath, messages.length);
-        const batchSender = new BatchSender(
-          async (msg) => {
-            await client.sendMessage({
-              to: msg.to,
-              cc: msg.cc,
-              bcc: msg.bcc,
-              from: msg.from,
-              subject: msg.subject,
-              plain_body: msg.body,
-              html_body: msg.html,
-              tag: msg.tag,
-            });
-          },
-          stateStore
-        );
+        const batchSender = new BatchSender(async (msg) => {
+          await client.sendMessage({
+            to: msg.to,
+            cc: msg.cc,
+            bcc: msg.bcc,
+            from: msg.from,
+            subject: msg.subject,
+            plain_body: msg.body,
+            html_body: msg.html,
+            tag: msg.tag,
+          });
+        }, stateStore);
 
         let lastLineLength = 0;
         const metrics = await batchSender.run(

@@ -99,12 +99,10 @@ describe('PostalClient', () => {
   });
 
   it('respects Retry-After header for rate limit backoff', async () => {
-    const timeoutSpy = jest
-      .spyOn(global, 'setTimeout')
-      .mockImplementation(((fn: any) => {
-        if (typeof fn === 'function') fn();
-        return 0 as unknown as NodeJS.Timeout;
-      }) as any);
+    const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((fn: any) => {
+      if (typeof fn === 'function') fn();
+      return 0 as unknown as NodeJS.Timeout;
+    }) as any);
 
     axiosInstance.post
       .mockRejectedValueOnce({

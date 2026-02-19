@@ -160,22 +160,26 @@ export class SchedulerStore {
   markSent(id: number): void {
     const nowIso = new Date().toISOString();
     this.db
-      .prepare(`
+      .prepare(
+        `
       UPDATE scheduled_emails
       SET status = 'sent', sent_at = @sent_at, updated_at = @updated_at, error = NULL
       WHERE id = @id
-    `)
+    `
+      )
       .run({ id, sent_at: nowIso, updated_at: nowIso });
   }
 
   markFailed(id: number, error: string): void {
     const nowIso = new Date().toISOString();
     this.db
-      .prepare(`
+      .prepare(
+        `
       UPDATE scheduled_emails
       SET status = 'failed', updated_at = @updated_at, error = @error
       WHERE id = @id
-    `)
+    `
+      )
       .run({ id, updated_at: nowIso, error });
   }
 }

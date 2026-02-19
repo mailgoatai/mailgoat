@@ -41,7 +41,9 @@ async function runOnce(store: SchedulerStore, jsonMode: boolean): Promise<Schedu
   }
 
   if (!jsonMode && due.length > 0) {
-    console.log(chalk.cyan(`Processed ${due.length} scheduled email(s): ${sent} sent, ${failed} failed`));
+    console.log(
+      chalk.cyan(`Processed ${due.length} scheduled email(s): ${sent} sent, ${failed} failed`)
+    );
   }
 
   return {

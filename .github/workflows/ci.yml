@@ -172,14 +172,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate required E2E secrets
+      - name: Check E2E secret availability
+        id: e2e-secrets
         run: |
-          [ -n "$MAILGOAT_E2E_SERVER" ] || (echo "MAILGOAT_E2E_SERVER is required" && exit 1)
-          [ -n "$MAILGOAT_E2E_API_KEY" ] || (echo "MAILGOAT_E2E_API_KEY is required" && exit 1)
-          [ -n "$MAILGOAT_E2E_SENDER" ] || (echo "MAILGOAT_E2E_SENDER is required" && exit 1)
-          [ -n "$MAILGOAT_E2E_RECEIVER" ] || (echo "MAILGOAT_E2E_RECEIVER is required" && exit 1)
+          if [ -n "$MAILGOAT_E2E_SERVER" ] && \
+             [ -n "$MAILGOAT_E2E_API_KEY" ] && \
+             [ -n "$MAILGOAT_E2E_SENDER" ] && \
+             [ -n "$MAILGOAT_E2E_RECEIVER" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "✅ E2E secrets are configured"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::E2E secrets are not configured; skipping Postal E2E job."
+          fi
 
       - name: Run E2E tests
+        if: steps.e2e-secrets.outputs.available == 'true'
         run: npm run test:e2e -- --runInBand
 
   # Job that requires all checks to pass

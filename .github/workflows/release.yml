@@ -127,7 +127,7 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     needs: create-release
-    if: "!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')"
+    if: "!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc') && secrets.NPM_TOKEN != ''"
     permissions:
       contents: read
       id-token: write
@@ -148,7 +148,9 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   announce-release:
     name: Announce Release

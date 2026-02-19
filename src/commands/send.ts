@@ -147,7 +147,9 @@ export function createSendCommand(): Command {
         const renderedSubject = options.subject
           ? templateManager.renderString(options.subject, variables)
           : undefined;
-        const renderedBody = options.body ? templateManager.renderString(options.body, variables) : undefined;
+        const renderedBody = options.body
+          ? templateManager.renderString(options.body, variables)
+          : undefined;
 
         // Check that required fields are present (either from template or CLI)
         if (!options.to && !templateData.to) {
@@ -281,7 +283,9 @@ export function createSendCommand(): Command {
           formatter.output(options.json ? preview : JSON.stringify(preview, null, 2));
           if (options.profile && !options.json) {
             console.log(chalk.cyan('\nProfile breakdown (ms):'));
-            Object.entries(profileDurations).forEach(([name, ms]) => console.log(`  ${name}: ${ms}`));
+            Object.entries(profileDurations).forEach(([name, ms]) =>
+              console.log(`  ${name}: ${ms}`)
+            );
           }
           return;
         }

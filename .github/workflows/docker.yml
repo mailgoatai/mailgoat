@@ -4,8 +4,8 @@ on:
   push:
     tags:
       - 'v*.*.*'
-      - 'v*.*.*-*'  # Pre-release tags (e.g., v1.0.0-beta.1)
-  workflow_dispatch:  # Allow manual triggers
+      - 'v*.*.*-*' # Pre-release tags (e.g., v1.0.0-beta.1)
+  workflow_dispatch: # Allow manual triggers
     inputs:
       tag:
         description: 'Docker image tag (leave empty for commit SHA)'
@@ -19,6 +19,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
     permissions:
       contents: read
       packages: write
@@ -93,6 +94,7 @@ jobs:
 
   verify:
     needs: build-and-push
+    if: ${{ needs.build-and-push.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Pull and test image
@@ -106,13 +108,25 @@ jobs:
           IMAGE_SIZE=$(docker image inspect ${{ env.IMAGE_NAME }}:latest --format='{{.Size}}')
           IMAGE_SIZE_MB=$((IMAGE_SIZE / 1024 / 1024))
           echo "Image size: ${IMAGE_SIZE_MB}MB"
-          
+
           if [ $IMAGE_SIZE_MB -gt 50 ]; then
             echo "::warning::Image size (${IMAGE_SIZE_MB}MB) exceeds 50MB target"
           else
             echo "✅ Image size (${IMAGE_SIZE_MB}MB) is within target (<50MB)"
           fi
-          
+
           echo "## 📊 Image Metrics" >> $GITHUB_STEP_SUMMARY
           echo "- **Size:** ${IMAGE_SIZE_MB}MB" >> $GITHUB_STEP_SUMMARY
           echo "- **Target:** <50MB" >> $GITHUB_STEP_SUMMARY
+
+  docker-config-summary:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Report Docker publish configuration
+        run: |
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "✅ Docker credentials configured. Publish job executed."
+          else
+            echo "::warning::Docker credentials are missing. Skipping Docker publish jobs."
+          fi

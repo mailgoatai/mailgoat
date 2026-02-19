@@ -240,7 +240,9 @@ export class PostalClient {
     // Add response interceptor for debug logging
     this.client.interceptors.response.use(
       (response) => {
-        const requestConfig = response.config as typeof response.config & { metadata?: AxiosRequestMeta };
+        const requestConfig = response.config as typeof response.config & {
+          metadata?: AxiosRequestMeta;
+        };
         const duration =
           typeof requestConfig.metadata?.startTime === 'number'
             ? Date.now() - requestConfig.metadata.startTime
@@ -562,8 +564,9 @@ export class PostalClient {
     // Authentication errors (401, 403)
     if (status === 401 || status === 403) {
       return new MailGoatError(
-        `Authentication failed. Your API key is invalid or expired.\n` + `Run: mailgoat config init`
-          + (requestId ? `\nRequest ID: ${requestId}` : ''),
+        `Authentication failed. Your API key is invalid or expired.\n` +
+          `Run: mailgoat config init` +
+          (requestId ? `\nRequest ID: ${requestId}` : ''),
         'AuthError',
         4,
         requestId,
@@ -608,11 +611,29 @@ export class PostalClient {
             status
           );
         case 'TooManyToAddresses':
-          return new MailGoatError('Too many recipients in To field (maximum 50).', 'ApiError', 4, requestId, status);
+          return new MailGoatError(
+            'Too many recipients in To field (maximum 50).',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'TooManyCCAddresses':
-          return new MailGoatError('Too many recipients in CC field (maximum 50).', 'ApiError', 4, requestId, status);
+          return new MailGoatError(
+            'Too many recipients in CC field (maximum 50).',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'TooManyBCCAddresses':
-          return new MailGoatError('Too many recipients in BCC field (maximum 50).', 'ApiError', 4, requestId, status);
+          return new MailGoatError(
+            'Too many recipients in BCC field (maximum 50).',
+            'ApiError',
+            4,
+            requestId,
+            status
+          );
         case 'FromAddressMissing':
           return new MailGoatError(
             'Sender email (From) is missing. Add --from or check config.',
@@ -676,6 +697,12 @@ export class PostalClient {
     }
 
     // Generic error
-    return new MailGoatError(`Unexpected error: ${error.message}`, 'ApiError', 4, requestId, status);
+    return new MailGoatError(
+      `Unexpected error: ${error.message}`,
+      'ApiError',
+      4,
+      requestId,
+      status
+    );
   }
 }

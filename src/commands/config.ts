@@ -375,7 +375,9 @@ export function createConfigCommand(): Command {
             console.log(`${icon} ${name}: ${check.message}`);
           });
           console.log(
-            report.healthy ? chalk.green('\nConfiguration is healthy') : chalk.red('\nConfiguration has issues')
+            report.healthy
+              ? chalk.green('\nConfiguration is healthy')
+              : chalk.red('\nConfiguration has issues')
           );
         }
 

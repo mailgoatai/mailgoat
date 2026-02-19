@@ -43,7 +43,10 @@ async function buildHealthResponse(): Promise<Record<string, unknown>> {
       checks.api = { ok: true, message: 'postal API reachable' };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      if (message.toLowerCase().includes('authentication') || message.toLowerCase().includes('invalid')) {
+      if (
+        message.toLowerCase().includes('authentication') ||
+        message.toLowerCase().includes('invalid')
+      ) {
         checks.api = { ok: true, message: 'postal API reachable (auth rejected test id)' };
       } else {
         checks.api = { ok: false, message };

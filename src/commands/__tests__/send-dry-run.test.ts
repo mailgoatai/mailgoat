@@ -32,7 +32,16 @@ describe('send dry-run', () => {
     const command = createSendCommand();
 
     await command.parseAsync(
-      ['--to', 'user@example.com', '--subject', 'Test', '--body', 'Dry run body', '--dry-run', '--json'],
+      [
+        '--to',
+        'user@example.com',
+        '--subject',
+        'Test',
+        '--body',
+        'Dry run body',
+        '--dry-run',
+        '--json',
+      ],
       { from: 'user' }
     );
 

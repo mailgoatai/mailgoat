@@ -167,7 +167,12 @@ export class BatchSender {
         const message = error instanceof Error ? error.message : String(error);
         failed += 1;
         completedDurations.push(duration);
-        recipientMetrics.push({ recipient: to, durationMs: duration, success: false, error: message });
+        recipientMetrics.push({
+          recipient: to,
+          durationMs: duration,
+          success: false,
+          error: message,
+        });
         processedIndices.add(index);
         this.stateStore.recordResult(options.batchId, index, to, false, message);
 

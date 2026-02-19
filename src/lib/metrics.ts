@@ -88,8 +88,13 @@ class MailGoatMetrics {
   }
 
   classifyApiError(error: unknown): ApiErrorType {
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    if (message.includes('authentication') || message.includes('invalid request') || message.includes('rate limit')) {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (
+      message.includes('authentication') ||
+      message.includes('invalid request') ||
+      message.includes('rate limit')
+    ) {
       return '4xx';
     }
     if (message.includes('server error') || message.includes('temporarily unavailable')) {
