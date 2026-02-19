@@ -6,8 +6,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { timingSafeEqual } from 'crypto';
 import chalk from 'chalk';
-import { Pool } from 'pg';
 import { InboxStore, type InboxMessage } from '../lib/inbox-store';
+import { Pool } from 'pg';
 
 declare module 'express-session' {
   interface SessionData {
@@ -103,44 +103,20 @@ type AdminInboxMessage = {
   attachments: Array<{ filename: string; size: number; contentType: string }>;
 };
 
-type PostalInboxRow = {
+type AdminInboxSummary = {
   id: string;
+  address: string;
   name: string;
-  email_count: number;
-  last_activity: string | null;
+  messageCount: number;
+  lastMessageAt: string | null;
 };
 
-type PostalEmailRow = {
-  id: string;
-  from_email: string;
-  subject: string;
-  created_at: string | null;
-  to_email: string | null;
-  body_text: string | null;
-  body_html: string | null;
-  status: string | null;
+type PostalInboxRow = {
+  address: string | null;
+  name: string | null;
+  message_count: number | string | null;
+  last_message_at: string | Date | null;
 };
-
-let postalPool: Pool | null = null;
-
-function getPostalPool(): Pool {
-  if (postalPool) {
-    return postalPool;
-  }
-
-  const connectionString = process.env.POSTAL_DB_URL;
-  if (!connectionString) {
-    throw new Error('POSTAL_DB_URL is not set');
-  }
-
-  postalPool = new Pool({
-    connectionString,
-    max: 10,
-    ssl: process.env.POSTAL_DB_SSL === '1' ? { rejectUnauthorized: false } : undefined,
-  });
-
-  return postalPool;
-}
 
 export function normalizeInboxId(rawInboxId: string): string {
   return decodeURIComponent(rawInboxId || '')
@@ -186,6 +162,133 @@ export function mapInboxMessageToAdminMessage(message: InboxMessage): AdminInbox
     },
     attachments: [],
   };
+}
+
+function inferNameFromAddress(address: string): string {
+  const localPart = String(address || '')
+    .trim()
+    .split('@')[0];
+  return localPart || 'Inbox';
+}
+
+function buildDbPoolFromEnv(): Pool | null {
+  const databaseUrl = process.env.POSTAL_DATABASE_URL;
+  if (databaseUrl) {
+    return new Pool({ connectionString: databaseUrl });
+  }
+
+  const host = process.env.POSTAL_DB_HOST;
+  const database = process.env.POSTAL_DB_NAME;
+  const user = process.env.POSTAL_DB_USER || process.env.POSTAL_DB_USERNAME;
+  const password = process.env.POSTAL_DB_PASSWORD;
+  const port = Number(process.env.POSTAL_DB_PORT || 5432);
+
+  if (!host || !database || !user) {
+    return null;
+  }
+
+  return new Pool({ host, database, user, password, port });
+}
+
+async function listInboxesFromPostalDb(): Promise<AdminInboxSummary[]> {
+  const pool = buildDbPoolFromEnv();
+  if (!pool) {
+    return [];
+  }
+
+  try {
+    const query = `
+      SELECT
+        COALESCE(mailbox.email, mailbox.address, mailbox.local_part || '@' || domain.name) AS address,
+        COALESCE(mailbox.name, split_part(COALESCE(mailbox.email, mailbox.address, mailbox.local_part || '@' || domain.name), '@', 1)) AS name,
+        COALESCE(msg_counts.message_count, 0)::int AS message_count,
+        msg_counts.last_message_at
+      FROM mailboxes AS mailbox
+      LEFT JOIN domains AS domain ON domain.id = mailbox.domain_id
+      LEFT JOIN (
+        SELECT
+          lower(trim(rcpt_to)) AS recipient,
+          COUNT(*)::int AS message_count,
+          MAX(created_at) AS last_message_at
+        FROM messages
+        WHERE rcpt_to IS NOT NULL AND trim(rcpt_to) <> ''
+        GROUP BY lower(trim(rcpt_to))
+      ) AS msg_counts
+        ON msg_counts.recipient = lower(trim(COALESCE(mailbox.email, mailbox.address, mailbox.local_part || '@' || domain.name)))
+      ORDER BY msg_counts.message_count DESC, address ASC
+    `;
+
+    const result = await pool.query<PostalInboxRow>(query);
+    return result.rows
+      .map((row: PostalInboxRow) => {
+        const address = String(row.address || '')
+          .trim()
+          .toLowerCase();
+        if (!address) {
+          return null;
+        }
+        return {
+          id: address,
+          address,
+          name:
+            String(row.name || inferNameFromAddress(address)).trim() ||
+            inferNameFromAddress(address),
+          messageCount: Number(row.message_count || 0),
+          lastMessageAt: row.last_message_at ? new Date(row.last_message_at).toISOString() : null,
+        } satisfies AdminInboxSummary;
+      })
+      .filter((item: AdminInboxSummary | null): item is AdminInboxSummary => Boolean(item));
+  } finally {
+    await pool.end();
+  }
+}
+
+function listInboxesFromLocalStore(): AdminInboxSummary[] {
+  const store = new InboxStore();
+  try {
+    const grouped = new Map<string, AdminInboxSummary>();
+    const messages = store.listMessages({ limit: 5000 });
+
+    for (const message of messages) {
+      const recipients = Array.isArray(message.to) ? message.to : [];
+      for (const recipient of recipients) {
+        const address = String(recipient || '')
+          .trim()
+          .toLowerCase();
+        if (!address) {
+          continue;
+        }
+
+        const existing = grouped.get(address);
+        const timestamp = message.timestamp ? new Date(message.timestamp).toISOString() : null;
+
+        if (!existing) {
+          grouped.set(address, {
+            id: address,
+            address,
+            name: inferNameFromAddress(address),
+            messageCount: 1,
+            lastMessageAt: timestamp,
+          });
+          continue;
+        }
+
+        existing.messageCount += 1;
+        if (timestamp && (!existing.lastMessageAt || timestamp > existing.lastMessageAt)) {
+          existing.lastMessageAt = timestamp;
+        }
+      }
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => {
+      if (b.messageCount !== a.messageCount) {
+        return b.messageCount - a.messageCount;
+      }
+      return a.address.localeCompare(b.address);
+    });
+  } finally {
+    store.close();
+  }
 }
 
 export function createAdminCommand(): Command {
@@ -296,6 +399,27 @@ export function createAdminCommand(): Command {
         res.json({ ok: true, data: buildStatusPayload() });
       });
 
+      app.get('/api/admin/inboxes', requireAuth, async (_req: Request, res: Response) => {
+        try {
+          let inboxes = await listInboxesFromPostalDb();
+          if (inboxes.length === 0) {
+            inboxes = listInboxesFromLocalStore();
+          }
+          res.json({ ok: true, data: { inboxes } });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'INBOXES_FETCH_FAILED',
+              message:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to fetch inboxes from data sources',
+            },
+          });
+        }
+      });
+
       app.get('/api/admin/inbox/:id/messages', requireAuth, (req: Request, res: Response) => {
         const inboxId = normalizeInboxId(String(req.params.id || ''));
         if (!inboxId) {
@@ -331,110 +455,6 @@ export function createAdminCommand(): Command {
         }
       });
 
-      app.get('/api/admin/inboxes', requireAuth, async (_req: Request, res: Response) => {
-        try {
-          const pool = getPostalPool();
-          const query = `
-            SELECT
-              mb.id::text AS id,
-              COALESCE(NULLIF(mb.name, ''), NULLIF(mb.email, ''), NULLIF(mb.address, ''), mb.id::text) AS name,
-              COUNT(msg.id)::int AS email_count,
-              MAX(msg.created_at)::text AS last_activity
-            FROM mailboxes mb
-            LEFT JOIN messages msg ON msg.mailbox_id = mb.id
-            GROUP BY mb.id, mb.name, mb.email, mb.address
-            ORDER BY name ASC
-          `;
-
-          const result = await pool.query<PostalInboxRow>(query);
-          res.json({
-            ok: true,
-            data: {
-              inboxes: result.rows.map((row) => ({
-                id: row.id,
-                name: row.name,
-                emailCount: Number(row.email_count || 0),
-                lastActivity: row.last_activity,
-              })),
-            },
-          });
-        } catch (error) {
-          res.status(500).json({
-            ok: false,
-            error: {
-              code: 'INBOXES_FETCH_FAILED',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Failed to fetch inboxes from Postal database',
-            },
-          });
-        }
-      });
-
-      const getInboxEmailsHandler = async (req: Request, res: Response) => {
-        const inboxId = String(req.params.id || '').trim();
-        if (!inboxId) {
-          res.status(400).json({
-            ok: false,
-            error: { code: 'INVALID_INBOX_ID', message: 'Inbox id is required' },
-          });
-          return;
-        }
-
-        try {
-          const pool = getPostalPool();
-          const query = `
-            SELECT
-              msg.id::text AS id,
-              COALESCE(msg.mail_from, '') AS from_email,
-              COALESCE(msg.subject, '') AS subject,
-              msg.created_at::text AS created_at,
-              COALESCE(msg.rcpt_to, '') AS to_email,
-              COALESCE(msg.plain_body, '') AS body_text,
-              msg.html_body AS body_html,
-              COALESCE(msg.status, '') AS status
-            FROM messages msg
-            WHERE msg.mailbox_id::text = $1
-            ORDER BY msg.created_at DESC
-            LIMIT 50
-          `;
-
-          const result = await pool.query<PostalEmailRow>(query, [inboxId]);
-          res.json({
-            ok: true,
-            data: {
-              inboxId,
-              emails: result.rows.map((row) => ({
-                id: row.id,
-                from: row.from_email,
-                subject: row.subject,
-                date: row.created_at,
-                to: row.to_email,
-                status: row.status,
-                body: {
-                  text: row.body_text || '',
-                  html: row.body_html || null,
-                },
-              })),
-            },
-          });
-        } catch (error) {
-          res.status(500).json({
-            ok: false,
-            error: {
-              code: 'INBOX_EMAILS_FETCH_FAILED',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Failed to fetch inbox emails from Postal database',
-            },
-          });
-        }
-      };
-      app.get('/api/admin/inboxes/:id/emails', requireAuth, getInboxEmailsHandler);
-      app.get('/api/admin/inbox/:id/emails', requireAuth, getInboxEmailsHandler);
-
       app.use('/assets', express.static(path.join(distPath, 'assets')));
       app.use(express.static(distPath));
 
@@ -453,20 +473,6 @@ export function createAdminCommand(): Command {
       app.listen(port, host, () => {
         console.log(chalk.green('Admin panel server started'));
         console.log(chalk.gray(`  URL: http://${host}:${port}/admin`));
-      });
-
-      const shutdownPool = async () => {
-        if (postalPool) {
-          await postalPool.end();
-          postalPool = null;
-        }
-      };
-
-      process.once('SIGINT', () => {
-        void shutdownPool();
-      });
-      process.once('SIGTERM', () => {
-        void shutdownPool();
       });
     });
 
