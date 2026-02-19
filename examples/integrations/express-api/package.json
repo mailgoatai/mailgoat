@@ -1,0 +1,11 @@
+{
+  "name": "mailgoat-express-api-example",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "mailgoat-lambda-example",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {}
+}

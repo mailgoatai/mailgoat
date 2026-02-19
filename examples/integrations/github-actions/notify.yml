@@ -1,0 +1,22 @@
+name: Deploy Notification
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install MailGoat CLI
+        run: npm install -g mailgoat
+
+      - name: Send deploy email
+        run: |
+          mailgoat send \
+            --to team@example.com \
+            --subject "Deploy: ${{ github.sha }}" \
+            --body "Deployed successfully"
+        env:
+          MAILGOAT_SERVER_URL: ${{ secrets.POSTAL_URL }}
+          MAILGOAT_API_KEY: ${{ secrets.POSTAL_KEY }}

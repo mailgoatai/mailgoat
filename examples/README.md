@@ -57,6 +57,19 @@ This directory contains practical examples showing how agents can automate workf
 - `openclaw-integration.js`
 - `delete-example.sh`
 
+## Integration cookbook
+
+`integrations/` contains practical app-integration blueprints:
+
+- `integrations/express-api/`
+- `integrations/nextjs/`
+- `integrations/github-actions/`
+- `integrations/docker/`
+- `integrations/cron/`
+- `integrations/lambda/`
+
+Start with `integrations/README.md` for prerequisites and smoke tests.
+
 ## General prerequisites
 
 1. MailGoat CLI installed and configured.
