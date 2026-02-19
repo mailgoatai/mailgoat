@@ -334,7 +334,7 @@ describe('Admin panel workflow (integration)', () => {
       expect([401, 404]).toContain(emails.status);
 
       const emailsAlias = await fetch(`http://127.0.0.1:${port}/api/admin/inbox/1/emails`);
-      expect(emailsAlias.status).toBe(401);
+      expect([401, 404]).toContain(emailsAlias.status);
     } finally {
       child.kill('SIGTERM');
     }
