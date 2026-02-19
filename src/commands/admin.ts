@@ -372,7 +372,7 @@ export function createAdminCommand(): Command {
         }
       });
 
-      app.get('/api/admin/inboxes/:id/emails', requireAuth, async (req: Request, res: Response) => {
+      const getInboxEmailsHandler = async (req: Request, res: Response) => {
         const inboxId = String(req.params.id || '').trim();
         if (!inboxId) {
           res.status(400).json({
@@ -431,7 +431,9 @@ export function createAdminCommand(): Command {
             },
           });
         }
-      });
+      };
+      app.get('/api/admin/inboxes/:id/emails', requireAuth, getInboxEmailsHandler);
+      app.get('/api/admin/inbox/:id/emails', requireAuth, getInboxEmailsHandler);
 
       app.use('/assets', express.static(path.join(distPath, 'assets')));
       app.use(express.static(distPath));
