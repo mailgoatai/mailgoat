@@ -154,6 +154,32 @@ type AdminApiKeyUsage = {
   available: boolean;
 };
 
+type StorageByInboxRow = {
+  inbox: string | null;
+  total_size: number | string | null;
+  message_count: number | string | null;
+};
+
+type StorageByMonthRow = {
+  month: string | Date | null;
+  total_size: number | string | null;
+};
+
+type StorageByAttachmentTypeRow = {
+  attachment_type: string | null;
+  total_size: number | string | null;
+  attachment_count: number | string | null;
+};
+
+type LargestEmailRow = {
+  id: string | null;
+  subject: string | null;
+  sender: string | null;
+  recipient: string | null;
+  created_at: string | Date | null;
+  size: number | string | null;
+};
+
 export function normalizeInboxId(rawInboxId: string): string {
   return decodeURIComponent(rawInboxId || '')
     .trim()
@@ -431,6 +457,92 @@ async function getInboxesForRealtimeEvents(): Promise<AdminInboxSummary[]> {
   return listInboxesFromLocalStore();
 }
 
+function estimateMessageSize(message: InboxMessage): number {
+  const subject = String(message.subject || '');
+  const snippet = String(message.snippet || '');
+  const from = String(message.from || '');
+  const to = Array.isArray(message.to) ? message.to.join(',') : '';
+  return Buffer.byteLength(`${from}\n${to}\n${subject}\n${snippet}`, 'utf8');
+}
+
+function buildStorageFallbackFromLocalStore() {
+  const store = new InboxStore();
+  try {
+    const messages = store.listMessages({ limit: 10000 });
+    const byInboxMap = new Map<string, { size: number; count: number }>();
+    const byMonthMap = new Map<string, number>();
+    const byAttachmentType = [{ type: 'unknown', totalSize: 0, count: 0 }];
+
+    const largestEmails = messages
+      .map((message) => {
+        const size = estimateMessageSize(message);
+        const inbox = message.to[0] || '(unknown)';
+        const createdAt = new Date(message.timestamp);
+        const month = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+
+        const existing = byInboxMap.get(inbox) || { size: 0, count: 0 };
+        existing.size += size;
+        existing.count += 1;
+        byInboxMap.set(inbox, existing);
+
+        byMonthMap.set(month, (byMonthMap.get(month) || 0) + size);
+        byAttachmentType[0].totalSize += 0;
+
+        return {
+          id: message.id,
+          subject: message.subject || '(no subject)',
+          from: message.from || '(unknown)',
+          to: inbox,
+          createdAt: message.timestamp,
+          size,
+        };
+      })
+      .sort((a, b) => b.size - a.size)
+      .slice(0, 20);
+
+    const byInbox = Array.from(byInboxMap.entries())
+      .map(([inbox, values]) => ({
+        inbox,
+        totalSize: values.size,
+        count: values.count,
+      }))
+      .sort((a, b) => b.totalSize - a.totalSize);
+
+    const byMonth = Array.from(byMonthMap.entries())
+      .map(([month, totalSize]) => ({ month, totalSize }))
+      .sort((a, b) => (a.month < b.month ? 1 : -1))
+      .slice(0, 12);
+
+    const totalStorage = byInbox.reduce((sum, item) => sum + item.totalSize, 0);
+    const totalMessages = byInbox.reduce((sum, item) => sum + item.count, 0);
+    const oldEmailCount = messages.filter((message) => {
+      const timestamp = new Date(message.timestamp).getTime();
+      const ageMs = Date.now() - timestamp;
+      return ageMs > 365 * 24 * 60 * 60 * 1000;
+    }).length;
+
+    return {
+      totalStorage,
+      totalMessages,
+      byInbox,
+      byMonth,
+      byAttachmentType,
+      largestEmails,
+      cleanupSuggestions: {
+        oldEmailsOverOneYear: oldEmailCount,
+        largeEmailsOver5mb: largestEmails.filter((email) => email.size > 5 * 1024 * 1024).length,
+        duplicateSubjects: Math.max(
+          0,
+          totalMessages - new Set(messages.map((m) => m.subject)).size
+        ),
+      },
+      source: 'local-cache',
+    };
+  } finally {
+    store.close();
+  }
+}
+
 export function createAdminCommand(): Command {
   const cmd = new Command('admin').description('Manage admin panel with authentication');
 
@@ -557,6 +669,154 @@ export function createAdminCommand(): Command {
 
       app.get('/api/admin/status', requireAuth, (_req: Request, res: Response) => {
         res.json({ ok: true, data: buildStatusPayload() });
+      });
+
+      app.get('/api/admin/storage', requireAuth, async (_req: Request, res: Response) => {
+        const pool = buildDbPoolFromSettings(settingsState);
+        if (!pool) {
+          res.json({ ok: true, data: buildStorageFallbackFromLocalStore() });
+          return;
+        }
+
+        try {
+          const byInboxResult = await pool.query<StorageByInboxRow>(`
+            SELECT
+              lower(trim(COALESCE(rcpt_to, '(unknown)'))) AS inbox,
+              COALESCE(SUM(COALESCE(size, 0)), 0)::bigint AS total_size,
+              COUNT(*)::int AS message_count
+            FROM messages
+            GROUP BY lower(trim(COALESCE(rcpt_to, '(unknown)')))
+            ORDER BY total_size DESC
+            LIMIT 100
+          `);
+
+          const byMonthResult = await pool.query<StorageByMonthRow>(`
+            SELECT
+              DATE_TRUNC('month', created_at) AS month,
+              COALESCE(SUM(COALESCE(size, 0)), 0)::bigint AS total_size
+            FROM messages
+            WHERE created_at IS NOT NULL
+            GROUP BY DATE_TRUNC('month', created_at)
+            ORDER BY month DESC
+            LIMIT 12
+          `);
+
+          let byAttachmentTypeRows: Array<{
+            type: string;
+            totalSize: number;
+            count: number;
+          }> = [];
+          try {
+            const byAttachmentTypeResult = await pool.query<StorageByAttachmentTypeRow>(`
+              SELECT
+                COALESCE(content_type, 'unknown') AS attachment_type,
+                COALESCE(SUM(COALESCE(size, 0)), 0)::bigint AS total_size,
+                COUNT(*)::int AS attachment_count
+              FROM attachments
+              GROUP BY COALESCE(content_type, 'unknown')
+              ORDER BY total_size DESC
+            `);
+            byAttachmentTypeRows = byAttachmentTypeResult.rows.map((row) => ({
+              type: String(row.attachment_type || 'unknown'),
+              totalSize: Number(row.total_size || 0),
+              count: Number(row.attachment_count || 0),
+            }));
+          } catch {
+            byAttachmentTypeRows = [];
+          }
+
+          const largestEmailsResult = await pool.query<LargestEmailRow>(`
+            SELECT
+              id::text AS id,
+              COALESCE(subject, '(no subject)') AS subject,
+              COALESCE(mail_from, '(unknown)') AS sender,
+              COALESCE(rcpt_to, '(unknown)') AS recipient,
+              created_at,
+              COALESCE(size, 0)::bigint AS size
+            FROM messages
+            ORDER BY COALESCE(size, 0) DESC
+            LIMIT 20
+          `);
+
+          const oldEmailCountResult = await pool.query<{ count: number | string }>(`
+            SELECT COUNT(*)::int AS count
+            FROM messages
+            WHERE created_at < NOW() - INTERVAL '1 year'
+          `);
+
+          const largeEmailCountResult = await pool.query<{ count: number | string }>(`
+            SELECT COUNT(*)::int AS count
+            FROM messages
+            WHERE COALESCE(size, 0) > 5 * 1024 * 1024
+          `);
+
+          const duplicateSubjectCountResult = await pool.query<{ count: number | string }>(`
+            SELECT COALESCE(SUM(group_count) - COUNT(*), 0)::int AS count
+            FROM (
+              SELECT subject, COUNT(*)::int AS group_count
+              FROM messages
+              WHERE subject IS NOT NULL AND trim(subject) <> ''
+              GROUP BY subject
+              HAVING COUNT(*) > 1
+            ) duplicated
+          `);
+
+          const byInbox = byInboxResult.rows.map((row) => ({
+            inbox: String(row.inbox || '(unknown)'),
+            totalSize: Number(row.total_size || 0),
+            count: Number(row.message_count || 0),
+          }));
+          const byMonth = byMonthResult.rows
+            .map((row) => ({
+              month: row.month ? new Date(row.month).toISOString().slice(0, 7) : 'unknown',
+              totalSize: Number(row.total_size || 0),
+            }))
+            .sort((a, b) => (a.month < b.month ? -1 : 1));
+
+          const largestEmails = largestEmailsResult.rows.map((row) => ({
+            id: String(row.id || ''),
+            subject: String(row.subject || '(no subject)'),
+            from: String(row.sender || '(unknown)'),
+            to: String(row.recipient || '(unknown)'),
+            createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+            size: Number(row.size || 0),
+          }));
+
+          const totalStorage = byInbox.reduce((sum, item) => sum + item.totalSize, 0);
+          const totalMessages = byInbox.reduce((sum, item) => sum + item.count, 0);
+
+          res.json({
+            ok: true,
+            data: {
+              totalStorage,
+              totalMessages,
+              byInbox,
+              byMonth,
+              byAttachmentType: byAttachmentTypeRows,
+              largestEmails,
+              cleanupSuggestions: {
+                oldEmailsOverOneYear: Number(oldEmailCountResult.rows[0]?.count || 0),
+                largeEmailsOver5mb: Number(largeEmailCountResult.rows[0]?.count || 0),
+                duplicateSubjects: Number(duplicateSubjectCountResult.rows[0]?.count || 0),
+              },
+              source: 'postal-db',
+            },
+          });
+        } catch (error) {
+          const fallback = buildStorageFallbackFromLocalStore();
+          res.status(200).json({
+            ok: true,
+            data: {
+              ...fallback,
+              warning:
+                error instanceof Error
+                  ? `Postal DB query failed, using local cache fallback: ${error.message}`
+                  : 'Postal DB query failed, using local cache fallback',
+            },
+          });
+        } finally {
+          await pool.end();
+        }
       });
 
       app.get('/api/admin/settings', requireAuth, async (_req: Request, res: Response) => {

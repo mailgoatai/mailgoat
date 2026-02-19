@@ -15,6 +15,7 @@ import {
   Volume2,
   Monitor,
   Settings,
+  Database,
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
@@ -137,6 +138,33 @@ type ApiKeyUsagePayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
+type StoragePayload = {
+  ok: boolean;
+  data?: {
+    totalStorage: number;
+    totalMessages: number;
+    byInbox: Array<{ inbox: string; totalSize: number; count: number }>;
+    byMonth: Array<{ month: string; totalSize: number }>;
+    byAttachmentType: Array<{ type: string; totalSize: number; count: number }>;
+    largestEmails: Array<{
+      id: string;
+      subject: string;
+      from: string;
+      to: string;
+      createdAt: string | null;
+      size: number;
+    }>;
+    cleanupSuggestions: {
+      oldEmailsOverOneYear: number;
+      largeEmailsOver5mb: number;
+      duplicateSubjects: number;
+    };
+    source: string;
+    warning?: string;
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
 const ADMIN_NOTIFICATION_PREFS_KEY = 'mailgoat.admin.notifications.enabled';
 const ADMIN_SOUND_PREFS_KEY = 'mailgoat.admin.notifications.sound';
 const ADMIN_DESKTOP_PREFS_KEY = 'mailgoat.admin.notifications.desktop';
@@ -209,6 +237,10 @@ function isSettingsPath(pathname: string): boolean {
   return pathname === '/admin/settings';
 }
 
+function isStoragePath(pathname: string): boolean {
+  return pathname === '/admin/storage';
+}
+
 function goToAdminHome() {
   window.history.pushState({}, '', '/admin');
 }
@@ -223,6 +255,10 @@ function goToInboxRoute(inboxId: string) {
 
 function goToSettingsRoute() {
   window.history.pushState({}, '', '/admin/settings');
+}
+
+function goToStorageRoute() {
+  window.history.pushState({}, '', '/admin/storage');
 }
 
 function EmailListItem({
@@ -1376,19 +1412,254 @@ function SettingsPage() {
   );
 }
 
+function makeStorageCsv(payload: NonNullable<StoragePayload['data']>): string {
+  const lines: string[] = [];
+  lines.push('section,key,value');
+  lines.push(`summary,total_storage_bytes,${payload.totalStorage}`);
+  lines.push(`summary,total_messages,${payload.totalMessages}`);
+  lines.push(`summary,source,${payload.source}`);
+  for (const item of payload.byInbox) {
+    lines.push(`by_inbox,${item.inbox},${item.totalSize}`);
+  }
+  for (const item of payload.byMonth) {
+    lines.push(`by_month,${item.month},${item.totalSize}`);
+  }
+  for (const item of payload.byAttachmentType) {
+    lines.push(`by_attachment_type,${item.type},${item.totalSize}`);
+  }
+  return lines.join('\n');
+}
+
+function StoragePage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [storage, setStorage] = useState<StoragePayload['data'] | null>(null);
+
+  async function loadStorage() {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/storage', { credentials: 'include' });
+      const payload = (await response.json()) as StoragePayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load storage analytics');
+      }
+      setStorage(payload.data);
+      if (payload.data.warning) {
+        toast.error(payload.data.warning);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load storage analytics');
+      setStorage(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadStorage();
+  }, []);
+
+  function exportCsv() {
+    if (!storage) return;
+    const csv = makeStorageCsv(storage);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mailgoat-storage-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success('Storage report exported');
+  }
+
+  const maxInboxSize = Math.max(...(storage?.byInbox.map((item) => item.totalSize) || [1]));
+  const maxAttachmentSize = Math.max(
+    ...(storage?.byAttachmentType.map((item) => item.totalSize) || [1])
+  );
+  const maxMonthSize = Math.max(...(storage?.byMonth.map((item) => item.totalSize) || [1]));
+
+  return (
+    <main className="min-h-screen px-4 py-6 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/80 p-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Analytics</p>
+            <h1 className="text-xl font-semibold text-slate-100">Storage Usage</h1>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => void loadStorage()}>
+              Refresh
+            </Button>
+            <Button onClick={exportCsv} disabled={!storage}>
+              Export CSV
+            </Button>
+          </div>
+        </header>
+
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">Loading storage analytics...</CardContent>
+          </Card>
+        ) : null}
+
+        {storage ? (
+          <>
+            <section className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader>
+                  <CardDescription>Total Storage Used</CardDescription>
+                  <CardTitle>{formatFileSize(storage.totalStorage)}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardDescription>Total Messages</CardDescription>
+                  <CardTitle>{storage.totalMessages}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardDescription>Data Source</CardDescription>
+                  <CardTitle>{storage.source}</CardTitle>
+                </CardHeader>
+              </Card>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Storage by Inbox</CardTitle>
+                  <CardDescription>Top inboxes by consumed storage</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byInbox.slice(0, 12).map((item) => (
+                    <div key={item.inbox} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span className="truncate pr-2">{item.inbox}</span>
+                        <span>{formatFileSize(item.totalSize)}</span>
+                      </div>
+                      <div className="h-2 rounded bg-slate-800">
+                        <div
+                          className="h-2 rounded bg-cyan-500"
+                          style={{ width: `${Math.max(4, (item.totalSize / maxInboxSize) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Storage Over Time</CardTitle>
+                  <CardDescription>Monthly trend (last 12 months)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byMonth.map((item) => (
+                    <div key={item.month} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span>{item.month}</span>
+                        <span>{formatFileSize(item.totalSize)}</span>
+                      </div>
+                      <div className="h-2 rounded bg-slate-800">
+                        <div
+                          className="h-2 rounded bg-emerald-500"
+                          style={{ width: `${Math.max(4, (item.totalSize / maxMonthSize) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>By Attachment Type</CardTitle>
+                  <CardDescription>Storage used by attachment content type</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byAttachmentType.length === 0 ? (
+                    <p className="text-sm text-slate-400">No attachment records available.</p>
+                  ) : (
+                    storage.byAttachmentType.map((item) => (
+                      <div key={item.type} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-slate-300">
+                          <span className="truncate pr-2">{item.type}</span>
+                          <span>{formatFileSize(item.totalSize)}</span>
+                        </div>
+                        <div className="h-2 rounded bg-slate-800">
+                          <div
+                            className="h-2 rounded bg-fuchsia-500"
+                            style={{
+                              width: `${Math.max(4, (item.totalSize / maxAttachmentSize) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Clean Up Suggestions</CardTitle>
+                  <CardDescription>Identify opportunities to recover storage</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-slate-300">
+                  <p>Old emails (&gt; 1 year): {storage.cleanupSuggestions.oldEmailsOverOneYear}</p>
+                  <p>Large emails (&gt; 5MB): {storage.cleanupSuggestions.largeEmailsOver5mb}</p>
+                  <p>Duplicate subjects: {storage.cleanupSuggestions.duplicateSubjects}</p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Largest Emails</CardTitle>
+                  <CardDescription>Top 20 messages by size</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.largestEmails.map((email) => (
+                    <div
+                      key={`${email.id}-${email.createdAt || ''}`}
+                      className="grid gap-1 rounded border border-border p-3 text-xs md:grid-cols-5"
+                    >
+                      <p className="text-slate-200 md:col-span-2">{email.subject}</p>
+                      <p className="text-slate-400">{email.from}</p>
+                      <p className="text-slate-500">{email.createdAt ? formatDateTime(email.createdAt) : 'N/A'}</p>
+                      <p className="text-right text-slate-300">{formatFileSize(email.size)}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+          </>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
 function AdminLayout({
   active,
   onOpenDashboard,
   onOpenInboxes,
   onOpenSettings,
+  onOpenStorage,
   onLogout,
   inboxNotificationCount,
   children,
 }: {
-  active: 'dashboard' | 'inboxes' | 'detail' | 'settings';
+  active: 'dashboard' | 'inboxes' | 'detail' | 'settings' | 'storage';
   onOpenDashboard: () => void;
   onOpenInboxes: () => void;
   onOpenSettings: () => void;
+  onOpenStorage: () => void;
   onLogout: () => void;
   inboxNotificationCount: number;
   children: ReactNode;
@@ -1425,6 +1696,14 @@ function AdminLayout({
             <Settings className="mr-2 h-4 w-4" />
             Settings
           </Button>
+          <Button
+            variant={active === 'storage' ? 'default' : 'outline'}
+            className="w-full justify-start"
+            onClick={onOpenStorage}
+          >
+            <Database className="mr-2 h-4 w-4" />
+            Storage
+          </Button>
         </nav>
         <div className="mt-4">
           <Button variant="outline" className="w-full justify-start" onClick={onLogout}>
@@ -1449,6 +1728,9 @@ export function App() {
   );
   const [isSettingsView, setIsSettingsView] = useState<boolean>(() =>
     isSettingsPath(window.location.pathname)
+  );
+  const [isStorageView, setIsStorageView] = useState<boolean>(() =>
+    isStoragePath(window.location.pathname)
   );
   const [inboxRefreshSignal, setInboxRefreshSignal] = useState(0);
   const [inboxNotificationCount, setInboxNotificationCount] = useState(0);
@@ -1494,9 +1776,11 @@ export function App() {
       const nextInboxId = parseInboxIdFromPath(window.location.pathname);
       const nextInboxesView = isInboxesPath(window.location.pathname);
       const nextSettingsView = isSettingsPath(window.location.pathname);
+      const nextStorageView = isStoragePath(window.location.pathname);
       setInboxId(nextInboxId);
       setIsInboxesView(nextInboxesView);
       setIsSettingsView(nextSettingsView);
+      setIsStorageView(nextStorageView);
       if (nextInboxId || nextInboxesView) {
         setInboxNotificationCount(0);
       }
@@ -1605,6 +1889,7 @@ export function App() {
       setInboxId(null);
       setIsInboxesView(false);
       setIsSettingsView(false);
+      setIsStorageView(false);
       setInboxNotificationCount(0);
       goToAdminHome();
       toast.success('Logged out');
@@ -1618,6 +1903,7 @@ export function App() {
     setInboxId(targetInboxId);
     setIsInboxesView(false);
     setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
   function handleBackFromInbox() {
@@ -1625,6 +1911,7 @@ export function App() {
     setInboxId(null);
     setIsInboxesView(true);
     setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
   function handleOpenInboxes() {
@@ -1632,6 +1919,7 @@ export function App() {
     setInboxId(null);
     setIsInboxesView(true);
     setIsSettingsView(false);
+    setIsStorageView(false);
     setInboxNotificationCount(0);
   }
 
@@ -1640,6 +1928,7 @@ export function App() {
     setInboxId(null);
     setIsInboxesView(false);
     setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
   function handleOpenSettings() {
@@ -1647,6 +1936,15 @@ export function App() {
     setInboxId(null);
     setIsInboxesView(false);
     setIsSettingsView(true);
+    setIsStorageView(false);
+  }
+
+  function handleOpenStorage() {
+    goToStorageRoute();
+    setInboxId(null);
+    setIsInboxesView(false);
+    setIsSettingsView(false);
+    setIsStorageView(true);
   }
 
   if (isLoading) {
@@ -1716,6 +2014,7 @@ export function App() {
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
         onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
         inboxNotificationCount={inboxNotificationCount}
       >
@@ -1731,6 +2030,7 @@ export function App() {
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
         onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
         inboxNotificationCount={inboxNotificationCount}
       >
@@ -1750,10 +2050,27 @@ export function App() {
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
         onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
         inboxNotificationCount={inboxNotificationCount}
       >
         <SettingsPage />
+      </AdminLayout>
+    );
+  }
+
+  if (isStorageView) {
+    return (
+      <AdminLayout
+        active="storage"
+        onOpenDashboard={handleBackFromInboxes}
+        onOpenInboxes={handleOpenInboxes}
+        onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
+        onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
+      >
+        <StoragePage />
       </AdminLayout>
     );
   }
@@ -1764,6 +2081,7 @@ export function App() {
       onOpenDashboard={handleBackFromInboxes}
       onOpenInboxes={handleOpenInboxes}
       onOpenSettings={handleOpenSettings}
+      onOpenStorage={handleOpenStorage}
       onLogout={handleLogout}
       inboxNotificationCount={inboxNotificationCount}
     >
