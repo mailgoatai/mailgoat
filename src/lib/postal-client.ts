@@ -33,6 +33,20 @@ export interface PostalClientOptions {
    * @defaultValue true
    */
   enableRetry?: boolean;
+
+  /**
+   * Optional hook called before a retry wait.
+   */
+  onRetry?: (info: RetryInfo) => void;
+}
+
+export interface RetryInfo {
+  operation: string;
+  attempt: number;
+  maxRetries: number;
+  delayMs: number;
+  statusCode?: number;
+  errorCode?: string;
 }
 
 /**
@@ -186,12 +200,14 @@ export class PostalClient {
   private baseDelay: number;
   private enableRetry: boolean;
   private lastRateLimit?: RateLimitInfo;
+  private onRetry?: (info: RetryInfo) => void;
 
   constructor(config: MailGoatConfig, options: PostalClientOptions = {}) {
     this.config = config;
     this.maxRetries = options.maxRetries ?? 3;
     this.baseDelay = options.baseDelay ?? 1000;
     this.enableRetry = options.enableRetry ?? true;
+    this.onRetry = options.onRetry;
 
     // Build base URL (handle both with/without https://)
     let baseURL = config.server;
@@ -328,6 +344,12 @@ export class PostalClient {
           throw this.categorizeError(error);
         }
 
+        // Retry connection refused only once, then fail fast.
+        if (error?.code === 'ECONNREFUSED' && attempt >= 1) {
+          debugLogger.log('api', `Not retrying ${operationName}: repeated ECONNREFUSED`);
+          throw this.categorizeError(error);
+        }
+
         // If this was the last attempt, throw
         if (attempt === this.maxRetries - 1) {
           debugLogger.log('api', `Max retries reached for: ${operationName}`);
@@ -353,6 +375,14 @@ export class PostalClient {
           'api',
           `Retrying ${operationName} after ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`
         );
+        this.onRetry?.({
+          operation: operationName,
+          attempt: attempt + 1,
+          maxRetries: this.maxRetries,
+          delayMs: delay,
+          statusCode: error?.response?.status,
+          errorCode: error?.code,
+        });
         metrics.incrementRetry();
 
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -623,7 +653,8 @@ export class PostalClient {
       error.code === 'ENOTFOUND' ||
       error.code === 'ECONNREFUSED' ||
       error.code === 'EADDRNOTAVAIL' ||
-      error.code === 'EMFILE'
+      error.code === 'EMFILE' ||
+      error.code === 'ECONNRESET'
     ) {
       return new MailGoatError(
         `Could not connect to Postal server at ${this.config.server}. ` +

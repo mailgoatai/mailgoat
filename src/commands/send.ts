@@ -89,6 +89,25 @@ export function createSendCommand(): Command {
       };
       debugLogger.timeStart(operationId, 'Send email operation');
 
+      const formatRetryReason = (statusCode?: number, errorCode?: string): string => {
+        if (statusCode === 502 || statusCode === 503 || statusCode === 504) {
+          return `Server returned HTTP ${statusCode}`;
+        }
+        if (statusCode === 429) {
+          return 'Rate limited by server';
+        }
+        if (errorCode === 'ECONNRESET') {
+          return 'Connection reset';
+        }
+        if (errorCode === 'ETIMEDOUT' || errorCode === 'ECONNABORTED') {
+          return 'Connection timeout';
+        }
+        if (errorCode === 'ECONNREFUSED') {
+          return 'Connection refused';
+        }
+        return 'Transient network error';
+      };
+
       try {
         startProfile('config_load');
         debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
@@ -207,6 +226,13 @@ export function createSendCommand(): Command {
         debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
         const client = new PostalClient(config, {
           enableRetry: options.retry !== false,
+          onRetry: ({ attempt, maxRetries, statusCode, errorCode }) => {
+            if (options.json) {
+              return;
+            }
+            const reason = formatRetryReason(statusCode, errorCode);
+            console.log(chalk.yellow(`⚠️  ${reason}, retrying (${attempt}/${maxRetries})...`));
+          },
         });
         debugLogger.timeEnd(`${operationId}-client`);
         endProfile('client_init');

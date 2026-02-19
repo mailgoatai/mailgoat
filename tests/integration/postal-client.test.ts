@@ -341,6 +341,81 @@ describe('PostalClient Integration Tests', () => {
       ).rejects.toThrow();
     });
 
+    it('should retry on ECONNRESET and succeed', async () => {
+      client = new PostalClient(config, {
+        enableRetry: true,
+        maxRetries: 3,
+        baseDelay: 10,
+      });
+
+      const retry = (client as any).retryWithBackoff.bind(client);
+      let calls = 0;
+
+      const result = await retry(async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw { code: 'ECONNRESET', message: 'Connection reset by peer' };
+        }
+        return { ok: true };
+      }, 'Send message');
+
+      expect(result).toEqual({ ok: true });
+      expect(calls).toBe(2);
+    });
+
+    it('should retry ECONNREFUSED only once before failing', async () => {
+      const onRetry = jest.fn();
+      client = new PostalClient(config, {
+        enableRetry: true,
+        maxRetries: 3,
+        baseDelay: 10,
+        onRetry,
+      });
+
+      const retry = (client as any).retryWithBackoff.bind(client);
+      let calls = 0;
+
+      await expect(
+        retry(async () => {
+          calls += 1;
+          throw { code: 'ECONNREFUSED', message: 'Connection refused' };
+        }, 'Send message')
+      ).rejects.toThrow(/could not connect/i);
+
+      expect(calls).toBe(2);
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onRetry callback with retry metadata', async () => {
+      const messageId = generateMessageId();
+      mockServer.mockSendServerError(1);
+      mockServer.mockSendSuccess(['recipient@example.com'], messageId);
+
+      const onRetry = jest.fn();
+      client = new PostalClient(config, {
+        enableRetry: true,
+        maxRetries: 3,
+        baseDelay: 10,
+        onRetry,
+      });
+
+      await client.sendMessage({
+        to: ['recipient@example.com'],
+        subject: 'Test',
+        plain_body: 'Test',
+      });
+
+      expect(onRetry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: 'Send message',
+          attempt: 1,
+          maxRetries: 3,
+          delayMs: expect.any(Number),
+          statusCode: 500,
+        })
+      );
+    });
+
     it('should NOT retry on authentication errors', async () => {
       mockServer.mockSendAuthError();
 

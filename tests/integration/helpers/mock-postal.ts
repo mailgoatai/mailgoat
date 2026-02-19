@@ -163,11 +163,27 @@ export class MockPostalServer {
   /**
    * Mock send message with connection refused
    */
-  mockSendConnectionRefused(): this {
-    this.scope.post('/api/v1/send/message').replyWithError({
-      code: 'ECONNREFUSED',
-      message: 'Connection refused',
-    });
+  mockSendConnectionRefused(times = 1): this {
+    for (let i = 0; i < times; i++) {
+      this.scope.post('/api/v1/send/message').replyWithError({
+        code: 'ECONNREFUSED',
+        message: 'Connection refused',
+      });
+    }
+
+    return this;
+  }
+
+  /**
+   * Mock send message with connection reset
+   */
+  mockSendConnectionReset(times = 1): this {
+    for (let i = 0; i < times; i++) {
+      this.scope.post('/api/v1/send/message').replyWithError({
+        code: 'ECONNRESET',
+        message: 'Connection reset by peer',
+      });
+    }
 
     return this;
   }
