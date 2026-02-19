@@ -253,7 +253,7 @@ function toCsv(messages: AdminInboxMessage[]): string {
     message.preview || '',
   ]);
   return [header, ...rows]
-    .map((row) => row.map((cell) => escapeValue(String(cell))).join(','))
+    .map((row: any) => row.map((cell) => escapeValue(String(cell))).join(','))
     .join('\n');
 }
 
@@ -438,7 +438,7 @@ function listInboxesFromLocalStore(): AdminInboxSummary[] {
       }
     }
 
-    return Array.from(grouped.values()).sort((a, b) => {
+    return Array.from(grouped.values()).sort((a: any, b: any) => {
       if (b.messageCount !== a.messageCount) {
         return b.messageCount - a.messageCount;
       }
@@ -497,7 +497,7 @@ function buildStorageFallbackFromLocalStore() {
           size,
         };
       })
-      .sort((a, b) => b.size - a.size)
+      .sort((a: any, b: any) => b.size - a.size)
       .slice(0, 20);
 
     const byInbox = Array.from(byInboxMap.entries())
@@ -506,15 +506,15 @@ function buildStorageFallbackFromLocalStore() {
         totalSize: values.size,
         count: values.count,
       }))
-      .sort((a, b) => b.totalSize - a.totalSize);
+      .sort((a: any, b: any) => b.totalSize - a.totalSize);
 
     const byMonth = Array.from(byMonthMap.entries())
       .map(([month, totalSize]) => ({ month, totalSize }))
-      .sort((a, b) => (a.month < b.month ? 1 : -1))
+      .sort((a: any, b: any) => (a.month < b.month ? 1 : -1))
       .slice(0, 12);
 
-    const totalStorage = byInbox.reduce((sum, item) => sum + item.totalSize, 0);
-    const totalMessages = byInbox.reduce((sum, item) => sum + item.count, 0);
+    const totalStorage = byInbox.reduce((sum: number, item: any) => sum + item.totalSize, 0);
+    const totalMessages = byInbox.reduce((sum: number, item: any) => sum + item.count, 0);
     const oldEmailCount = messages.filter((message) => {
       const timestamp = new Date(message.timestamp).getTime();
       const ageMs = Date.now() - timestamp;
@@ -716,7 +716,7 @@ export function createAdminCommand(): Command {
               GROUP BY COALESCE(content_type, 'unknown')
               ORDER BY total_size DESC
             `);
-            byAttachmentTypeRows = byAttachmentTypeResult.rows.map((row) => ({
+            byAttachmentTypeRows = byAttachmentTypeResult.rows.map((row: any) => ({
               type: String(row.attachment_type || 'unknown'),
               totalSize: Number(row.total_size || 0),
               count: Number(row.attachment_count || 0),
@@ -761,19 +761,19 @@ export function createAdminCommand(): Command {
             ) duplicated
           `);
 
-          const byInbox = byInboxResult.rows.map((row) => ({
+          const byInbox = byInboxResult.rows.map((row: any) => ({
             inbox: String(row.inbox || '(unknown)'),
             totalSize: Number(row.total_size || 0),
             count: Number(row.message_count || 0),
           }));
           const byMonth = byMonthResult.rows
-            .map((row) => ({
+            .map((row: any) => ({
               month: row.month ? new Date(row.month).toISOString().slice(0, 7) : 'unknown',
               totalSize: Number(row.total_size || 0),
             }))
-            .sort((a, b) => (a.month < b.month ? -1 : 1));
+            .sort((a: any, b: any) => (a.month < b.month ? -1 : 1));
 
-          const largestEmails = largestEmailsResult.rows.map((row) => ({
+          const largestEmails = largestEmailsResult.rows.map((row: any) => ({
             id: String(row.id || ''),
             subject: String(row.subject || '(no subject)'),
             from: String(row.sender || '(unknown)'),
@@ -782,8 +782,8 @@ export function createAdminCommand(): Command {
             size: Number(row.size || 0),
           }));
 
-          const totalStorage = byInbox.reduce((sum, item) => sum + item.totalSize, 0);
-          const totalMessages = byInbox.reduce((sum, item) => sum + item.count, 0);
+          const totalStorage = byInbox.reduce((sum: number, item: any) => sum + item.totalSize, 0);
+          const totalMessages = byInbox.reduce((sum: number, item: any) => sum + item.count, 0);
 
           res.json({
             ok: true,
@@ -1000,7 +1000,7 @@ export function createAdminCommand(): Command {
             }
           }
 
-          const apiKeys = Array.from(apiKeyState.values()).sort((a, b) => {
+          const apiKeys = Array.from(apiKeyState.values()).sort((a: any, b: any) => {
             const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return bCreated - aCreated;
@@ -1184,7 +1184,9 @@ export function createAdminCommand(): Command {
           const messages = store
             .listMessages({ limit: 500 })
             .filter((message) => matchesInboxIdentifier(message, inboxId))
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .sort(
+              (a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            )
             .map(mapInboxMessageToAdminMessage);
 
           res.json({ ok: true, data: { inboxId, messages } });
@@ -1291,7 +1293,9 @@ export function createAdminCommand(): Command {
           const selected = store
             .listMessages({ limit: 10000 })
             .filter((message) => emailIds.includes(message.id))
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .sort(
+              (a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            )
             .map(mapInboxMessageToAdminMessage);
 
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
