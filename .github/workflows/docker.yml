@@ -19,6 +19,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      publish-enabled: ${{ steps.docker-creds.outputs.available }}
     permissions:
       contents: read
       packages: write
@@ -112,7 +114,7 @@ jobs:
 
   verify:
     needs: build-and-push
-    if: ${{ needs.build-and-push.result == 'success' }}
+    if: ${{ needs.build-and-push.result == 'success' && needs.build-and-push.outputs.publish-enabled == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Pull and test image
