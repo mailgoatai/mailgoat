@@ -1,0 +1,51 @@
+name: Collect GitHub Metrics
+
+on:
+  schedule:
+    # Run daily at 00:30 UTC (offset from npm collection)
+    - cron: '30 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  collect-github-metrics:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: ./scripts
+        run: npm install
+      
+      - name: Collect GitHub repository metrics
+        working-directory: ./scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.METRICS_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ vars.GITHUB_OWNER || github.repository_owner }}
+          GITHUB_REPO: ${{ vars.GITHUB_REPO || github.event.repository.name }}
+        run: node github-tracker.js
+      
+      - name: Commit and push metrics
+        run: |
+          git config user.name "Metrics Bot"
+          git config user.email "metrics-bot@github-actions"
+          git add data/github-metrics.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "⭐ Update GitHub metrics $(date +%Y-%m-%d)" && git push)
+      
+      - name: Upload metrics as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-metrics
+          path: data/github-metrics.json
+          retention-days: 90

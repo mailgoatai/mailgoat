@@ -1,0 +1,19 @@
+{
+  "name": "analytics-scripts",
+  "version": "1.0.0",
+  "description": "Analytics data collection scripts for Growth tracking",
+  "type": "module",
+  "scripts": {
+    "collect:npm": "node npm-tracker.js",
+    "collect:github": "node github-tracker.js",
+    "report": "node generate-report.js",
+    "test": "echo \"No tests configured yet\""
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

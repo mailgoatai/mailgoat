@@ -1,0 +1,55 @@
+name: Weekly Growth Report
+
+on:
+  schedule:
+    # Run every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        working-directory: ./scripts
+        run: npm install
+      
+      - name: Generate weekly report
+        working-directory: ./scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ vars.GITHUB_OWNER || github.repository_owner }}
+          GITHUB_REPO: ${{ vars.GITHUB_REPO || github.event.repository.name }}
+          NPM_PACKAGE_NAME: ${{ vars.NPM_PACKAGE_NAME || 'mailgoat' }}
+        run: node generate-report.js
+      
+      - name: Commit report
+        run: |
+          git config user.name "Metrics Bot"
+          git config user.email "metrics-bot@github-actions"
+          git add reports/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "📈 Weekly growth report $(date +%Y-%m-%d)" && git push)
+      
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report
+          path: reports/weekly-*.md
+          retention-days: 365
+      
+      # Optional: Comment on a tracking issue or send to Discord/Slack
+      # - name: Post report to Discord
+      #   if: vars.DISCORD_WEBHOOK_URL
+      #   uses: tsickert/discord-webhook@v5.3.0
+      #   with:
+      #     webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      #     content: "📊 Weekly growth report is ready! Check the latest commit."
