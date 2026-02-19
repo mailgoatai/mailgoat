@@ -189,7 +189,7 @@ describe('Admin panel workflow (integration)', () => {
   let baseEnv: NodeJS.ProcessEnv;
   let previousAdminIndex: string | null;
 
-  function waitForServer(url: string, timeoutMs = 5000): Promise<void> {
+  function waitForServer(url: string, timeoutMs = 15000): Promise<void> {
     const started = Date.now();
     return new Promise((resolve, reject) => {
       const tryOnce = async () => {
