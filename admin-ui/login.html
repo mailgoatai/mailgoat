@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailGoat Admin - Login</title>
+    <link rel="stylesheet" href="/admin/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <h1>🐐 MailGoat Admin</h1>
+            <p class="subtitle">Enter your password to continue</p>
+            
+            <div id="error-message" class="error-message" style="display: none;">
+                Incorrect password. Please try again.
+            </div>
+            
+            <form method="POST" action="/admin/login">
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        autofocus 
+                        placeholder="Enter admin password"
+                    >
+                </div>
+                
+                <button type="submit" class="btn-primary">Login</button>
+            </form>
+            
+            <div class="footer">
+                <p>MailGoat - Email for AI Agents</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

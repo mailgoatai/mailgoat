@@ -15,6 +15,7 @@ import { createWebhookCommand } from './commands/webhook';
 import { createMetricsCommand } from './commands/metrics';
 import { createInspectCommand } from './commands/inspect';
 import { createKeysCommand } from './commands/keys';
+import { createAdminCommand } from './commands/admin';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 
@@ -70,6 +71,7 @@ program.addCommand(createWebhookCommand());
 program.addCommand(createMetricsCommand());
 program.addCommand(createInspectCommand());
 program.addCommand(createKeysCommand());
+program.addCommand(createAdminCommand());
 
 // Parse arguments
 program.parse(process.argv);

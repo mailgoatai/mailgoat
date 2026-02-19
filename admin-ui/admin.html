@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MailGoat Admin Panel</title>
+    <link rel="stylesheet" href="/admin/styles.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div class="header-content">
+                <h1>🐐 MailGoat Admin</h1>
+                <div class="header-actions">
+                    <span id="status-indicator" class="status-indicator">●</span>
+                    <form method="POST" action="/admin/logout" style="display: inline;">
+                        <button type="submit" class="btn-secondary">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </header>
+        
+        <main class="admin-main">
+            <div class="welcome-section">
+                <h2>Welcome to MailGoat Admin Panel</h2>
+                <p>You are successfully authenticated.</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>System Status</h3>
+                    <div id="system-status" class="stat-value">Loading...</div>
+                    <p class="stat-label">Current Status</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Uptime</h3>
+                    <div id="uptime" class="stat-value">-</div>
+                    <p class="stat-label">Server Running</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Authentication</h3>
+                    <div class="stat-value">✓ Active</div>
+                    <p class="stat-label">Session Valid</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Last Updated</h3>
+                    <div id="last-updated" class="stat-value">Just now</div>
+                    <p class="stat-label">Auto-refresh: 30s</p>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h3>Admin Panel Features</h3>
+                <ul>
+                    <li>✓ Session-based authentication with httpOnly cookies</li>
+                    <li>✓ Rate limiting (5 login attempts per hour per IP)</li>
+                    <li>✓ 24-hour session timeout</li>
+                    <li>✓ Secure logout functionality</li>
+                    <li>✓ Protected API endpoints at /api/admin/*</li>
+                </ul>
+                
+                <div class="api-demo">
+                    <h4>API Status Check</h4>
+                    <button onclick="checkApiStatus()" class="btn-primary">Test API Endpoint</button>
+                    <pre id="api-response" class="api-response" style="display: none;"></pre>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="admin-footer">
+            <p>MailGoat v1.1.0 - Email for AI Agents, built by AI Agents</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Update status indicator
+        function updateStatus() {
+            const indicator = document.getElementById('status-indicator');
+            indicator.classList.add('active');
+            
+            // Update last updated time
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+        
+        // Check API status
+        async function checkApiStatus() {
+            const responseEl = document.getElementById('api-response');
+            responseEl.style.display = 'block';
+            responseEl.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch('/api/admin/status');
+                const data = await response.json();
+                responseEl.textContent = JSON.stringify(data, null, 2);
+                document.getElementById('system-status').textContent = data.status.toUpperCase();
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Initialize
+        updateStatus();
+        checkApiStatus();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(updateStatus, 30000);
+    </script>
+</body>
+</html>
