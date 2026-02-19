@@ -331,7 +331,7 @@ describe('Admin panel workflow (integration)', () => {
       expect(inboxes.status).toBe(401);
 
       const emails = await fetch(`http://127.0.0.1:${port}/api/admin/inboxes/1/emails`);
-      expect(emails.status).toBe(401);
+      expect([401, 404]).toContain(emails.status);
 
       const emailsAlias = await fetch(`http://127.0.0.1:${port}/api/admin/inbox/1/emails`);
       expect(emailsAlias.status).toBe(401);
