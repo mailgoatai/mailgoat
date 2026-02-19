@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+admin-ui/dist/
 
 # Config files (may contain credentials)
 *.config.yml

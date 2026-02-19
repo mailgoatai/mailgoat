@@ -90,17 +90,19 @@ services:
       - --to
       - user@example.com
       - --subject
-      - "Automated Email"
+      - 'Automated Email'
       - --body
-      - "Hello from docker-compose!"
+      - 'Hello from docker-compose!'
 ```
 
 Start with:
+
 ```bash
 docker-compose up
 ```
 
 **Benefits:**
+
 - ✅ No Node.js installation required
 - ✅ Consistent environment across deployments
 - ✅ Easy integration with orchestration tools (Kubernetes, Docker Swarm)
@@ -183,6 +185,38 @@ mailgoat inbox list --unread
 mailgoat inbox list --since 1h
 mailgoat inbox search "subject:report"
 ```
+
+### Admin Panel (React + Tailwind, Dark Theme)
+
+Build the admin UI and serve it from the CLI backend:
+
+```bash
+# Install frontend deps (one-time)
+npm run admin:ui:install
+
+# Build frontend bundle
+npm run admin:ui:build
+
+# Build CLI (if needed)
+npm run build
+
+# Start admin server
+export ADMIN_PASSWORD="change-me"
+export SESSION_SECRET="change-me-too"
+npm run admin:serve
+```
+
+Open:
+
+```text
+http://127.0.0.1:3001/admin
+```
+
+Backend endpoints kept stable:
+
+- `POST /admin/login`
+- `POST /admin/logout`
+- `GET /api/admin/status`
 
 ---
 
