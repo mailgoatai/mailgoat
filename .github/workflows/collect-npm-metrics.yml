@@ -42,7 +42,7 @@ jobs:
           git diff --quiet && git diff --staged --quiet || (git commit -m "📊 Update npm metrics $(date +%Y-%m-%d)" && git push)
 
       - name: Upload metrics as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: npm-metrics
           path: data/npm-metrics.json
