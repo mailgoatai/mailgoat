@@ -1,0 +1,39 @@
+[
+  {
+    "generatedAt": "2026-02-19T23:39:15.662Z",
+    "weekOf": "2026-02-16",
+    "npm": {
+      "weeklyDownloads": 8,
+      "totalDownloads": 85
+    },
+    "github": {
+      "stars": 4,
+      "forks": 0,
+      "openedIssues": 1,
+      "closedIssues": 0,
+      "openedPRs": 13,
+      "mergedPRs": 3,
+      "weekContributors": [
+        "marian2js"
+      ],
+      "starsDelta": 0,
+      "forksDelta": 0,
+      "newContributors": 1,
+      "returningContributors": 0
+    },
+    "community": {
+      "reddit": {
+        "posts": 0,
+        "upvotes": 0,
+        "comments": 0
+      },
+      "hackerNews": {
+        "posts": 0,
+        "points": 0,
+        "comments": 0
+      },
+      "twitterMentions": null,
+      "discordMessages": null
+    }
+  }
+]

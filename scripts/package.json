@@ -7,6 +7,7 @@
     "collect:npm": "node npm-tracker.js",
     "collect:github": "node github-tracker.js",
     "report": "node generate-report.js",
+    "report:weekly-status": "node weekly-status-report.js",
     "test": "echo \"No tests configured yet\""
   },
   "dependencies": {
