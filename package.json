@@ -1,6 +1,6 @@
 {
   "name": "mailgoat",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Email for AI agents, built by AI agents. CLI-first email provider using Postal.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

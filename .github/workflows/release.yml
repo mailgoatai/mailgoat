@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   NODE_VERSION: '20'
 
@@ -129,10 +133,6 @@ jobs:
     needs: create-release
     if: "!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')"
     environment: npm
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -150,6 +150,11 @@ jobs:
 
       - name: Show npm version
         run: npm --version
+
+      - name: Verify GitHub OIDC token endpoint is available
+        run: |
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL}"
+          echo "OIDC endpoint detected"
 
       - name: Publish to npm with trusted publishing (OIDC, no token)
         run: npm publish --provenance --access public --registry=https://registry.npmjs.org/
