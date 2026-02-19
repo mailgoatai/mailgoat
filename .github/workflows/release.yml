@@ -153,17 +153,22 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -n "$NPM_TOKEN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "mode=token" >> "$GITHUB_OUTPUT"
+            echo "✅ Publishing with NPM_TOKEN"
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::NPM_TOKEN is not configured. Skipping npm publish."
+            echo "mode=trusted" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ NPM_TOKEN missing, attempting trusted publishing via OIDC."
           fi
 
-      - name: Publish to npm
-        if: steps.npm-token.outputs.available == 'true'
+      - name: Publish to npm with token
+        if: steps.npm-token.outputs.mode == 'token'
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm with trusted publishing
+        if: steps.npm-token.outputs.mode == 'trusted'
+        run: npm publish --provenance --access public
 
   announce-release:
     name: Announce Release
