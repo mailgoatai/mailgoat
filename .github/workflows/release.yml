@@ -128,6 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: create-release
     if: "!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')"
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -151,7 +152,7 @@ jobs:
         run: npm --version
 
       - name: Publish to npm with trusted publishing (OIDC, no token)
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --registry=https://registry.npmjs.org/
 
   announce-release:
     name: Announce Release
