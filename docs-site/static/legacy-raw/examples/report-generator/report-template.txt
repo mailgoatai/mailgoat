@@ -1,0 +1,9 @@
+Hello {{name}},
+
+Your daily report for {{date}}:
+- New users: {{newUsers}}
+- Errors: {{errors}}
+- Region: {{uppercase region}}
+
+Regards,
+MailGoat Bot

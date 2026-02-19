@@ -1,0 +1,25 @@
+name: Deploy Notify
+on:
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+      - name: Send deploy mail
+        run: |
+          npx mailgoat send \
+            --to ops@example.com \
+            --subject "Deploy $GITHUB_SHA" \
+            --body "Deployment completed" \
+            --tag deploy
+        env:
+          MAILGOAT_SERVER: ${{ secrets.MAILGOAT_SERVER }}
+          MAILGOAT_API_KEY: ${{ secrets.MAILGOAT_API_KEY }}
+          MAILGOAT_EMAIL: ${{ secrets.MAILGOAT_EMAIL }}

@@ -1,0 +1,19 @@
+:root {
+  --ifm-color-primary: #0d4a6b;
+  --ifm-color-primary-dark: #0b4260;
+  --ifm-color-primary-darker: #0a3e5b;
+  --ifm-color-primary-darkest: #08334b;
+  --ifm-color-primary-light: #0f5276;
+  --ifm-color-primary-lighter: #10567b;
+  --ifm-color-primary-lightest: #136690;
+  --ifm-font-family-base: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --ifm-heading-font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #5dc0f4;
+}
+
+.docsHero {
+  background: linear-gradient(130deg, #11344f, #0b5e8a);
+}

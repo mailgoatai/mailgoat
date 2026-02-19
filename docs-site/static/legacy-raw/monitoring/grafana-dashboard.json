@@ -1,0 +1,54 @@
+{
+  "title": "MailGoat Observability",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Email Send Rate",
+      "targets": [
+        {
+          "expr": "rate(mailgoat_emails_sent_total{status=\"success\"}[5m])",
+          "legendFormat": "success"
+        },
+        {
+          "expr": "rate(mailgoat_emails_sent_total{status=\"failed\"}[5m])",
+          "legendFormat": "failed"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "API Error Rate",
+      "targets": [
+        {
+          "expr": "sum by (type) (rate(mailgoat_api_errors_total[5m]))",
+          "legendFormat": "{{type}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Send Latency p50/p95/p99",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(mailgoat_send_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(mailgoat_send_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(mailgoat_send_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+stages:
+  - notify
+
+notify_mailgoat:
+  stage: notify
+  image: node:20
+  script:
+    - npm ci
+    - npm run build
+    - npx mailgoat send --to ops@example.com --subject "Pipeline $CI_PIPELINE_ID" --body "Done" --tag ci
+  variables:
+    MAILGOAT_SERVER: $MAILGOAT_SERVER
+    MAILGOAT_API_KEY: $MAILGOAT_API_KEY
+    MAILGOAT_EMAIL: $MAILGOAT_EMAIL
