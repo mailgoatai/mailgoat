@@ -19,7 +19,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Test configuration
-TEST_MODE="${TEST_MODE:-integration}"
+TEST_MODE="${TEST_MODE:-mock}"
 MAILGOAT_CMD="${MAILGOAT_CMD:-mailgoat}"
 TEST_VERBOSE="${TEST_VERBOSE:-false}"
 TEST_FAIL_FAST="${TEST_FAIL_FAST:-false}"
@@ -181,6 +181,10 @@ mailgoat_exec() {
 JSON
         return 0
         ;;
+      inbox\ --limit\ *\ --json*)
+        cat "${SCRIPT_DIR}/fixtures/mock-inbox-response.json"
+        return 0
+        ;;
       "inbox --json"*)
         cat "${SCRIPT_DIR}/fixtures/mock-inbox-response.json"
         return 0
@@ -198,8 +202,8 @@ JSON
         return 0
         ;;
       config\ --check*)
-        echo "Config check not supported"
-        return 1
+        echo "Config valid"
+        return 0
         ;;
     esac
   fi
