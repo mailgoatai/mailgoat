@@ -14,6 +14,20 @@ This directory contains practical examples showing how agents can automate workf
   - `README.md`
   - `.env.example`
 
+### `fastapi-integration/` (Python + FastAPI)
+
+- Production-style FastAPI integration with async MailGoat client
+- Covers registration, password reset, transactional emails, and webhook receiver
+- Includes HTML templates and pytest suite
+- Files:
+  - `main.py`
+  - `mailgoat_client.py`
+  - `models.py`
+  - `templates/`
+  - `tests/test_email_flows.py`
+  - `README.md`
+  - `requirements.txt`
+
 ### `nodejs-agent/` (Node.js)
 
 - Monitors inbox in a polling loop
