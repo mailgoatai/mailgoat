@@ -1,0 +1,17 @@
+{
+  "name": "mailgoat-benchmarks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Performance benchmarking suite for MailGoat",
+  "scripts": {
+    "bench": "node run-all.js",
+    "bench:send": "node send-benchmarks.js",
+    "bench:receive": "node receive-benchmarks.js",
+    "bench:api": "node api-benchmarks.js"
+  },
+  "dependencies": {
+    "benchmark": "^2.1.4",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3"
+  }
+}
