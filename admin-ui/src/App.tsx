@@ -11,19 +11,12 @@ import {
   Mail,
   Inbox,
   Paperclip,
-  Webhook,
-  Trash2,
-  GripVertical,
-  Save,
-  RotateCcw,
-  Smartphone,
-  Moon,
-  Sun,
-  FileCode2,
+  Bell,
+  Volume2,
+  Monitor,
+  Settings,
+  Database,
 } from 'lucide-react';
-import CodeMirror from '@uiw/react-codemirror';
-import { html as htmlLanguage } from '@codemirror/lang-html';
-import { markdown as markdownLanguage } from '@codemirror/lang-markdown';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Badge } from './components/ui/badge';
@@ -91,125 +84,90 @@ type InboxesPayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
-type AdminWebhook = {
-  id: string;
-  postalId?: string;
-  url: string;
-  events: string[];
-  secret?: string;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+type AdminRealtimeEvent = {
+  type: 'new_email' | 'ready' | 'error' | 'heartbeat';
+  count?: number;
+  totalMessages?: number;
+  checkedAt?: string;
+  message?: string;
 };
 
-type WebhookLog = {
-  id: string;
-  webhookId: string;
-  timestamp: string;
-  eventType: string;
-  statusCode: number;
-  responseTimeMs: number;
-  success: boolean;
-  retryCount: number;
-  error?: string;
-};
-
-type WebhookLogsPayload = {
+type SettingsPayload = {
   ok: boolean;
   data?: {
-    webhook: AdminWebhook;
-    logs: WebhookLog[];
-    stats: {
-      total: number;
-      successCount: number;
-      failureCount: number;
-      successRate: number;
-      averageResponseTimeMs: number;
-    };
+    postalDbUrl: string | null;
+    postalDbUrlRedacted: string | null;
+    postalConnectionOk: boolean;
+    sessionTimeoutMinutes: number;
   };
   error?: { code: string; message: string; details?: unknown };
 };
 
-type WebhookLogStats = {
-  total: number;
-  successCount: number;
-  failureCount: number;
-  successRate: number;
-  averageResponseTimeMs: number;
-};
-
-type WebhooksPayload = {
-  ok: boolean;
-  data?: {
-    webhooks: AdminWebhook[];
-    webhook?: AdminWebhook;
-  };
-  error?: { code: string; message: string; details?: unknown };
-};
-
-type DashboardWidgetType =
-  | 'email-volume'
-  | 'storage-usage'
-  | 'recent-emails'
-  | 'inbox-breakdown'
-  | 'activity-log'
-  | 'quick-stats'
-  | 'system-health';
-
-type DashboardWidgetSize = 'small' | 'medium' | 'large';
-
-type DashboardWidgetLayout = {
-  type: DashboardWidgetType;
-  position: number;
-  size: DashboardWidgetSize;
-  enabled: boolean;
-  config?: Record<string, unknown>;
-};
-
-type DashboardLayoutPayload = {
-  ok: boolean;
-  data?: { widgets: DashboardWidgetLayout[] };
-  error?: { code: string; message: string; details?: unknown };
-};
-
-type TemplateListItem = {
+type ApiKeyRecord = {
+  id: string;
   name: string;
-  subject: string;
-  description: string;
-  updatedAt: string;
+  maskedKey: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+  status: 'active' | 'revoked';
+  permissions: Array<'send' | 'read' | 'admin'>;
 };
 
-type TemplatesPayload = {
+type ApiKeysPayload = {
   ok: boolean;
-  data?: { templates: TemplateListItem[] };
+  data?: {
+    apiKeys: ApiKeyRecord[];
+    apiKey?: ApiKeyRecord;
+    fullKey?: string;
+    warning?: string;
+    revoked?: boolean;
+    keyId?: string;
+  };
   error?: { code: string; message: string; details?: unknown };
 };
 
-type TemplatePreviewPayload = {
+type ApiKeyUsagePayload = {
   ok: boolean;
-  data?: { rendered: { subject: string; html: string; body: string } };
+  data?: {
+    keyId: string;
+    totalRequests: number;
+    lastUsedAt: string | null;
+    requestsPerDay: Array<{ date: string; count: number }>;
+    available: boolean;
+  };
   error?: { code: string; message: string; details?: unknown };
 };
 
-const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetType, string> = {
-  'email-volume': 'Email Volume Chart',
-  'storage-usage': 'Storage Usage Pie Chart',
-  'recent-emails': 'Recent Emails',
-  'inbox-breakdown': 'Inbox Breakdown',
-  'activity-log': 'Activity Log',
-  'quick-stats': 'Quick Stats Cards',
-  'system-health': 'System Health Status',
+type StoragePayload = {
+  ok: boolean;
+  data?: {
+    totalStorage: number;
+    totalMessages: number;
+    byInbox: Array<{ inbox: string; totalSize: number; count: number }>;
+    byMonth: Array<{ month: string; totalSize: number }>;
+    byAttachmentType: Array<{ type: string; totalSize: number; count: number }>;
+    largestEmails: Array<{
+      id: string;
+      subject: string;
+      from: string;
+      to: string;
+      createdAt: string | null;
+      size: number;
+    }>;
+    cleanupSuggestions: {
+      oldEmailsOverOneYear: number;
+      largeEmailsOver5mb: number;
+      duplicateSubjects: number;
+    };
+    source: string;
+    warning?: string;
+  };
+  error?: { code: string; message: string; details?: unknown };
 };
 
-const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetLayout[] = [
-  { type: 'quick-stats', position: 0, size: 'large', enabled: true, config: {} },
-  { type: 'system-health', position: 1, size: 'medium', enabled: true, config: {} },
-  { type: 'email-volume', position: 2, size: 'large', enabled: true, config: {} },
-  { type: 'inbox-breakdown', position: 3, size: 'medium', enabled: true, config: {} },
-  { type: 'recent-emails', position: 4, size: 'medium', enabled: true, config: {} },
-  { type: 'activity-log', position: 5, size: 'small', enabled: true, config: {} },
-  { type: 'storage-usage', position: 6, size: 'small', enabled: true, config: {} },
-];
+const ADMIN_NOTIFICATION_PREFS_KEY = 'mailgoat.admin.notifications.enabled';
+const ADMIN_SOUND_PREFS_KEY = 'mailgoat.admin.notifications.sound';
+const ADMIN_DESKTOP_PREFS_KEY = 'mailgoat.admin.notifications.desktop';
 
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
@@ -231,6 +189,38 @@ function formatFileSize(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function loadBooleanPreference(key: string, fallbackValue: boolean): boolean {
+  const raw = window.localStorage.getItem(key);
+  if (raw === null) {
+    return fallbackValue;
+  }
+  return raw === '1';
+}
+
+function saveBooleanPreference(key: string, value: boolean): void {
+  window.localStorage.setItem(key, value ? '1' : '0');
+}
+
+function playNotificationTone(): void {
+  try {
+    const audioContext = new AudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gain.gain.value = 0.05;
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start();
+    setTimeout(() => {
+      oscillator.stop();
+      void audioContext.close();
+    }, 160);
+  } catch {
+    // Audio is optional; ignore failures.
+  }
+}
+
 function parseInboxIdFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/admin\/inbox\/(.+)$/);
   if (!match) {
@@ -243,20 +233,12 @@ function isInboxesPath(pathname: string): boolean {
   return pathname === '/admin/inboxes';
 }
 
-function parseWebhookIdFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/admin\/webhooks\/(.+)$/);
-  if (!match) {
-    return null;
-  }
-  return decodeURIComponent(match[1]);
+function isSettingsPath(pathname: string): boolean {
+  return pathname === '/admin/settings';
 }
 
-function isWebhooksPath(pathname: string): boolean {
-  return pathname === '/admin/webhooks';
-}
-
-function isTemplatePreviewPath(pathname: string): boolean {
-  return pathname === '/admin/templates/preview';
+function isStoragePath(pathname: string): boolean {
+  return pathname === '/admin/storage';
 }
 
 function goToAdminHome() {
@@ -271,16 +253,12 @@ function goToInboxRoute(inboxId: string) {
   window.history.pushState({}, '', `/admin/inbox/${encodeURIComponent(inboxId)}`);
 }
 
-function goToWebhooksRoute() {
-  window.history.pushState({}, '', '/admin/webhooks');
+function goToSettingsRoute() {
+  window.history.pushState({}, '', '/admin/settings');
 }
 
-function goToWebhookDetailRoute(webhookId: string) {
-  window.history.pushState({}, '', `/admin/webhooks/${encodeURIComponent(webhookId)}`);
-}
-
-function goToTemplatePreviewRoute() {
-  window.history.pushState({}, '', '/admin/templates/preview');
+function goToStorageRoute() {
+  window.history.pushState({}, '', '/admin/storage');
 }
 
 function EmailListItem({
@@ -322,7 +300,9 @@ function EmailListItem({
               aria-label={`Select email ${email.subject || email.id}`}
             />
           ) : null}
-          <Badge variant={email.read ? 'outline' : 'default'}>{email.read ? 'Read' : 'Unread'}</Badge>
+          <Badge className={email.read ? 'border border-border bg-transparent' : ''}>
+            {email.read ? 'Read' : 'Unread'}
+          </Badge>
         </div>
       </div>
       <p className="truncate text-sm text-slate-200">{email.subject || '(no subject)'}</p>
@@ -678,18 +658,26 @@ function Dashboard({
   onLogout,
   onRefreshStatus,
   onOpenInboxes,
-  onOpenWebhooks,
-  onOpenTemplatePreview,
+  notificationsEnabled,
+  soundEnabled,
+  desktopEnabled,
+  onNotificationsEnabledChange,
+  onSoundEnabledChange,
+  onDesktopEnabledChange,
 }: {
-  status: StatusPayload['data'];
+  status: NonNullable<StatusPayload['data']>;
   onLogout: () => void;
   onRefreshStatus: () => Promise<void>;
   onOpenInboxes: () => void;
-  onOpenWebhooks: () => void;
-  onOpenTemplatePreview: () => void;
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+  desktopEnabled: boolean;
+  onNotificationsEnabledChange: (enabled: boolean) => void;
+  onSoundEnabledChange: (enabled: boolean) => void;
+  onDesktopEnabledChange: (enabled: boolean) => void;
 }) {
-  const statusCards = useMemo(() => {
-    return [
+  const statusCards = useMemo(
+    () => [
       {
         label: 'Service',
         value: status.service || 'mailgoat',
@@ -710,225 +698,9 @@ function Dashboard({
         value: status.environment || '-',
         icon: status.environment === 'production' ? CheckCircle2 : AlertTriangle,
       },
-    ];
-  }, [status]);
-
-  const [widgets, setWidgets] = useState<DashboardWidgetLayout[]>(DEFAULT_DASHBOARD_WIDGETS);
-  const [isCustomizing, setIsCustomizing] = useState(false);
-  const [isLoadingLayout, setIsLoadingLayout] = useState(true);
-  const [isSavingLayout, setIsSavingLayout] = useState(false);
-  const [draggingWidgetType, setDraggingWidgetType] = useState<DashboardWidgetType | null>(null);
-
-  const enabledWidgets = widgets
-    .slice()
-    .filter((widget) => widget.enabled)
-    .sort((a, b) => a.position - b.position);
-
-  useEffect(() => {
-    let active = true;
-    async function fetchLayout() {
-      setIsLoadingLayout(true);
-      try {
-        const response = await fetch('/api/admin/dashboard/layout', { credentials: 'include' });
-        const payload = (await response.json()) as DashboardLayoutPayload;
-        if (!response.ok || !payload.ok || !payload.data) {
-          throw new Error(payload.error?.message || 'Failed to fetch dashboard layout');
-        }
-        if (!active) return;
-        setWidgets(payload.data.widgets);
-      } catch (error) {
-        if (!active) return;
-        toast.error(error instanceof Error ? error.message : 'Failed to load dashboard layout');
-        setWidgets(DEFAULT_DASHBOARD_WIDGETS);
-      } finally {
-        if (active) setIsLoadingLayout(false);
-      }
-    }
-    void fetchLayout();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  function normalizeWidgetPositions(nextWidgets: DashboardWidgetLayout[]) {
-    return nextWidgets
-      .slice()
-      .sort((a, b) => a.position - b.position)
-      .map((widget, index) => ({ ...widget, position: index }));
-  }
-
-  function updateWidget(type: DashboardWidgetType, updater: (widget: DashboardWidgetLayout) => DashboardWidgetLayout) {
-    setWidgets((current) => normalizeWidgetPositions(current.map((widget) => (widget.type === type ? updater(widget) : widget))));
-  }
-
-  function reorderWidgets(sourceType: DashboardWidgetType, targetType: DashboardWidgetType) {
-    if (sourceType === targetType) return;
-    setWidgets((current) => {
-      const sorted = current.slice().sort((a, b) => a.position - b.position);
-      const sourceIndex = sorted.findIndex((widget) => widget.type === sourceType);
-      const targetIndex = sorted.findIndex((widget) => widget.type === targetType);
-      if (sourceIndex === -1 || targetIndex === -1) return sorted;
-      const [moved] = sorted.splice(sourceIndex, 1);
-      sorted.splice(targetIndex, 0, moved);
-      return normalizeWidgetPositions(sorted);
-    });
-  }
-
-  async function saveLayout(nextWidgets = widgets) {
-    setIsSavingLayout(true);
-    try {
-      const response = await fetch('/api/admin/dashboard/layout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ widgets: normalizeWidgetPositions(nextWidgets) }),
-      });
-      const payload = (await response.json()) as DashboardLayoutPayload;
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to save layout');
-      }
-      setWidgets(payload.data.widgets);
-      toast.success('Dashboard layout saved');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save dashboard layout');
-    } finally {
-      setIsSavingLayout(false);
-    }
-  }
-
-  function resetLayoutToDefault() {
-    const nextWidgets = normalizeWidgetPositions(DEFAULT_DASHBOARD_WIDGETS);
-    setWidgets(nextWidgets);
-    void saveLayout(nextWidgets);
-  }
-
-  function widgetSizeClass(size: DashboardWidgetSize): string {
-    if (size === 'small') return 'md:col-span-1';
-    if (size === 'large') return 'md:col-span-3';
-    return 'md:col-span-2';
-  }
-
-  function renderWidget(widget: DashboardWidgetLayout) {
-    switch (widget.type) {
-      case 'quick-stats':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
-              <CardDescription>Core system indicators at a glance.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              {statusCards.map(({ label, value, icon: Icon }) => (
-                <div key={label} className="rounded-md border border-border p-3">
-                  <p className="text-xs text-slate-400">{label}</p>
-                  <div className="mt-1 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-100">{value}</p>
-                    <Icon className="h-4 w-4 text-primary" />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        );
-      case 'system-health':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>System Health Status</CardTitle>
-              <CardDescription>Live admin service heartbeat.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>Checked at: {new Date(status.checkedAt).toLocaleString()}</p>
-              <p>Environment: {status.environment}</p>
-              <p>Dashboard connectivity: Active</p>
-              <Button variant="outline" onClick={() => void onRefreshStatus()}>
-                Refresh Status
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      case 'email-volume':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Email Volume Chart (Last 30 Days)</CardTitle>
-              <CardDescription>Estimated trend line for recent activity.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-24 rounded-md border border-border bg-slate-950/40 p-3 text-xs text-slate-400">
-                <div className="mb-2">Volume trend: ▁▂▃▄▅▃▆▇█▆▄▅▆▇▅▃▂▃▅▆▅▇▆▄▅▆▇▆▅▃</div>
-                <div>Tip: Enable detailed metrics provider for real chart data.</div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      case 'storage-usage':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Storage Usage Pie Chart</CardTitle>
-              <CardDescription>Approximate inbox storage distribution.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>Primary inboxes: 62%</p>
-              <p>Archives: 27%</p>
-              <p>Attachments: 11%</p>
-            </CardContent>
-          </Card>
-        );
-      case 'recent-emails':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Recent Emails (Last 10)</CardTitle>
-              <CardDescription>Jump into inbox details from latest activity.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>No live preview loaded in dashboard mode.</p>
-              <Button onClick={onOpenInboxes}>
-                <Inbox className="mr-2 h-4 w-4" />
-                Open Inboxes
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      case 'inbox-breakdown':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Inbox Breakdown</CardTitle>
-              <CardDescription>Mailbox distribution by activity level.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>High traffic inboxes: 3</p>
-              <p>Medium traffic inboxes: 6</p>
-              <p>Low traffic inboxes: 14</p>
-              <Button variant="outline" onClick={onOpenInboxes}>
-                View Inboxes
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      case 'activity-log':
-        return (
-          <Card key={widget.type} className={widgetSizeClass(widget.size)}>
-            <CardHeader>
-              <CardTitle>Activity Log (Last 5)</CardTitle>
-              <CardDescription>Recent control-plane actions.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm text-slate-300">
-              <p>1. Admin login session started</p>
-              <p>2. Dashboard status refreshed</p>
-              <p>3. Inboxes view opened</p>
-              <p>4. Webhooks check completed</p>
-              <p>5. Policy headers verified</p>
-            </CardContent>
-          </Card>
-        );
-      default:
-        return null;
-    }
-  }
+    ],
+    [status]
+  );
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10">
@@ -940,322 +712,144 @@ function Dashboard({
           </div>
           <div className="flex items-center gap-2">
             <Badge>Secure Session</Badge>
-            <Button
-              variant={isCustomizing ? 'default' : 'outline'}
-              onClick={() => setIsCustomizing((current) => !current)}
-            >
-              {isCustomizing ? 'Done Customizing' : 'Customize Dashboard'}
-            </Button>
             <Button variant="outline" onClick={onLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Logout
             </Button>
           </div>
         </header>
 
-        {isCustomizing ? (
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="System status cards">
+          {statusCards.map(({ label, value, icon: Icon }) => (
+            <Card key={label}>
+              <CardHeader>
+                <CardDescription>{label}</CardDescription>
+                <CardTitle className="flex items-center justify-between text-lg">
+                  {value}
+                  <Icon className="h-4 w-4 text-primary" />
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          ))}
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Widget Library</CardTitle>
-              <CardDescription>Enable, disable, resize, reorder, then save dashboard layout.</CardDescription>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Login controls and rate-limit policy</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-3 md:grid-cols-2">
-                {widgets
-                  .slice()
-                  .sort((a, b) => a.position - b.position)
-                  .map((widget) => (
-                    <div key={widget.type} className="rounded-md border border-border p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-slate-100">{DASHBOARD_WIDGET_LABELS[widget.type]}</p>
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-slate-300">
-                            <input
-                              type="checkbox"
-                              checked={widget.enabled}
-                              onChange={(event) =>
-                                updateWidget(widget.type, (current) => ({
-                                  ...current,
-                                  enabled: event.target.checked,
-                                }))
-                              }
-                            />{' '}
-                            Enabled
-                          </label>
-                          <select
-                            className="rounded border border-border bg-slate-950 px-2 py-1 text-xs text-slate-200"
-                            value={widget.size}
-                            onChange={(event) =>
-                              updateWidget(widget.type, (current) => ({
-                                ...current,
-                                size: event.target.value as DashboardWidgetSize,
-                              }))
-                            }
-                          >
-                            <option value="small">Small</option>
-                            <option value="medium">Medium</option>
-                            <option value="large">Large</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void saveLayout()} disabled={isSavingLayout}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {isSavingLayout ? 'Saving...' : 'Save Layout'}
-                </Button>
-                <Button variant="outline" onClick={resetLayoutToDefault} disabled={isSavingLayout}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset to Default
-                </Button>
-              </div>
+            <CardContent className="space-y-2 text-sm text-slate-300">
+              <p>Maximum attempts/hour: {status.rateLimit.maxAttemptsPerHour}</p>
+              <p>Rate-limit window: {status.rateLimit.windowSeconds} seconds</p>
+              <p>Session cookies are HTTP-only and scoped to this server.</p>
             </CardContent>
           </Card>
-        ) : null}
 
-        {isLoadingLayout ? (
           <Card>
-            <CardContent className="p-4 text-sm text-slate-400">Loading dashboard widgets...</CardContent>
+            <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>Real-time alerts when new emails arrive</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-slate-300">
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                  Enable notifications
+                </span>
+                <input
+                  type="checkbox"
+                  checked={notificationsEnabled}
+                  onChange={(event) => onNotificationsEnabledChange(event.target.checked)}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-primary" />
+                  Enable sound
+                </span>
+                <input
+                  type="checkbox"
+                  checked={soundEnabled}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => onSoundEnabledChange(event.target.checked)}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4 text-primary" />
+                  Enable desktop alerts
+                </span>
+                <input
+                  type="checkbox"
+                  checked={desktopEnabled}
+                  disabled={!notificationsEnabled}
+                  onChange={(event) => onDesktopEnabledChange(event.target.checked)}
+                />
+              </label>
+              <Button variant="outline" onClick={() => void onRefreshStatus()}>
+                Refresh Status
+              </Button>
+            </CardContent>
           </Card>
-        ) : (
-          <section className="grid gap-4 md:grid-cols-3">
-            {enabledWidgets.map((widget) => (
-              <div
-                key={widget.type}
-                draggable={isCustomizing}
-                onDragStart={() => setDraggingWidgetType(widget.type)}
-                onDragOver={(event) => {
-                  if (isCustomizing) event.preventDefault();
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  if (!isCustomizing || !draggingWidgetType) return;
-                  reorderWidgets(draggingWidgetType, widget.type);
-                  setDraggingWidgetType(null);
-                }}
-                className={`${widgetSizeClass(widget.size)} ${isCustomizing ? 'cursor-move' : ''}`}
-              >
-                {isCustomizing ? (
-                  <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-                    <GripVertical className="h-3 w-3" />
-                    Drag to reorder
-                  </div>
-                ) : null}
-                {renderWidget(widget)}
-              </div>
-            ))}
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle>Navigation</CardTitle>
-                <CardDescription>Jump to admin areas.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                <Button onClick={onOpenInboxes}>
-                  <Inbox className="mr-2 h-4 w-4" />
-                  Open Inboxes
-                </Button>
-                <Button variant="outline" onClick={onOpenWebhooks}>
-                  <Webhook className="mr-2 h-4 w-4" />
-                  Open Webhooks
-                </Button>
-                <Button variant="outline" onClick={onOpenTemplatePreview}>
-                  <FileCode2 className="mr-2 h-4 w-4" />
-                  Template Preview
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
-        )}
+        </section>
+
+        <section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Inboxes</CardTitle>
+              <CardDescription>Browse real inboxes and message counts from Postal data.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={onOpenInboxes}>
+                <Inbox className="mr-2 h-4 w-4" />
+                Open Inboxes
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
       </div>
     </main>
   );
 }
 
-function InboxesPage({ onBack, initialInboxId }: { onBack: () => void; initialInboxId?: string | null }) {
+function InboxesPage({
+  onBack,
+  onOpenInbox,
+  refreshSignal,
+}: {
+  onBack: () => void;
+  onOpenInbox: (inboxId: string) => void;
+  refreshSignal: number;
+}) {
   const [inboxes, setInboxes] = useState<InboxSummary[]>([]);
-  const [selectedInboxId, setSelectedInboxId] = useState<string | null>(initialInboxId || null);
-  const [emails, setEmails] = useState<AdminMessage[]>([]);
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [isLoadingInboxes, setIsLoadingInboxes] = useState(true);
-  const [isLoadingEmails, setIsLoadingEmails] = useState(false);
-  const [isDeletingEmail, setIsDeletingEmail] = useState(false);
-  const [page, setPage] = useState(1);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newInboxAddress, setNewInboxAddress] = useState('');
-  const [newInboxName, setNewInboxName] = useState('');
-  const [isCreatingInbox, setIsCreatingInbox] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const pageSize = 20;
-
-  async function refreshInboxes() {
-    setIsLoadingInboxes(true);
-    try {
-      const response = await fetch('/api/admin/inboxes', { credentials: 'include' });
-      const payload = (await response.json()) as InboxesPayload;
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to fetch inboxes');
-      }
-      setInboxes(payload.data.inboxes);
-      setSelectedInboxId((current) => {
-        if (current && payload.data?.inboxes.some((inbox) => inbox.id === current)) {
-          return current;
+  useEffect(() => {
+    let active = true;
+    async function fetchInboxes() {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/admin/inboxes', { credentials: 'include' });
+        const payload = (await response.json()) as InboxesPayload;
+        if (!response.ok || !payload.ok || !payload.data) {
+          throw new Error(payload.error?.message || 'Failed to fetch inboxes');
         }
-        if (initialInboxId && payload.data?.inboxes.some((inbox) => inbox.id === initialInboxId)) {
-          return initialInboxId;
-        }
-        return payload.data?.inboxes[0]?.id || null;
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load inboxes');
-      setInboxes([]);
-    } finally {
-      setIsLoadingInboxes(false);
-    }
-  }
-
-  async function refreshEmails(inboxId: string) {
-    setIsLoadingEmails(true);
-    try {
-      const response = await fetch(`/api/admin/inbox/${encodeURIComponent(inboxId)}/messages`, {
-        credentials: 'include',
-      });
-      const payload = (await response.json()) as InboxMessagesPayload;
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to fetch inbox messages');
+        if (!active) return;
+        setInboxes(payload.data.inboxes);
+      } catch (error) {
+        if (!active) return;
+        toast.error(error instanceof Error ? error.message : 'Failed to load inboxes');
+        setInboxes([]);
+      } finally {
+        if (active) setIsLoading(false);
       }
-      setEmails(payload.data.messages);
-      setSelectedEmailId((current) =>
-        current && payload.data?.messages.some((message) => message.id === current)
-          ? current
-          : payload.data?.messages[0]?.id || null
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load emails');
-      setEmails([]);
-      setSelectedEmailId(null);
-    } finally {
-      setIsLoadingEmails(false);
     }
-  }
 
-  useEffect(() => {
-    void refreshInboxes();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedInboxId) {
-      setEmails([]);
-      setSelectedEmailId(null);
-      return;
-    }
-    void refreshEmails(selectedInboxId);
-  }, [selectedInboxId]);
-
-  const filteredEmails = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return emails;
-    return emails.filter((email) => {
-      return (
-        email.from.toLowerCase().includes(q) ||
-        email.subject.toLowerCase().includes(q) ||
-        email.preview.toLowerCase().includes(q)
-      );
-    });
-  }, [emails, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredEmails.length / pageSize));
-  const pagedEmails = filteredEmails.slice((page - 1) * pageSize, page * pageSize);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, selectedInboxId]);
-
-  const selectedEmail = emails.find((email) => email.id === selectedEmailId) || null;
-
-  async function handleOpenEmail(emailId: string) {
-    setSelectedEmailId(emailId);
-    try {
-      await fetch(`/api/admin/email/${encodeURIComponent(emailId)}/read`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setEmails((current) => current.map((email) => (email.id === emailId ? { ...email, read: true } : email)));
-    } catch {
-      // No-op: keep local UX smooth even if read marker fails.
-    }
-  }
-
-  async function handleToggleRead() {
-    if (!selectedEmail) return;
-    const nextRead = !selectedEmail.read;
-    try {
-      const endpoint = nextRead ? 'read' : 'unread';
-      await fetch(`/api/admin/email/${encodeURIComponent(selectedEmail.id)}/${endpoint}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setEmails((current) =>
-        current.map((email) => (email.id === selectedEmail.id ? { ...email, read: nextRead } : email))
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update read status');
-    }
-  }
-
-  async function handleDeleteEmail() {
-    if (!selectedEmail) return;
-    if (!window.confirm('Delete this email permanently?')) return;
-    setIsDeletingEmail(true);
-    try {
-      const response = await fetch(`/api/admin/email/${encodeURIComponent(selectedEmail.id)}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      const payload = (await response.json()) as AdminActionPayload;
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error?.message || 'Failed to delete email');
-      }
-      setEmails((current) => current.filter((email) => email.id !== selectedEmail.id));
-      setSelectedEmailId(null);
-      await refreshInboxes();
-      toast.success('Email deleted');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete email');
-    } finally {
-      setIsDeletingEmail(false);
-    }
-  }
-
-  async function handleCreateInbox(event: FormEvent) {
-    event.preventDefault();
-    setIsCreatingInbox(true);
-    try {
-      const response = await fetch('/api/admin/inboxes', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: newInboxAddress.trim(),
-          name: newInboxName.trim(),
-        }),
-      });
-      const payload = (await response.json()) as InboxesPayload;
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error?.message || 'Failed to create inbox');
-      }
-      setIsCreateModalOpen(false);
-      setNewInboxAddress('');
-      setNewInboxName('');
-      await refreshInboxes();
-      toast.success('Inbox created');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create inbox');
-    } finally {
-      setIsCreatingInbox(false);
-    }
-  }
+    void fetchInboxes();
+    return () => {
+      active = false;
+    };
+  }, [refreshSignal]);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8">
@@ -1265,372 +859,39 @@ function InboxesPage({ onBack, initialInboxId }: { onBack: () => void; initialIn
             <p className="text-xs uppercase tracking-wide text-slate-400">Admin</p>
             <h1 className="text-xl font-semibold text-slate-100">Inboxes</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setIsCreateModalOpen(true)}>+ Create Inbox</Button>
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to dashboard
-            </Button>
-          </div>
-        </header>
-
-        <section className="grid h-[calc(100vh-12rem)] gap-4 md:grid-cols-12">
-          <Card className="overflow-hidden md:col-span-3">
-            <CardHeader className="border-b border-border p-4">
-              <CardTitle className="text-base">Inboxes</CardTitle>
-            </CardHeader>
-            <CardContent className="h-full overflow-y-auto p-0">
-              {isLoadingInboxes ? (
-                <p className="p-4 text-sm text-slate-400">Loading inboxes...</p>
-              ) : inboxes.length === 0 ? (
-                <p className="p-4 text-sm text-slate-400">No inboxes found.</p>
-              ) : (
-                <div className="space-y-1 p-2">
-                  {inboxes.map((inbox) => {
-                    const selected = selectedInboxId === inbox.id;
-                    return (
-                      <button
-                        key={inbox.id}
-                        type="button"
-                        onClick={() => setSelectedInboxId(inbox.id)}
-                        className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                          selected
-                            ? 'border-cyan-700/60 bg-cyan-950/30'
-                            : 'border-border bg-slate-950/30 hover:bg-slate-900/60'
-                        }`}
-                      >
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-slate-100">
-                            {inbox.name || inbox.address}
-                          </p>
-                          <Badge>{inbox.messageCount}</Badge>
-                        </div>
-                        <p className="truncate text-xs text-slate-400">{inbox.address}</p>
-                      </button>
-                    );
-                  })}
-                  <Button
-                    variant="outline"
-                    className="mt-2 w-full justify-start"
-                    onClick={() => setIsCreateModalOpen(true)}
-                  >
-                    + Create Inbox
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden md:col-span-9">
-            <CardHeader className="border-b border-border p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <CardTitle className="text-base">
-                  {selectedInboxId
-                    ? `${inboxes.find((inbox) => inbox.id === selectedInboxId)?.name || selectedInboxId} Emails`
-                    : 'Select an inbox'}
-                </CardTitle>
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search emails (from, subject, preview)"
-                  className="md:max-w-sm"
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="grid h-full gap-4 p-4 md:grid-cols-2">
-              <div className="overflow-hidden rounded-lg border border-border">
-                <div className="grid grid-cols-[2fr_3fr_1fr_1fr] gap-2 border-b border-border bg-slate-900/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  <span>From</span>
-                  <span>Subject</span>
-                  <span>Date</span>
-                  <span>Status</span>
-                </div>
-                <div className="max-h-[32rem] overflow-y-auto">
-                  {isLoadingEmails ? (
-                    <p className="p-3 text-sm text-slate-400">Loading emails...</p>
-                  ) : pagedEmails.length === 0 ? (
-                    <p className="p-3 text-sm text-slate-400">No emails yet.</p>
-                  ) : (
-                    pagedEmails.map((email) => (
-                      <button
-                        key={email.id}
-                        type="button"
-                        onClick={() => void handleOpenEmail(email.id)}
-                        className={`grid w-full grid-cols-[2fr_3fr_1fr_1fr] gap-2 border-b border-border px-3 py-2 text-left text-sm transition ${
-                          selectedEmailId === email.id
-                            ? 'bg-cyan-950/30'
-                            : 'hover:bg-slate-900/60'
-                        }`}
-                      >
-                        <span className="truncate text-slate-200">{email.from || '(unknown)'}</span>
-                        <span className="truncate text-slate-100">{email.subject || '(no subject)'}</span>
-                        <span className="truncate text-xs text-slate-400">{formatDateTime(email.date)}</span>
-                        <span className={email.read ? 'text-xs text-slate-500' : 'text-xs text-cyan-300'}>
-                          {email.read ? 'Read' : 'Unread'}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-                <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-slate-400">
-                  <span>
-                    Page {page} / {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-lg border border-border">
-                <div className="flex items-center justify-between border-b border-border bg-slate-900/60 px-3 py-2">
-                  <p className="text-sm font-semibold text-slate-200">Message</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" disabled={!selectedEmail} onClick={() => void handleToggleRead()}>
-                      {selectedEmail?.read ? 'Mark Unread' : 'Mark Read'}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={!selectedEmail || isDeletingEmail}
-                      onClick={() => void handleDeleteEmail()}
-                    >
-                      {isDeletingEmail ? 'Deleting...' : 'Delete'}
-                    </Button>
-                  </div>
-                </div>
-                <div className="max-h-[36rem] overflow-y-auto p-4">
-                  {selectedEmail ? (
-                    <EmailContent email={selectedEmail} />
-                  ) : (
-                    <p className="text-sm text-slate-400">Select an email to view details.</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      </div>
-
-      {isCreateModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="w-full max-w-lg">
-            <CardHeader>
-              <CardTitle>Create Inbox</CardTitle>
-              <CardDescription>Provide inbox address and an optional display name.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-3" onSubmit={(event) => void handleCreateInbox(event)}>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">Inbox address</label>
-                  <Input
-                    value={newInboxAddress}
-                    onChange={(event) => setNewInboxAddress(event.target.value)}
-                    placeholder="inbox@example.com"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-slate-300">Inbox name</label>
-                  <Input
-                    value={newInboxName}
-                    onChange={(event) => setNewInboxName(event.target.value)}
-                    placeholder="Support Inbox"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreateModalOpen(false)}
-                    disabled={isCreatingInbox}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isCreatingInbox}>
-                    {isCreatingInbox ? 'Creating...' : 'Create Inbox'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-    </main>
-  );
-}
-
-const WEBHOOK_EVENT_OPTIONS = [
-  'email.received',
-  'email.sent',
-  'email.bounced',
-  'email.delivered',
-  'email.failed',
-];
-
-function WebhooksPage({
-  onBack,
-  onOpenWebhook,
-}: {
-  onBack: () => void;
-  onOpenWebhook: (webhookId: string) => void;
-}) {
-  const [webhooks, setWebhooks] = useState<AdminWebhook[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [url, setUrl] = useState('');
-  const [secret, setSecret] = useState('');
-  const [enabled, setEnabled] = useState(true);
-  const [events, setEvents] = useState<string[]>(['email.received']);
-
-  async function refreshWebhooks() {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/admin/webhooks', { credentials: 'include' });
-      const payload = (await response.json()) as WebhooksPayload;
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to fetch webhooks');
-      }
-      setWebhooks(payload.data.webhooks || []);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load webhooks');
-      setWebhooks([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refreshWebhooks();
-  }, []);
-
-  function toggleEvent(eventType: string) {
-    setEvents((current) =>
-      current.includes(eventType)
-        ? current.filter((event) => event !== eventType)
-        : [...current, eventType]
-    );
-  }
-
-  async function createWebhook(event: FormEvent) {
-    event.preventDefault();
-    if (!url.trim()) {
-      toast.error('Webhook URL is required');
-      return;
-    }
-    if (events.length === 0) {
-      toast.error('Select at least one event');
-      return;
-    }
-    setIsCreating(true);
-    try {
-      const response = await fetch('/api/admin/webhooks', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, events, secret, enabled }),
-      });
-      const payload = (await response.json()) as WebhooksPayload;
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error?.message || 'Failed to create webhook');
-      }
-      setUrl('');
-      setSecret('');
-      setEnabled(true);
-      setEvents(['email.received']);
-      toast.success('Webhook created');
-      await refreshWebhooks();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create webhook');
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
-  return (
-    <main className="min-h-screen px-4 py-6 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Admin</p>
-            <h1 className="text-xl font-semibold text-slate-100">Webhooks</h1>
-          </div>
           <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to dashboard
           </Button>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Webhook</CardTitle>
-            <CardDescription>Configure event delivery URL and secret.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={createWebhook}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 text-sm">
-                  <span className="text-slate-300">URL</span>
-                  <Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/webhook" required />
-                </label>
-                <label className="space-y-2 text-sm">
-                  <span className="text-slate-300">Secret (optional)</span>
-                  <Input value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="webhook-signing-secret" />
-                </label>
-              </div>
-              <div>
-                <p className="mb-2 text-sm text-slate-300">Events</p>
-                <div className="flex flex-wrap gap-2">
-                  {WEBHOOK_EVENT_OPTIONS.map((eventType) => (
-                    <label key={eventType} className="flex items-center gap-2 rounded border border-border px-2 py-1 text-xs text-slate-300">
-                      <input
-                        type="checkbox"
-                        checked={events.includes(eventType)}
-                        onChange={() => toggleEvent(eventType)}
-                      />
-                      {eventType}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
-                Enabled
-              </label>
-              <Button type="submit" disabled={isCreating}>{isCreating ? 'Creating...' : 'Create Webhook'}</Button>
-            </form>
-          </CardContent>
-        </Card>
-
         {isLoading ? (
-          <Card><CardContent className="p-4 text-sm text-slate-400">Loading webhooks...</CardContent></Card>
-        ) : webhooks.length === 0 ? (
-          <Card><CardContent className="p-4 text-sm text-slate-400">No webhooks configured yet.</CardContent></Card>
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">Loading inboxes...</CardContent>
+          </Card>
+        ) : inboxes.length === 0 ? (
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">
+              No inboxes found. Send or receive messages first.
+            </CardContent>
+          </Card>
         ) : (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {webhooks.map((webhook) => (
+            {inboxes.map((inbox) => (
               <button
-                key={webhook.id}
+                key={inbox.id}
                 type="button"
-                onClick={() => onOpenWebhook(webhook.id)}
+                onClick={() => onOpenInbox(inbox.address)}
                 className="rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-cyan-700/60 hover:bg-slate-900/70"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-slate-100">{webhook.url}</p>
-                  <Badge variant={webhook.enabled ? 'default' : 'outline'}>
-                    {webhook.enabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
+                  <p className="truncate text-sm font-semibold text-slate-100">{inbox.name || inbox.address}</p>
+                  <Badge>{inbox.messageCount} msgs</Badge>
                 </div>
-                <p className="line-clamp-2 text-xs text-slate-300">{webhook.events.join(', ') || 'No events'}</p>
-                <p className="mt-2 text-xs text-slate-500">Updated: {formatDateTime(webhook.updatedAt)}</p>
+                <p className="truncate text-sm text-slate-300">{inbox.address}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Last message: {inbox.lastMessageAt ? formatDateTime(inbox.lastMessageAt) : 'N/A'}
+                </p>
               </button>
             ))}
           </section>
@@ -1640,190 +901,510 @@ function WebhooksPage({
   );
 }
 
-function WebhookDetailPage({
-  webhookId,
-  onBack,
-}: {
-  webhookId: string;
-  onBack: () => void;
-}) {
-  const [webhook, setWebhook] = useState<AdminWebhook | null>(null);
-  const [logs, setLogs] = useState<WebhookLog[]>([]);
-  const [stats, setStats] = useState<WebhookLogStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+function getPasswordStrengthLabel(value: string): string {
+  if (value.length < 12) return 'Weak';
+  const hasUpper = /[A-Z]/.test(value);
+  const hasLower = /[a-z]/.test(value);
+  const hasNumber = /\d/.test(value);
+  const hasSymbol = /[^A-Za-z0-9]/.test(value);
+  const score = [hasUpper, hasLower, hasNumber, hasSymbol].filter(Boolean).length;
+  if (score >= 3 && value.length >= 16) return 'Strong';
+  if (score >= 2) return 'Medium';
+  return 'Weak';
+}
 
-  async function refresh() {
+function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [postalDbUrl, setPostalDbUrl] = useState('');
+  const [postalDbUrlRedacted, setPostalDbUrlRedacted] = useState<string | null>(null);
+  const [postalConnectionOk, setPostalConnectionOk] = useState(false);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(1440);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [postalConfirm, setPostalConfirm] = useState(false);
+  const [passwordConfirm, setPasswordConfirm] = useState(false);
+  const [sessionConfirm, setSessionConfirm] = useState(false);
+  const [logoutAllConfirm, setLogoutAllConfirm] = useState(false);
+  const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
+  const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [newApiPermissions, setNewApiPermissions] = useState<Array<'send' | 'read' | 'admin'>>([
+    'send',
+    'read',
+  ]);
+  const [createApiConfirm, setCreateApiConfirm] = useState(false);
+  const [createdFullKey, setCreatedFullKey] = useState<string | null>(null);
+  const [revokeConfirmById, setRevokeConfirmById] = useState<Record<string, boolean>>({});
+  const [selectedUsageKeyId, setSelectedUsageKeyId] = useState<string | null>(null);
+  const [usageDetails, setUsageDetails] = useState<ApiKeyUsagePayload['data'] | null>(null);
+  const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
+
+  async function loadSettings() {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/webhooks/${encodeURIComponent(webhookId)}/logs`, {
-        credentials: 'include',
-      });
-      const payload = (await response.json()) as WebhookLogsPayload;
+      const response = await fetch('/api/admin/settings', { credentials: 'include' });
+      const payload = (await response.json()) as SettingsPayload;
       if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to fetch webhook logs');
+        throw new Error(payload.error?.message || 'Failed to load settings');
       }
-      setWebhook(payload.data.webhook);
-      setLogs(payload.data.logs);
-      setStats(payload.data.stats);
+      setPostalDbUrl(payload.data.postalDbUrl || '');
+      setPostalDbUrlRedacted(payload.data.postalDbUrlRedacted || null);
+      setPostalConnectionOk(payload.data.postalConnectionOk);
+      setSessionTimeoutMinutes(payload.data.sessionTimeoutMinutes);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load webhook detail');
-      setWebhook(null);
-      setLogs([]);
-      setStats(null);
+      toast.error(error instanceof Error ? error.message : 'Failed to load settings');
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    void refresh();
-  }, [webhookId]);
+    void loadSettings();
+  }, []);
 
-  async function testWebhook() {
-    setIsTesting(true);
+  async function loadApiKeys() {
+    setIsApiKeysLoading(true);
     try {
-      const response = await fetch(`/api/admin/webhooks/${encodeURIComponent(webhookId)}/test`, {
+      const response = await fetch('/api/admin/api-keys', { credentials: 'include' });
+      const payload = (await response.json()) as ApiKeysPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load API keys');
+      }
+      setApiKeys(payload.data.apiKeys);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load API keys');
+    } finally {
+      setIsApiKeysLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadApiKeys();
+  }, []);
+
+  async function createApiKey() {
+    if (!createApiConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/api-keys', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newApiKeyName,
+          permissions: newApiPermissions,
+          confirm: true,
+        }),
       });
-      const payload = (await response.json()) as AdminActionPayload;
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error?.message || 'Failed to test webhook');
+      const payload = (await response.json()) as ApiKeysPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to create API key');
       }
-      toast.success('Webhook test sent');
-      await refresh();
+      setCreatedFullKey(payload.data.fullKey || null);
+      setNewApiKeyName('');
+      setNewApiPermissions(['send', 'read']);
+      setCreateApiConfirm(false);
+      toast.success('API key created');
+      await loadApiKeys();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to test webhook');
-    } finally {
-      setIsTesting(false);
+      toast.error(error instanceof Error ? error.message : 'Failed to create API key');
     }
   }
 
-  async function toggleEnabled() {
-    if (!webhook) return;
-    setIsSaving(true);
-    try {
-      const response = await fetch(`/api/admin/webhooks/${encodeURIComponent(webhook.id)}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !webhook.enabled }),
-      });
-      const payload = (await response.json()) as WebhooksPayload;
-      if (!response.ok || !payload.ok || !payload.data?.webhook) {
-        throw new Error(payload.error?.message || 'Failed to update webhook');
-      }
-      setWebhook(payload.data.webhook);
-      toast.success(payload.data.webhook.enabled ? 'Webhook enabled' : 'Webhook disabled');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update webhook');
-    } finally {
-      setIsSaving(false);
+  async function revokeApiKey(id: string) {
+    if (!revokeConfirmById[id]) {
+      toast.error('Confirmation is required');
+      return;
     }
-  }
-
-  async function deleteWebhook() {
-    if (!webhook) return;
-    const confirmed = window.confirm('Delete this webhook?');
-    if (!confirmed) return;
-    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/admin/webhooks/${encodeURIComponent(webhook.id)}`, {
+      const response = await fetch(`/api/admin/api-keys/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
       });
-      const payload = (await response.json()) as AdminActionPayload;
+      const payload = (await response.json()) as ApiKeysPayload;
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error?.message || 'Failed to delete webhook');
+        throw new Error(payload.error?.message || 'Failed to revoke API key');
       }
-      toast.success('Webhook deleted');
-      onBack();
+      setRevokeConfirmById((current) => ({ ...current, [id]: false }));
+      toast.success('API key revoked');
+      await loadApiKeys();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete webhook');
-    } finally {
-      setIsDeleting(false);
+      toast.error(error instanceof Error ? error.message : 'Failed to revoke API key');
     }
   }
+
+  async function loadUsageForKey(id: string) {
+    try {
+      const response = await fetch(`/api/admin/api-keys/${encodeURIComponent(id)}/usage`, {
+        credentials: 'include',
+      });
+      const payload = (await response.json()) as ApiKeyUsagePayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load usage');
+      }
+      setSelectedUsageKeyId(id);
+      setUsageDetails(payload.data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load usage');
+    }
+  }
+
+  async function copyCreatedKey() {
+    if (!createdFullKey) return;
+    try {
+      await navigator.clipboard.writeText(createdFullKey);
+      toast.success('API key copied to clipboard');
+    } catch {
+      toast.error('Failed to copy key');
+    }
+  }
+
+  function togglePermission(scope: 'send' | 'read' | 'admin') {
+    setNewApiPermissions((current) => {
+      if (current.includes(scope)) {
+        const next = current.filter((item) => item !== scope);
+        return next.length > 0 ? next : current;
+      }
+      return [...current, scope];
+    });
+  }
+
+  async function savePostalSettings() {
+    if (!postalConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/postal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dbUrl: postalDbUrl, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to update Postal connection');
+      }
+      toast.success('Postal connection updated');
+      setPostalConfirm(false);
+      await loadSettings();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update Postal connection');
+    }
+  }
+
+  async function savePasswordSettings() {
+    if (!passwordConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to change password');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordConfirm(false);
+      toast.success('Admin password changed. Login again on other sessions.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to change password');
+    }
+  }
+
+  async function saveSessionSettings() {
+    if (!sessionConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/session', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionTimeoutMinutes, confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to update session timeout');
+      }
+      setSessionConfirm(false);
+      toast.success('Session timeout updated');
+      await loadSettings();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update session timeout');
+    }
+  }
+
+  async function forceLogoutAll() {
+    if (!logoutAllConfirm) {
+      toast.error('Confirmation is required');
+      return;
+    }
+    try {
+      const response = await fetch('/api/admin/settings/logout-all', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const payload = (await response.json()) as SettingsPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to logout all sessions');
+      }
+      setLogoutAllConfirm(false);
+      toast.success('All other sessions have been logged out');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to logout all sessions');
+    }
+  }
+
+  const passwordStrength = getPasswordStrengthLabel(newPassword);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Webhook Detail</p>
-            <h1 className="text-xl font-semibold text-slate-100">{webhook?.url || webhookId}</h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to webhooks
-            </Button>
-            <Button onClick={() => void testWebhook()} disabled={isTesting || isLoading}>
-              {isTesting ? 'Testing...' : 'Test Webhook'}
-            </Button>
-            <Button variant="outline" onClick={() => void toggleEnabled()} disabled={isSaving || !webhook}>
-              {webhook?.enabled ? 'Disable' : 'Enable'}
-            </Button>
-            <Button variant="danger" onClick={() => void deleteWebhook()} disabled={isDeleting || !webhook}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </div>
+      <div className="mx-auto max-w-5xl space-y-4">
+        <header className="rounded-xl border border-border bg-card/80 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Admin</p>
+          <h1 className="text-xl font-semibold text-slate-100">Settings</h1>
         </header>
 
-        {stats ? (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card><CardHeader><CardDescription>Total deliveries</CardDescription><CardTitle>{stats.total}</CardTitle></CardHeader></Card>
-            <Card><CardHeader><CardDescription>Success rate</CardDescription><CardTitle>{stats.successRate}%</CardTitle></CardHeader></Card>
-            <Card><CardHeader><CardDescription>Failures</CardDescription><CardTitle>{stats.failureCount}</CardTitle></CardHeader></Card>
-            <Card><CardHeader><CardDescription>Avg response time</CardDescription><CardTitle>{stats.averageResponseTimeMs} ms</CardTitle></CardHeader></Card>
-          </section>
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">Loading settings...</CardContent>
+          </Card>
         ) : null}
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Deliveries</CardTitle>
-            <CardDescription>Latest webhook attempts with response status and retry count.</CardDescription>
+            <CardTitle>Postal Database Connection</CardTitle>
+            <CardDescription>Update and test Postal DB connection used by the admin panel.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            {isLoading ? (
-              <p className="text-sm text-slate-400">Loading webhook logs...</p>
-            ) : logs.length === 0 ? (
-              <p className="text-sm text-slate-400">No deliveries yet. Run a test webhook first.</p>
-            ) : (
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead className="text-slate-400">
-                  <tr>
-                    <th className="py-2 pr-3">Timestamp</th>
-                    <th className="py-2 pr-3">Event</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3">Response Time</th>
-                    <th className="py-2 pr-3">Retry</th>
-                    <th className="py-2 pr-3">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-t border-border">
-                      <td className="py-2 pr-3 text-slate-300">{formatDateTime(log.timestamp)}</td>
-                      <td className="py-2 pr-3 text-slate-300">{log.eventType}</td>
-                      <td className="py-2 pr-3 text-slate-300">{log.statusCode || '-'}</td>
-                      <td className="py-2 pr-3 text-slate-300">{log.responseTimeMs} ms</td>
-                      <td className="py-2 pr-3 text-slate-300">{log.retryCount}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant={log.success ? 'default' : 'outline'}>
-                          {log.success ? 'Success' : log.error || 'Failed'}
-                        </Badge>
-                      </td>
-                    </tr>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-300">
+              Status:{' '}
+              <span className={postalConnectionOk ? 'text-green-400' : 'text-amber-400'}>
+                {postalConnectionOk ? 'Connected' : 'Disconnected'}
+              </span>
+            </p>
+            <p className="text-xs text-slate-500">
+              Current (redacted): {postalDbUrlRedacted || 'Not configured'}
+            </p>
+            <Input
+              value={postalDbUrl}
+              onChange={(event) => setPostalDbUrl(event.target.value)}
+              placeholder="postgres://user:pass@host:5432/postal"
+            />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={postalConfirm}
+                onChange={(event) => setPostalConfirm(event.target.checked)}
+              />
+              I confirm I want to update the Postal DB connection.
+            </label>
+            <Button onClick={() => void savePostalSettings()}>Test & Save Connection</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Password</CardTitle>
+            <CardDescription>Change admin password. Minimum length is 12 characters.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="Current password"
+            />
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="New password"
+            />
+            <p className="text-sm text-slate-300">
+              Password strength:{' '}
+              <span className={passwordStrength === 'Strong' ? 'text-green-400' : 'text-amber-400'}>
+                {passwordStrength}
+              </span>
+            </p>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={passwordConfirm}
+                onChange={(event) => setPasswordConfirm(event.target.checked)}
+              />
+              I confirm I want to change the admin password.
+            </label>
+            <Button onClick={() => void savePasswordSettings()}>Change Password</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Session Settings</CardTitle>
+            <CardDescription>Control admin session timeout and force logout.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              type="number"
+              min={5}
+              max={10080}
+              value={sessionTimeoutMinutes}
+              onChange={(event) => setSessionTimeoutMinutes(Number(event.target.value))}
+            />
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={sessionConfirm}
+                onChange={(event) => setSessionConfirm(event.target.checked)}
+              />
+              I confirm I want to update session timeout.
+            </label>
+            <Button onClick={() => void saveSessionSettings()}>Update Session Timeout</Button>
+
+            <label className="flex items-center gap-2 pt-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={logoutAllConfirm}
+                onChange={(event) => setLogoutAllConfirm(event.target.checked)}
+              />
+              I confirm I want to force logout all other sessions.
+            </label>
+            <Button variant="danger" onClick={() => void forceLogoutAll()}>
+              Force Logout All Sessions
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>API Keys</CardTitle>
+            <CardDescription>Manage Postal API keys used by agents and automation.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <p className="text-sm font-medium text-slate-200">Create API Key</p>
+              <Input
+                value={newApiKeyName}
+                onChange={(event) => setNewApiKeyName(event.target.value)}
+                placeholder="Key name (e.g. automation-prod)"
+              />
+              <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+                {(['send', 'read', 'admin'] as const).map((scope) => (
+                  <label key={scope} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newApiPermissions.includes(scope)}
+                      onChange={() => togglePermission(scope)}
+                    />
+                    {scope}
+                  </label>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={createApiConfirm}
+                  onChange={(event) => setCreateApiConfirm(event.target.checked)}
+                />
+                I confirm I want to create this API key.
+              </label>
+              <Button onClick={() => void createApiKey()}>Create API Key</Button>
+            </div>
+
+            {createdFullKey ? (
+              <div className="space-y-2 rounded-md border border-amber-600/40 bg-amber-950/20 p-3">
+                <p className="text-sm font-semibold text-amber-300">Save this key now, you will not see it again.</p>
+                <pre className="overflow-x-auto whitespace-pre-wrap break-all text-xs text-slate-100">
+                  {createdFullKey}
+                </pre>
+                <Button variant="outline" onClick={() => void copyCreatedKey()}>
+                  Copy to clipboard
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-200">Existing Keys</p>
+              {isApiKeysLoading ? (
+                <p className="text-sm text-slate-400">Loading API keys...</p>
+              ) : apiKeys.length === 0 ? (
+                <p className="text-sm text-slate-400">No API keys found.</p>
+              ) : (
+                apiKeys.map((apiKey) => (
+                  <div key={apiKey.id} className="rounded-md border border-border p-3 text-sm text-slate-300">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-slate-100">{apiKey.name}</p>
+                      <Badge className={apiKey.status === 'active' ? '' : 'bg-slate-700'}>
+                        {apiKey.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">{apiKey.maskedKey}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Created: {apiKey.createdAt ? formatDateTime(apiKey.createdAt) : 'N/A'} | Last used:{' '}
+                      {apiKey.lastUsedAt ? formatDateTime(apiKey.lastUsedAt) : 'Never'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Permissions: {apiKey.permissions.join(', ')}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={() => void loadUsageForKey(apiKey.id)}>
+                        View usage
+                      </Button>
+                      {apiKey.status === 'active' ? (
+                        <>
+                          <label className="flex items-center gap-2 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(revokeConfirmById[apiKey.id])}
+                              onChange={(event) =>
+                                setRevokeConfirmById((current) => ({
+                                  ...current,
+                                  [apiKey.id]: event.target.checked,
+                                }))
+                              }
+                            />
+                            Confirm revoke
+                          </label>
+                          <Button variant="danger" onClick={() => void revokeApiKey(apiKey.id)}>
+                            Revoke
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {usageDetails && selectedUsageKeyId ? (
+              <div className="rounded-md border border-border p-3 text-sm text-slate-300">
+                <p className="font-medium text-slate-100">Usage for {selectedUsageKeyId}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Total requests: {usageDetails.totalRequests} | Last used:{' '}
+                  {usageDetails.lastUsedAt ? formatDateTime(usageDetails.lastUsedAt) : 'Never'}
+                </p>
+                <div className="mt-2 space-y-1 text-xs">
+                  {usageDetails.requestsPerDay.map((item) => (
+                    <div key={item.date} className="flex items-center justify-between">
+                      <span>{item.date}</span>
+                      <span>{item.count}</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -1831,433 +1412,234 @@ function WebhookDetailPage({
   );
 }
 
-const TEMPLATE_PRESETS: Record<string, Record<string, unknown>> = {
-  custom: {},
-  'user-signup': {
-    user: { firstName: 'Ava', email: 'ava@example.com' },
-    appName: 'MailGoat',
-    verifyUrl: 'https://app.mailgoat.ai/verify/token-123',
-  },
-  'order-confirmation': {
-    user: { firstName: 'Kai', email: 'kai@example.com' },
-    order: { id: 'MG-2026-0192', total: '$42.00', eta: '2026-02-22' },
-  },
-};
+function makeStorageCsv(payload: NonNullable<StoragePayload['data']>): string {
+  const lines: string[] = [];
+  lines.push('section,key,value');
+  lines.push(`summary,total_storage_bytes,${payload.totalStorage}`);
+  lines.push(`summary,total_messages,${payload.totalMessages}`);
+  lines.push(`summary,source,${payload.source}`);
+  for (const item of payload.byInbox) {
+    lines.push(`by_inbox,${item.inbox},${item.totalSize}`);
+  }
+  for (const item of payload.byMonth) {
+    lines.push(`by_month,${item.month},${item.totalSize}`);
+  }
+  for (const item of payload.byAttachmentType) {
+    lines.push(`by_attachment_type,${item.type},${item.totalSize}`);
+  }
+  return lines.join('\n');
+}
 
-function TemplatePreviewPage({ onBack }: { onBack: () => void }) {
-  const [templateName, setTemplateName] = useState('welcome_email');
-  const [subject, setSubject] = useState('Welcome {{user.firstName}} to {{appName}}');
-  const [htmlTemplate, setHtmlTemplate] = useState(
-    '<h1>Welcome {{user.firstName}}</h1><p>Verify your account: <a href="{{verifyUrl}}">Activate</a></p>'
-  );
-  const [textTemplate, setTextTemplate] = useState(
-    'Welcome {{user.firstName}} to {{appName}}.\nVerify your account: {{verifyUrl}}'
-  );
-  const [variablesJson, setVariablesJson] = useState(
-    JSON.stringify(TEMPLATE_PRESETS['user-signup'], null, 2)
-  );
-  const [testRecipient, setTestRecipient] = useState('');
-  const [fromOverride, setFromOverride] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState('user-signup');
-  const [savedDatasets, setSavedDatasets] = useState<string[]>([]);
-  const [rendered, setRendered] = useState({ subject: '', html: '', body: '' });
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState('');
-  const [isDarkPreview, setIsDarkPreview] = useState(true);
-  const [isSendingTest, setIsSendingTest] = useState(false);
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
+function StoragePage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [storage, setStorage] = useState<StoragePayload['data'] | null>(null);
+
+  async function loadStorage() {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/storage', { credentials: 'include' });
+      const payload = (await response.json()) as StoragePayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load storage analytics');
+      }
+      setStorage(payload.data);
+      if (payload.data.warning) {
+        toast.error(payload.data.warning);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load storage analytics');
+      setStorage(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const raw = window.localStorage.getItem('mailgoat-template-preview-datasets');
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as string[];
-      if (Array.isArray(parsed)) {
-        setSavedDatasets(parsed.filter((item) => typeof item === 'string'));
-      }
-    } catch {
-      // ignore invalid local storage payload
-    }
+    void loadStorage();
   }, []);
 
-  async function loadTemplates() {
-    try {
-      const response = await fetch('/api/admin/templates', { credentials: 'include' });
-      const payload = (await response.json()) as TemplatesPayload;
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to load templates');
-      }
-      setTemplates(payload.data.templates);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load templates');
-    }
-  }
-
-  useEffect(() => {
-    void loadTemplates();
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(async () => {
-      setIsPreviewLoading(true);
-      try {
-        const variables = JSON.parse(variablesJson) as Record<string, unknown>;
-        const response = await fetch('/api/admin/templates/preview', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: templateName,
-            subject,
-            html: htmlTemplate,
-            body: textTemplate,
-            variables,
-          }),
-        });
-        const payload = (await response.json()) as TemplatePreviewPayload;
-        if (!response.ok || !payload.ok || !payload.data) {
-          throw new Error(payload.error?.message || 'Failed to render preview');
-        }
-        setRendered(payload.data.rendered);
-        setPreviewError('');
-      } catch (error) {
-        setRendered({ subject: '', html: '', body: '' });
-        setPreviewError(error instanceof Error ? error.message : 'Failed to render preview');
-      } finally {
-        setIsPreviewLoading(false);
-      }
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [templateName, subject, htmlTemplate, textTemplate, variablesJson]);
-
-  function onChangePreset(nextPreset: string) {
-    setSelectedPreset(nextPreset);
-    const preset = TEMPLATE_PRESETS[nextPreset];
-    if (!preset) return;
-    setVariablesJson(JSON.stringify(preset, null, 2));
-  }
-
-  function saveDataset() {
-    const key = window.prompt('Dataset name');
-    if (!key) return;
-    window.localStorage.setItem(`mailgoat-template-preview-dataset:${key}`, variablesJson);
-    const next = Array.from(new Set([...savedDatasets, key]));
-    setSavedDatasets(next);
-    window.localStorage.setItem('mailgoat-template-preview-datasets', JSON.stringify(next));
-    toast.success(`Saved dataset ${key}`);
-  }
-
-  function loadDataset(name: string) {
-    const value = window.localStorage.getItem(`mailgoat-template-preview-dataset:${name}`);
-    if (!value) {
-      toast.error('Dataset not found');
-      return;
-    }
-    setVariablesJson(value);
-    toast.success(`Loaded dataset ${name}`);
-  }
-
-  async function sendTestEmail() {
-    setIsSendingTest(true);
-    try {
-      const variables = JSON.parse(variablesJson) as Record<string, unknown>;
-      const response = await fetch('/api/admin/templates/send-test', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: templateName,
-          subject,
-          html: htmlTemplate,
-          body: textTemplate,
-          variables,
-          to: testRecipient,
-          from: fromOverride || undefined,
-        }),
-      });
-      const payload = (await response.json()) as {
-        ok: boolean;
-        data?: { messageId: string };
-        error?: { message?: string };
-      };
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to send test email');
-      }
-      toast.success(`Test email sent (${payload.data.messageId})`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send test email');
-    } finally {
-      setIsSendingTest(false);
-    }
-  }
-
-  async function saveTemplate() {
-    setIsSavingTemplate(true);
-    try {
-      const response = await fetch('/api/admin/templates/save', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: templateName,
-          subject,
-          html: htmlTemplate,
-          body: textTemplate,
-          description: 'Saved from Admin Template Preview',
-        }),
-      });
-      const payload = (await response.json()) as {
-        ok: boolean;
-        data?: { name: string; updated: boolean };
-        error?: { message?: string };
-      };
-      if (!response.ok || !payload.ok || !payload.data) {
-        throw new Error(payload.error?.message || 'Failed to save template');
-      }
-      toast.success(payload.data.updated ? 'Template updated' : 'Template created');
-      await loadTemplates();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save template');
-    } finally {
-      setIsSavingTemplate(false);
-    }
-  }
-
-  function exportTemplate() {
-    const yamlPayload = [
-      `name: ${templateName}`,
-      `subject: ${JSON.stringify(subject)}`,
-      `description: ${JSON.stringify('Exported from Admin Template Preview')}`,
-      'body: |',
-      ...textTemplate.split('\n').map((line) => `  ${line}`),
-      'html: |',
-      ...htmlTemplate.split('\n').map((line) => `  ${line}`),
-      '',
-    ].join('\n');
-    const blob = new Blob([yamlPayload], { type: 'application/x-yaml' });
+  function exportCsv() {
+    if (!storage) return;
+    const csv = makeStorageCsv(storage);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${templateName || 'template'}.yml`;
+    a.download = `mailgoat-storage-report-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast.success('Template exported');
+    toast.success('Storage report exported');
   }
 
-  async function copyRenderedHtml() {
-    try {
-      await navigator.clipboard.writeText(rendered.html || '');
-      toast.success('Rendered HTML copied');
-    } catch {
-      toast.error('Failed to copy rendered HTML');
-    }
-  }
+  const maxInboxSize = Math.max(...(storage?.byInbox.map((item) => item.totalSize) || [1]));
+  const maxAttachmentSize = Math.max(
+    ...(storage?.byAttachmentType.map((item) => item.totalSize) || [1])
+  );
+  const maxMonthSize = Math.max(...(storage?.byMonth.map((item) => item.totalSize) || [1]));
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-col gap-3 rounded-xl border border-border bg-card/80 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Admin</p>
-            <h1 className="text-xl font-semibold text-slate-100">Email Template Preview</h1>
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/80 p-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Analytics</p>
+            <h1 className="text-xl font-semibold text-slate-100">Storage Usage</h1>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to dashboard
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => void loadStorage()}>
+              Refresh
             </Button>
-            <Button variant="outline" onClick={() => setIsDarkPreview((v) => !v)}>
-              {isDarkPreview ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-              {isDarkPreview ? 'Light Preview' : 'Dark Preview'}
+            <Button onClick={exportCsv} disabled={!storage}>
+              Export CSV
             </Button>
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-12">
-          <Card className="lg:col-span-7">
-            <CardHeader>
-              <CardTitle>Template Editor</CardTitle>
-              <CardDescription>HTML + text template editing with live variable substitution.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Template name</span>
-                <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
-              </label>
-              <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Subject</span>
-                <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-              </label>
-              <div className="space-y-2">
-                <span className="text-sm text-slate-300">HTML template</span>
-                <CodeMirror
-                  value={htmlTemplate}
-                  height="180px"
-                  extensions={[htmlLanguage()]}
-                  onChange={setHtmlTemplate}
-                  theme="dark"
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-sm text-slate-300">Text template</span>
-                <CodeMirror
-                  value={textTemplate}
-                  height="140px"
-                  extensions={[markdownLanguage()]}
-                  onChange={setTextTemplate}
-                  theme="dark"
-                />
-              </div>
-            </CardContent>
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-4 text-sm text-slate-400">Loading storage analytics...</CardContent>
           </Card>
+        ) : null}
 
-          <Card className="lg:col-span-5">
-            <CardHeader>
-              <CardTitle>Variable Panel</CardTitle>
-              <CardDescription>Provide JSON data, presets, and reusable datasets.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <label className="space-y-2 text-sm">
-                <span className="text-slate-300">Preset</span>
-                <select
-                  className="w-full rounded-md border border-border bg-slate-950 px-3 py-2 text-sm text-slate-200"
-                  value={selectedPreset}
-                  onChange={(e) => onChangePreset(e.target.value)}
-                >
-                  <option value="custom">Custom</option>
-                  <option value="user-signup">User signup</option>
-                  <option value="order-confirmation">Order confirmation</option>
-                </select>
-              </label>
-              <div className="space-y-2">
-                <span className="text-sm text-slate-300">Variables (JSON)</span>
-                <CodeMirror
-                  value={variablesJson}
-                  height="220px"
-                  extensions={[markdownLanguage()]}
-                  onChange={setVariablesJson}
-                  theme="dark"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={saveDataset}>Save Test Data</Button>
-                {savedDatasets.map((name) => (
-                  <Button key={name} variant="outline" onClick={() => loadDataset(name)}>
-                    Load {name}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+        {storage ? (
+          <>
+            <section className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader>
+                  <CardDescription>Total Storage Used</CardDescription>
+                  <CardTitle>{formatFileSize(storage.totalStorage)}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardDescription>Total Messages</CardDescription>
+                  <CardTitle>{storage.totalMessages}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardDescription>Data Source</CardDescription>
+                  <CardTitle>{storage.source}</CardTitle>
+                </CardHeader>
+              </Card>
+            </section>
 
-        <section className="grid gap-4 lg:grid-cols-12">
-          <Card className="lg:col-span-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileCode2 className="h-4 w-4 text-primary" />
-                Preview Panes
-              </CardTitle>
-              <CardDescription>{isPreviewLoading ? 'Rendering preview...' : 'Rendered in real time'}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {previewError ? (
-                <div className="rounded-md border border-rose-800/70 bg-rose-950/20 p-3 text-xs text-rose-300">
-                  {previewError}
-                </div>
-              ) : null}
-              <div className="rounded-md border border-border bg-slate-950/30 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Rendered Subject</p>
-                <p className="mt-1 text-sm text-slate-100">{rendered.subject || '(empty)'}</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-400">HTML Preview</p>
-                  <iframe
-                    title="html-preview"
-                    className={`h-72 w-full rounded-md border border-border ${isDarkPreview ? 'bg-slate-950' : 'bg-white'}`}
-                    srcDoc={`<html><body style="font-family:system-ui;padding:16px;${isDarkPreview ? 'background:#020617;color:#e2e8f0;' : 'background:#fff;color:#0f172a;'}">${rendered.html || ''}</body></html>`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Text Preview</p>
-                  <pre className="h-72 overflow-auto rounded-md border border-border bg-slate-950 p-3 font-mono text-xs text-slate-200">
-                    {rendered.body || '(empty)'}
-                  </pre>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
-                  <Smartphone className="h-3.5 w-3.5" />
-                  Mobile Preview
-                </p>
-                <div className="mx-auto w-[375px] max-w-full rounded-xl border border-border bg-black p-2">
-                  <iframe
-                    title="mobile-html-preview"
-                    className={`h-80 w-full rounded-md border border-border ${isDarkPreview ? 'bg-slate-950' : 'bg-white'}`}
-                    srcDoc={`<html><meta name="viewport" content="width=device-width, initial-scale=1" /><body style="font-family:system-ui;padding:12px;${isDarkPreview ? 'background:#020617;color:#e2e8f0;' : 'background:#fff;color:#0f172a;'}">${rendered.html || ''}</body></html>`}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <section className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Storage by Inbox</CardTitle>
+                  <CardDescription>Top inboxes by consumed storage</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byInbox.slice(0, 12).map((item) => (
+                    <div key={item.inbox} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span className="truncate pr-2">{item.inbox}</span>
+                        <span>{formatFileSize(item.totalSize)}</span>
+                      </div>
+                      <div className="h-2 rounded bg-slate-800">
+                        <div
+                          className="h-2 rounded bg-cyan-500"
+                          style={{ width: `${Math.max(4, (item.totalSize / maxInboxSize) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
-          <Card className="lg:col-span-4">
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-              <CardDescription>Send, copy, export, and persist templates.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-300">Send test to</span>
-                <Input value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} placeholder="user@example.com" />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-300">From override (optional)</span>
-                <Input value={fromOverride} onChange={(e) => setFromOverride(e.target.value)} placeholder="agent@example.com" />
-              </label>
-              <div className="flex flex-col gap-2">
-                <Button onClick={() => void sendTestEmail()} disabled={isSendingTest || !testRecipient}>
-                  {isSendingTest ? 'Sending...' : 'Send Test Email'}
-                </Button>
-                <Button variant="outline" onClick={() => void copyRenderedHtml()}>
-                  Copy Rendered HTML
-                </Button>
-                <Button variant="outline" onClick={exportTemplate}>
-                  Export Template
-                </Button>
-                <Button onClick={() => void saveTemplate()} disabled={isSavingTemplate}>
-                  {isSavingTemplate ? 'Saving...' : 'Save as Template'}
-                </Button>
-              </div>
-              <div className="rounded-md border border-border bg-slate-950/30 p-3">
-                <p className="mb-2 text-xs uppercase tracking-wide text-slate-400">Saved templates</p>
-                {templates.length === 0 ? (
-                  <p className="text-xs text-slate-400">No templates found.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {templates.slice(0, 8).map((item) => (
-                      <button
-                        key={item.name}
-                        type="button"
-                        className="block w-full rounded border border-border px-2 py-1 text-left text-xs text-slate-200 hover:bg-slate-900"
-                        onClick={() => {
-                          setTemplateName(item.name);
-                          setSubject(item.subject);
-                        }}
-                      >
-                        {item.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Storage Over Time</CardTitle>
+                  <CardDescription>Monthly trend (last 12 months)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byMonth.map((item) => (
+                    <div key={item.month} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span>{item.month}</span>
+                        <span>{formatFileSize(item.totalSize)}</span>
+                      </div>
+                      <div className="h-2 rounded bg-slate-800">
+                        <div
+                          className="h-2 rounded bg-emerald-500"
+                          style={{ width: `${Math.max(4, (item.totalSize / maxMonthSize) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>By Attachment Type</CardTitle>
+                  <CardDescription>Storage used by attachment content type</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.byAttachmentType.length === 0 ? (
+                    <p className="text-sm text-slate-400">No attachment records available.</p>
+                  ) : (
+                    storage.byAttachmentType.map((item) => (
+                      <div key={item.type} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-slate-300">
+                          <span className="truncate pr-2">{item.type}</span>
+                          <span>{formatFileSize(item.totalSize)}</span>
+                        </div>
+                        <div className="h-2 rounded bg-slate-800">
+                          <div
+                            className="h-2 rounded bg-fuchsia-500"
+                            style={{
+                              width: `${Math.max(4, (item.totalSize / maxAttachmentSize) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Clean Up Suggestions</CardTitle>
+                  <CardDescription>Identify opportunities to recover storage</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-slate-300">
+                  <p>Old emails (&gt; 1 year): {storage.cleanupSuggestions.oldEmailsOverOneYear}</p>
+                  <p>Large emails (&gt; 5MB): {storage.cleanupSuggestions.largeEmailsOver5mb}</p>
+                  <p>Duplicate subjects: {storage.cleanupSuggestions.duplicateSubjects}</p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Largest Emails</CardTitle>
+                  <CardDescription>Top 20 messages by size</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {storage.largestEmails.map((email) => (
+                    <div
+                      key={`${email.id}-${email.createdAt || ''}`}
+                      className="grid gap-1 rounded border border-border p-3 text-xs md:grid-cols-5"
+                    >
+                      <p className="text-slate-200 md:col-span-2">{email.subject}</p>
+                      <p className="text-slate-400">{email.from}</p>
+                      <p className="text-slate-500">{email.createdAt ? formatDateTime(email.createdAt) : 'N/A'}</p>
+                      <p className="text-right text-slate-300">{formatFileSize(email.size)}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+          </>
+        ) : null}
       </div>
     </main>
   );
@@ -2267,22 +1649,24 @@ function AdminLayout({
   active,
   onOpenDashboard,
   onOpenInboxes,
-  onOpenWebhooks,
-  onOpenTemplatePreview,
+  onOpenSettings,
+  onOpenStorage,
   onLogout,
+  inboxNotificationCount,
   children,
 }: {
-  active: 'dashboard' | 'inboxes' | 'detail' | 'webhooks' | 'webhookDetail' | 'templatePreview';
+  active: 'dashboard' | 'inboxes' | 'detail' | 'settings' | 'storage';
   onOpenDashboard: () => void;
   onOpenInboxes: () => void;
-  onOpenWebhooks: () => void;
-  onOpenTemplatePreview: () => void;
+  onOpenSettings: () => void;
+  onOpenStorage: () => void;
   onLogout: () => void;
+  inboxNotificationCount: number;
   children: ReactNode;
 }) {
   return (
     <div className="min-h-screen md:flex">
-      <aside className="flex flex-col border-b border-border bg-slate-950/60 p-4 md:min-h-screen md:w-64 md:border-b-0 md:border-r">
+      <aside className="border-b border-border bg-slate-950/60 p-4 md:min-h-screen md:w-64 md:border-b-0 md:border-r">
         <div className="mb-4">
           <p className="text-xs uppercase tracking-wide text-slate-400">MailGoat Admin</p>
         </div>
@@ -2296,30 +1680,32 @@ function AdminLayout({
           </Button>
           <Button
             variant={active === 'inboxes' || active === 'detail' ? 'default' : 'outline'}
-            className="w-full justify-start"
+            className="w-full justify-between"
             onClick={onOpenInboxes}
           >
-            Inboxes
+            <span>Inboxes</span>
+            {inboxNotificationCount > 0 ? (
+              <Badge className="ml-2">{inboxNotificationCount}</Badge>
+            ) : null}
           </Button>
           <Button
-            variant={active === 'webhooks' || active === 'webhookDetail' ? 'default' : 'outline'}
+            variant={active === 'settings' ? 'default' : 'outline'}
             className="w-full justify-start"
-            onClick={onOpenWebhooks}
+            onClick={onOpenSettings}
           >
-            <Webhook className="mr-2 h-4 w-4" />
-            Webhooks
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
           </Button>
           <Button
-            variant={active === 'templatePreview' ? 'default' : 'outline'}
+            variant={active === 'storage' ? 'default' : 'outline'}
             className="w-full justify-start"
-            onClick={onOpenTemplatePreview}
+            onClick={onOpenStorage}
           >
-            <FileCode2 className="mr-2 h-4 w-4" />
-            Template Preview
+            <Database className="mr-2 h-4 w-4" />
+            Storage
           </Button>
         </nav>
-        <div className="mt-auto border-t border-border pt-4">
-          <p className="mb-2 text-xs text-slate-400">Signed in to admin session</p>
+        <div className="mt-4">
           <Button variant="outline" className="w-full justify-start" onClick={onLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Logout
@@ -2340,14 +1726,22 @@ export function App() {
   const [isInboxesView, setIsInboxesView] = useState<boolean>(() =>
     isInboxesPath(window.location.pathname)
   );
-  const [webhookId, setWebhookId] = useState<string | null>(() =>
-    parseWebhookIdFromPath(window.location.pathname)
+  const [isSettingsView, setIsSettingsView] = useState<boolean>(() =>
+    isSettingsPath(window.location.pathname)
   );
-  const [isWebhooksView, setIsWebhooksView] = useState<boolean>(() =>
-    isWebhooksPath(window.location.pathname)
+  const [isStorageView, setIsStorageView] = useState<boolean>(() =>
+    isStoragePath(window.location.pathname)
   );
-  const [isTemplatePreviewView, setIsTemplatePreviewView] = useState<boolean>(() =>
-    isTemplatePreviewPath(window.location.pathname)
+  const [inboxRefreshSignal, setInboxRefreshSignal] = useState(0);
+  const [inboxNotificationCount, setInboxNotificationCount] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_NOTIFICATION_PREFS_KEY, true)
+  );
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_SOUND_PREFS_KEY, false)
+  );
+  const [desktopEnabled, setDesktopEnabled] = useState<boolean>(() =>
+    loadBooleanPreference(ADMIN_DESKTOP_PREFS_KEY, false)
   );
 
   async function fetchStatus(silent = false) {
@@ -2379,15 +1773,86 @@ export function App() {
   useEffect(() => {
     void fetchStatus(true);
     const onPopState = () => {
-      setInboxId(parseInboxIdFromPath(window.location.pathname));
-      setIsInboxesView(isInboxesPath(window.location.pathname));
-      setWebhookId(parseWebhookIdFromPath(window.location.pathname));
-      setIsWebhooksView(isWebhooksPath(window.location.pathname));
-      setIsTemplatePreviewView(isTemplatePreviewPath(window.location.pathname));
+      const nextInboxId = parseInboxIdFromPath(window.location.pathname);
+      const nextInboxesView = isInboxesPath(window.location.pathname);
+      const nextSettingsView = isSettingsPath(window.location.pathname);
+      const nextStorageView = isStoragePath(window.location.pathname);
+      setInboxId(nextInboxId);
+      setIsInboxesView(nextInboxesView);
+      setIsSettingsView(nextSettingsView);
+      setIsStorageView(nextStorageView);
+      if (nextInboxId || nextInboxesView) {
+        setInboxNotificationCount(0);
+      }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_NOTIFICATION_PREFS_KEY, notificationsEnabled);
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_SOUND_PREFS_KEY, soundEnabled);
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    saveBooleanPreference(ADMIN_DESKTOP_PREFS_KEY, desktopEnabled);
+  }, [desktopEnabled]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !notificationsEnabled) {
+      return;
+    }
+
+    const eventSource = new EventSource('/api/admin/events');
+    const handleEvent = (event: MessageEvent) => {
+      try {
+        const payload = JSON.parse(String(event.data || '{}')) as AdminRealtimeEvent;
+        if (payload.type !== 'new_email') {
+          return;
+        }
+        const count = Number(payload.count || 0);
+        if (count < 1) {
+          return;
+        }
+
+        setInboxNotificationCount((current) => current + count);
+        setInboxRefreshSignal((current) => current + 1);
+        toast.success(`${count} new email${count > 1 ? 's' : ''} received`);
+
+        if (soundEnabled) {
+          playNotificationTone();
+        }
+
+        if (
+          desktopEnabled &&
+          typeof window !== 'undefined' &&
+          'Notification' in window &&
+          Notification.permission === 'granted'
+        ) {
+          new Notification('MailGoat Admin', {
+            body: `${count} new email${count > 1 ? 's' : ''} received`,
+          });
+        }
+      } catch {
+        // Ignore malformed payloads.
+      }
+    };
+
+    const handleError = () => {
+      eventSource.close();
+    };
+
+    eventSource.addEventListener('new_email', handleEvent as EventListener);
+    eventSource.onerror = handleError;
+
+    return () => {
+      eventSource.removeEventListener('new_email', handleEvent as EventListener);
+      eventSource.close();
+    };
+  }, [isAuthenticated, notificationsEnabled, soundEnabled, desktopEnabled]);
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
@@ -2423,9 +1888,9 @@ export function App() {
       setStatus(null);
       setInboxId(null);
       setIsInboxesView(false);
-      setWebhookId(null);
-      setIsWebhooksView(false);
-      setIsTemplatePreviewView(false);
+      setIsSettingsView(false);
+      setIsStorageView(false);
+      setInboxNotificationCount(0);
       goToAdminHome();
       toast.success('Logged out');
     } catch (error) {
@@ -2437,70 +1902,49 @@ export function App() {
     goToInboxRoute(targetInboxId);
     setInboxId(targetInboxId);
     setIsInboxesView(false);
-    setWebhookId(null);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(false);
+    setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
   function handleBackFromInbox() {
     goToInboxesRoute();
     setInboxId(null);
     setIsInboxesView(true);
-    setWebhookId(null);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(false);
+    setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
   function handleOpenInboxes() {
     goToInboxesRoute();
     setInboxId(null);
     setIsInboxesView(true);
-    setWebhookId(null);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(false);
+    setIsSettingsView(false);
+    setIsStorageView(false);
+    setInboxNotificationCount(0);
   }
 
   function handleBackFromInboxes() {
     goToAdminHome();
     setInboxId(null);
     setIsInboxesView(false);
-    setWebhookId(null);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(false);
+    setIsSettingsView(false);
+    setIsStorageView(false);
   }
 
-  function handleOpenWebhooks() {
-    goToWebhooksRoute();
+  function handleOpenSettings() {
+    goToSettingsRoute();
     setInboxId(null);
     setIsInboxesView(false);
-    setWebhookId(null);
-    setIsWebhooksView(true);
-    setIsTemplatePreviewView(false);
+    setIsSettingsView(true);
+    setIsStorageView(false);
   }
 
-  function handleOpenWebhook(webhookIdValue: string) {
-    goToWebhookDetailRoute(webhookIdValue);
+  function handleOpenStorage() {
+    goToStorageRoute();
     setInboxId(null);
     setIsInboxesView(false);
-    setWebhookId(webhookIdValue);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(false);
-  }
-
-  function handleBackFromWebhookDetail() {
-    goToWebhooksRoute();
-    setWebhookId(null);
-    setIsWebhooksView(true);
-    setIsTemplatePreviewView(false);
-  }
-
-  function handleOpenTemplatePreview() {
-    goToTemplatePreviewRoute();
-    setInboxId(null);
-    setIsInboxesView(false);
-    setWebhookId(null);
-    setIsWebhooksView(false);
-    setIsTemplatePreviewView(true);
+    setIsSettingsView(false);
+    setIsStorageView(true);
   }
 
   if (isLoading) {
@@ -2569,41 +2013,12 @@ export function App() {
         active="detail"
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
+        onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
       >
-        <InboxesPage onBack={handleBackFromInbox} initialInboxId={inboxId} />
-      </AdminLayout>
-    );
-  }
-
-  if (webhookId) {
-    return (
-      <AdminLayout
-        active="webhookDetail"
-        onOpenDashboard={handleBackFromInboxes}
-        onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
-        onLogout={handleLogout}
-      >
-        <WebhookDetailPage webhookId={webhookId} onBack={handleBackFromWebhookDetail} />
-      </AdminLayout>
-    );
-  }
-
-  if (isWebhooksView) {
-    return (
-      <AdminLayout
-        active="webhooks"
-        onOpenDashboard={handleBackFromInboxes}
-        onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
-        onLogout={handleLogout}
-      >
-        <WebhooksPage onBack={handleBackFromInboxes} onOpenWebhook={handleOpenWebhook} />
+        <InboxDetail inboxId={inboxId} onBack={handleBackFromInbox} />
       </AdminLayout>
     );
   }
@@ -2614,26 +2029,48 @@ export function App() {
         active="inboxes"
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
+        onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
       >
-        <InboxesPage onBack={handleBackFromInboxes} />
+        <InboxesPage
+          onBack={handleBackFromInboxes}
+          onOpenInbox={handleOpenInbox}
+          refreshSignal={inboxRefreshSignal}
+        />
       </AdminLayout>
     );
   }
 
-  if (isTemplatePreviewView) {
+  if (isSettingsView) {
     return (
       <AdminLayout
-        active="templatePreview"
+        active="settings"
         onOpenDashboard={handleBackFromInboxes}
         onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
+        onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
         onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
       >
-        <TemplatePreviewPage onBack={handleBackFromInboxes} />
+        <SettingsPage />
+      </AdminLayout>
+    );
+  }
+
+  if (isStorageView) {
+    return (
+      <AdminLayout
+        active="storage"
+        onOpenDashboard={handleBackFromInboxes}
+        onOpenInboxes={handleOpenInboxes}
+        onOpenSettings={handleOpenSettings}
+        onOpenStorage={handleOpenStorage}
+        onLogout={handleLogout}
+        inboxNotificationCount={inboxNotificationCount}
+      >
+        <StoragePage />
       </AdminLayout>
     );
   }
@@ -2643,17 +2080,47 @@ export function App() {
       active="dashboard"
       onOpenDashboard={handleBackFromInboxes}
       onOpenInboxes={handleOpenInboxes}
-      onOpenWebhooks={handleOpenWebhooks}
-      onOpenTemplatePreview={handleOpenTemplatePreview}
+      onOpenSettings={handleOpenSettings}
+      onOpenStorage={handleOpenStorage}
       onLogout={handleLogout}
+      inboxNotificationCount={inboxNotificationCount}
     >
       <Dashboard
         status={status}
         onLogout={handleLogout}
         onRefreshStatus={async () => fetchStatus()}
         onOpenInboxes={handleOpenInboxes}
-        onOpenWebhooks={handleOpenWebhooks}
-        onOpenTemplatePreview={handleOpenTemplatePreview}
+        notificationsEnabled={notificationsEnabled}
+        soundEnabled={soundEnabled}
+        desktopEnabled={desktopEnabled}
+        onNotificationsEnabledChange={(enabled) => setNotificationsEnabled(enabled)}
+        onSoundEnabledChange={(enabled) => setSoundEnabled(enabled)}
+        onDesktopEnabledChange={async (enabled) => {
+          if (
+            enabled &&
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'default'
+          ) {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+              setDesktopEnabled(false);
+              toast.error('Desktop notification permission was denied.');
+              return;
+            }
+          }
+          if (
+            enabled &&
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'denied'
+          ) {
+            toast.error('Desktop notifications are blocked in your browser settings.');
+            setDesktopEnabled(false);
+            return;
+          }
+          setDesktopEnabled(enabled);
+        }}
       />
     </AdminLayout>
   );
