@@ -21,8 +21,8 @@ export {
 
 // Provider implementations
 export { PostalProvider, PostalProviderConfig, PostalProviderOptions } from './postal';
-export { SESProvider, SESProviderConfig } from './ses';
-export { MailgunProvider, MailgunProviderConfig } from './mailgun';
+// export { SESProvider, SESProviderConfig } from './ses'; // Requires @aws-sdk
+// export { MailgunProvider, MailgunProviderConfig } from './mailgun'; // Requires mailgun.js
 export { SMTPProvider, SMTPProviderConfig } from './smtp';
 
 // Factory

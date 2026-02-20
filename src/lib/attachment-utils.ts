@@ -11,6 +11,9 @@ export interface PreparedAttachment {
   content_type: string;
   data: string;
   size: number;
+  inline?: boolean;
+  compressed?: boolean;
+  originalSize?: number;
 }
 
 export interface AttachmentValidation {
@@ -78,4 +81,68 @@ export async function prepareAttachment(filePath: string): Promise<PreparedAttac
     data: content.toString('base64'),
     size: stats.size,
   };
+}
+
+/**
+ * Parse size string to bytes (e.g., "10MB" -> 10485760)
+ * TODO: Implement full parsing for size units
+ */
+export function parseSizeString(sizeStr: string): number {
+  const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)?$/i);
+  if (!match) {
+    throw new Error(`Invalid size format: ${sizeStr}`);
+  }
+
+  const value = parseFloat(match[1]);
+  const unit = (match[2] || 'B').toUpperCase();
+
+  const multipliers: Record<string, number> = {
+    B: 1,
+    KB: 1024,
+    MB: 1024 * 1024,
+    GB: 1024 * 1024 * 1024,
+  };
+
+  return value * (multipliers[unit] || 1);
+}
+
+/**
+ * Attachment policy configuration
+ */
+export interface AttachmentPolicy {
+  maxSize: number;
+  maxTotalSize: number;
+  allowedTypes?: string[];
+}
+
+/**
+ * Get default attachment policy
+ */
+export function defaultAttachmentPolicy(): AttachmentPolicy {
+  return {
+    maxSize: ATTACHMENT_MAX_SIZE,
+    maxTotalSize: 50 * 1024 * 1024, // 50MB total
+  };
+}
+
+/**
+ * Validate total attachment size across multiple files
+ */
+export function validateTotalAttachmentSize(
+  attachmentsOrTotal: PreparedAttachment[] | number,
+  policy: AttachmentPolicy = defaultAttachmentPolicy()
+): void {
+  let totalSize: number;
+
+  if (typeof attachmentsOrTotal === 'number') {
+    totalSize = attachmentsOrTotal;
+  } else {
+    totalSize = attachmentsOrTotal.reduce((sum, att) => sum + att.size, 0);
+  }
+
+  if (totalSize > policy.maxTotalSize) {
+    const totalMB = (totalSize / (1024 * 1024)).toFixed(2);
+    const maxMB = (policy.maxTotalSize / (1024 * 1024)).toFixed(2);
+    throw new Error(`Total attachment size too large: ${totalMB}MB exceeds maximum of ${maxMB}MB`);
+  }
 }

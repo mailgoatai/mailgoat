@@ -7,10 +7,14 @@
 
 import { IMailProvider, ProviderConfig, ProviderOptions } from './mail-provider.interface';
 import { PostalProvider, PostalProviderConfig } from './postal';
-import { SESProvider, SESProviderConfig } from './ses';
-import { MailgunProvider, MailgunProviderConfig } from './mailgun';
+// import { SESProvider, SESProviderConfig } from './ses';
+// import { MailgunProvider, MailgunProviderConfig } from './mailgun';
 import { SMTPProvider, SMTPProviderConfig } from './smtp';
 import { MailGoatConfig } from '../lib/config';
+
+// Stub types for optional providers
+type SESProviderConfig = Record<string, unknown>;
+// type MailgunProviderConfig = Record<string, unknown>;
 
 /**
  * Supported provider types
@@ -50,7 +54,10 @@ export class ProviderFactory {
         );
 
       case 'mailgun':
-        return new MailgunProvider(config as MailGoatConfig | MailgunProviderConfig);
+        throw new Error(
+          'Mailgun provider requires mailgun.js dependency. ' +
+            'Install with: npm install mailgun.js'
+        );
 
       case 'smtp':
         return new SMTPProvider(
@@ -59,7 +66,10 @@ export class ProviderFactory {
         );
 
       case 'ses':
-        return new SESProvider(config as unknown as SESProviderConfig);
+        throw new Error(
+          'SES provider requires @aws-sdk dependencies. ' +
+            'Install with: npm install @aws-sdk/client-ses @aws-sdk/credential-providers'
+        );
 
       default:
         throw new Error(

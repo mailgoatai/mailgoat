@@ -48,6 +48,15 @@ export interface MailGoatConfig {
     configurationSetName?: string;
     fromAddress?: string;
   };
+  smtp?: {
+    host: string;
+    port?: number;
+    secure?: boolean;
+    auth?: {
+      user: string;
+      pass: string;
+    };
+  };
 }
 
 export class ConfigManager {
@@ -213,7 +222,7 @@ export class ConfigManager {
    * Validate configuration object
    */
   private validate(config: MailGoatConfig): void {
-    const result = validationService.validateConfig(config);
+    const result = validationService.validateConfig(config as any); // Type cast for relay provider flexibility
     if (!result.valid) {
       throw new Error(`Configuration validation failed: ${result.error}`);
     }

@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { promises as fs } from 'fs';
 import { ConfigManager } from '../lib/config';
 import { PostalClient } from '../lib/postal-client';
-import { ProviderFactory } from '../providers';
 import { Formatter } from '../lib/formatter';
 import { validationService } from '../lib/validation-service';
 import { debugLogger } from '../lib/debug';
@@ -12,36 +11,15 @@ import { SchedulerStore, parseScheduleInput } from '../lib/scheduler';
 import { metrics } from '../lib/metrics';
 import { inferExitCode } from '../lib/errors';
 import {
-  buildRecoveryHint,
-  FileCircuitBreaker,
-  getPreflightWarnings,
-  isTransientNetworkError,
-} from '../lib/recovery';
-import {
   formatBytes,
-  parseSizeString,
   prepareAttachment,
-  validateTotalAttachmentSize,
-  defaultAttachmentPolicy,
+  validateAttachmentSize,
   type PreparedAttachment,
 } from '../lib/attachment-utils';
-import { CliRateLimiter, resolveRateLimitConfig } from '../lib/rate-limiter';
 
 function collectAttachment(value: string, previous: string[]): string[] {
   previous.push(value);
   return previous;
-}
-
-function parsePositiveNumberOption(
-  rawValue: string | undefined,
-  flagName: string
-): number | undefined {
-  if (rawValue === undefined) return undefined;
-  const parsed = Number(rawValue);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`${flagName} must be a positive number`);
-  }
-  return parsed;
 }
 
 async function loadJsonData(filePath: string): Promise<Record<string, unknown>> {
@@ -82,7 +60,6 @@ export function createSendCommand(): Command {
     .option('--cc <emails...>', 'CC recipients')
     .option('--bcc <emails...>', 'BCC recipients')
     .option('--html', 'Treat body as HTML instead of plain text')
-    .option('--body-html <file>', 'Read HTML body from file path')
     .option('--tag <tag>', 'Custom tag for this message')
     .option(
       '--attach <file>',
@@ -90,28 +67,13 @@ export function createSendCommand(): Command {
       collectAttachment,
       []
     )
-    .option(
-      '--inline <file>',
-      'Inline attachment for HTML emails (repeat flag for multiple attachments)',
-      collectAttachment,
-      []
-    )
-    .option('--compress', 'Compress large attachments before sending', false)
-    .option('--max-size <size>', 'Maximum size per file (e.g. 5MB, 1500KB)')
-    .option('--max-total-size <size>', 'Maximum total attachment size (default: 25MB)')
     .option('--template <name>', 'Use email template')
     .option('--var <key=value...>', 'Template variables (e.g., --var name=John --var age=30)')
     .option('--data <file>', 'JSON file with template variables')
     .option('--schedule <datetime>', 'Schedule send time in local timezone (YYYY-MM-DD HH:mm)')
     .option('--dry-run', 'Validate and preview message without sending', false)
     .option('--profile', 'Show timing breakdown for this command', false)
-    .option('--no-rate-limit', 'Disable client-side rate limiting for this run', false)
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
-    .option('--retry-max <number>', 'Maximum retry attempts for transient failures')
-    .option('--retry-delay <ms>', 'Initial retry delay in milliseconds')
-    .option('--retry-max-delay <ms>', 'Maximum retry delay in milliseconds')
-    .option('--retry-backoff <number>', 'Exponential backoff multiplier')
-    .option('--timeout <ms>', 'Request timeout in milliseconds')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
       const operationId = `send-${Date.now()}`;
@@ -127,25 +89,6 @@ export function createSendCommand(): Command {
       };
       debugLogger.timeStart(operationId, 'Send email operation');
 
-      const formatRetryReason = (statusCode?: number, errorCode?: string): string => {
-        if (statusCode === 502 || statusCode === 503 || statusCode === 504) {
-          return `Server returned HTTP ${statusCode}`;
-        }
-        if (statusCode === 429) {
-          return 'Rate limited by server';
-        }
-        if (errorCode === 'ECONNRESET') {
-          return 'Connection reset';
-        }
-        if (errorCode === 'ETIMEDOUT' || errorCode === 'ECONNABORTED') {
-          return 'Connection timeout';
-        }
-        if (errorCode === 'ECONNREFUSED') {
-          return 'Connection refused';
-        }
-        return 'Transient network error';
-      };
-
       try {
         startProfile('config_load');
         debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
@@ -155,15 +98,6 @@ export function createSendCommand(): Command {
         endProfile('config_load');
 
         const formatter = new Formatter(options.json);
-        const preflightWarnings = getPreflightWarnings();
-        if (!options.json && preflightWarnings.length > 0) {
-          preflightWarnings.forEach((warning) => console.warn(chalk.yellow(`⚠️  ${warning}`)));
-        }
-        const limiter = new CliRateLimiter(resolveRateLimitConfig(config));
-        await limiter.enforce('send', 1, {
-          skip: Boolean(options.rateLimit === false),
-          json: Boolean(options.json),
-        });
 
         // Handle template if specified
         let templateData: any = {};
@@ -213,14 +147,8 @@ export function createSendCommand(): Command {
         const renderedSubject = options.subject
           ? templateManager.renderString(options.subject, variables)
           : undefined;
-        let resolvedBody = options.body as string | undefined;
-        if (options.bodyHtml) {
-          resolvedBody = await fs.readFile(String(options.bodyHtml), 'utf8');
-          options.html = true;
-        }
-
-        const renderedBody = resolvedBody
-          ? templateManager.renderString(resolvedBody, variables)
+        const renderedBody = options.body
+          ? templateManager.renderString(options.body, variables)
           : undefined;
 
         // Check that required fields are present (either from template or CLI)
@@ -232,7 +160,7 @@ export function createSendCommand(): Command {
           throw new Error('Subject required: use --subject or template with subject');
         }
 
-        if (!resolvedBody && !templateData.body && !templateData.html) {
+        if (!options.body && !templateData.body && !templateData.html) {
           throw new Error('Body required: use --body, --html, or template with body');
         }
 
@@ -274,45 +202,12 @@ export function createSendCommand(): Command {
         debugLogger.timeEnd(`${operationId}-validate`);
         endProfile('validation');
 
-        // Create provider/client after validation
+        // Create client after validation
         startProfile('client_init');
-        const providerType = config.provider || 'postal';
-        debugLogger.timeStart(`${operationId}-client`, `Initialize provider (${providerType})`);
-        const retryMax = parsePositiveNumberOption(options.retryMax, '--retry-max');
-        const retryDelay = parsePositiveNumberOption(options.retryDelay, '--retry-delay');
-        const retryMaxDelay = parsePositiveNumberOption(options.retryMaxDelay, '--retry-max-delay');
-        const retryBackoff = parsePositiveNumberOption(options.retryBackoff, '--retry-backoff');
-        const timeout = parsePositiveNumberOption(options.timeout, '--timeout');
-        const retryConfig = config.retry || {};
-        const sender =
-          providerType === 'postal'
-            ? new PostalClient(config, {
-                enableRetry: options.retry !== false,
-                maxRetries: retryMax ?? retryConfig.maxRetries,
-                baseDelay: retryDelay ?? retryConfig.initialDelay,
-                maxDelay: retryMaxDelay ?? retryConfig.maxDelay,
-                backoffMultiplier: retryBackoff ?? retryConfig.backoffMultiplier,
-                timeout: timeout ?? retryConfig.timeoutMs,
-                retryableErrors: retryConfig.retryableErrors,
-                nonRetryableErrors: retryConfig.nonRetryableErrors,
-                circuitBreakerThreshold: retryConfig.circuitBreakerThreshold,
-                circuitBreakerCooldownMs: retryConfig.circuitBreakerCooldownMs,
-                jitterRatio: retryConfig.jitterRatio,
-                onRetry: ({ attempt, maxRetries, statusCode, errorCode, delayMs }) => {
-                  if (options.json) {
-                    return;
-                  }
-                  const reason = formatRetryReason(statusCode, errorCode);
-                  const delayLabel =
-                    typeof delayMs === 'number' ? ` in ${Math.ceil(delayMs / 1000)}s` : '';
-                  console.log(
-                    chalk.yellow(
-                      `⚠️  ${reason}, retrying (${attempt}/${maxRetries})${delayLabel}...`
-                    )
-                  );
-                },
-              })
-            : ProviderFactory.createFromConfig(config);
+        debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
+        const client = new PostalClient(config, {
+          enableRetry: options.retry !== false,
+        });
         debugLogger.timeEnd(`${operationId}-client`);
         endProfile('client_init');
 
@@ -347,98 +242,29 @@ export function createSendCommand(): Command {
 
         // Process attachments
         const attachFiles = Array.isArray(options.attach) ? options.attach : [];
-        const inlineFiles = Array.isArray(options.inline) ? options.inline : [];
-        const allAttachmentFiles = [...attachFiles, ...inlineFiles];
-
-        if (allAttachmentFiles.length > 0) {
+        if (attachFiles.length > 0) {
           startProfile('attachment_io');
           const attachments: PreparedAttachment[] = [];
-          const attachmentPolicy = defaultAttachmentPolicy();
-          const validationFailures: string[] = [];
-          let totalSize = 0;
-
-          if (options.maxSize) {
-            attachmentPolicy.maxSize = parseSizeString(
-              String(options.maxSize),
-              attachmentPolicy.maxSize
-            );
-          }
-          if (options.maxTotalSize) {
-            attachmentPolicy.maxTotalSize = parseSizeString(
-              String(options.maxTotalSize),
-              attachmentPolicy.maxTotalSize
-            );
-          }
-          if (options.compress) {
-            attachmentPolicy.compress = true;
-          }
 
           for (const filePath of attachFiles) {
-            try {
-              const { attachment, warnings } = await prepareAttachment(filePath, attachmentPolicy, {
-                inline: false,
-              });
-              attachments.push(attachment);
-              totalSize += attachment.size;
-              warnings.forEach(
-                (warning) => !options.json && console.warn(chalk.yellow(`Warning: ${warning}`))
-              );
-            } catch (error) {
-              validationFailures.push(
-                `${filePath}: ${error instanceof Error ? error.message : String(error)}`
-              );
-            }
-          }
-          for (const filePath of inlineFiles) {
-            try {
-              const { attachment, warnings } = await prepareAttachment(filePath, attachmentPolicy, {
-                inline: true,
-              });
-              attachments.push(attachment);
-              totalSize += attachment.size;
-              warnings.forEach(
-                (warning) => !options.json && console.warn(chalk.yellow(`Warning: ${warning}`))
-              );
-            } catch (error) {
-              validationFailures.push(
-                `${filePath}: ${error instanceof Error ? error.message : String(error)}`
-              );
+            const attachment = await prepareAttachment(filePath);
+            attachments.push(attachment);
+            const sizeValidation = validateAttachmentSize(attachment.size, filePath);
+            if (sizeValidation.warning && !options.json) {
+              console.warn(chalk.yellow(`Warning: ${sizeValidation.warning}`));
             }
           }
 
-          if (validationFailures.length > 0) {
-            throw new Error(
-              [
-                'Attachment validation failed:',
-                ...validationFailures.map((item) => `- ${item}`),
-                '',
-                'Suggestions:',
-                '- Compress the file first',
-                '- Use --max-size to override per-file limit',
-                '- Upload to cloud and send link instead',
-              ].join('\\n')
-            );
-          }
-
-          validateTotalAttachmentSize(totalSize, attachmentPolicy.maxTotalSize);
-
-          messageParams.attachments = attachments.map((item) => ({
-            name: item.name,
-            content_type: item.content_type,
-            data: item.data,
-          }));
+          messageParams.attachments = attachments;
 
           // Show attachment summary (if not JSON mode)
           if (!options.json) {
             console.log(chalk.cyan(`📎 Attaching ${attachments.length} file(s):`));
             for (const att of attachments) {
               console.log(
-                chalk.cyan(
-                  `   • ${att.name} (${formatBytes(att.size)}, ${att.content_type}${att.inline ? ', inline' : ''}${att.compressed && att.originalSize ? `, compressed from ${formatBytes(att.originalSize)}` : ''})`
-                )
+                chalk.cyan(`   • ${att.name} (${formatBytes(att.size)}, ${att.content_type})`)
               );
             }
-            console.log(chalk.cyan(`   Total: ${formatBytes(totalSize)}`));
           }
           endProfile('attachment_io');
         }
@@ -448,10 +274,7 @@ export function createSendCommand(): Command {
             mode: 'dry-run',
             valid: true,
             checks: {
-              credentialsConfigured:
-                providerType === 'smtp'
-                  ? Boolean(config.smtp?.auth?.user && config.smtp?.auth?.pass)
-                  : Boolean(config.api_key),
+              apiKeyConfigured: Boolean(config.api_key),
               fromAddressConfigured: Boolean(config.fromAddress || messageParams.from),
               attachmentsValidated: attachFiles.length,
             },
@@ -499,101 +322,24 @@ export function createSendCommand(): Command {
         } else {
           startProfile('send_api');
           const sendStart = Date.now();
-          const relayCircuit = new FileCircuitBreaker('relay-send');
-          const queueCircuit = new FileCircuitBreaker('queue-fallback');
           if (to.length > 1) {
             metrics.incrementBatch('started');
           }
-          if (relayCircuit.isOpen()) {
-            if (!options.json) {
-              console.log(
-                chalk.yellow(
-                  '⚠️  Primary relay unavailable (circuit open). Falling back to queue...'
-                )
-              );
-            }
-            const store = new SchedulerStore();
-            const queued = store.enqueue({
-              scheduledForIso: new Date(Date.now() + 60_000).toISOString(),
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-              payload: messageParams,
-            });
-            store.close();
-            queueCircuit.recordSuccess();
-            formatter.output(
-              options.json
-                ? {
-                    status: 'queued',
-                    id: queued.id,
-                    scheduledFor: queued.scheduledForIso,
-                    fallback: 'relay-circuit-open',
-                  }
-                : `✅ Email queued for retry (ID: ${queued.id})\nWill retry in 60 seconds`
-            );
-            return;
+          // Send message immediately
+          debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
+          const result = await client.sendMessage(messageParams);
+          debugLogger.timeEnd(`${operationId}-send`);
+          metrics.observeSendDuration((Date.now() - sendStart) / 1000);
+          metrics.incrementEmail('success');
+          if (to.length > 1) {
+            metrics.incrementBatch('completed');
           }
+          await metrics.pushIfConfigured(config.metrics?.pushgateway);
+          endProfile('send_api');
 
-          try {
-            // Send message immediately
-            debugLogger.timeStart(`${operationId}-send`, 'Send message via API');
-            const result = await sender.sendMessage(messageParams);
-            relayCircuit.recordSuccess();
-            debugLogger.timeEnd(`${operationId}-send`);
-            metrics.observeSendDuration((Date.now() - sendStart) / 1000);
-            metrics.incrementEmail('success');
-            if (to.length > 1) {
-              metrics.incrementBatch('completed');
-            }
-            await metrics.pushIfConfigured(config.metrics?.pushgateway);
-            endProfile('send_api');
-
-            // Output result
-            const output = formatter.formatSendResponse({
-              ...result,
-              messages: result.messages || {},
-            });
-            formatter.output(output);
-          } catch (sendError) {
-            relayCircuit.recordFailure();
-            if (!isTransientNetworkError(sendError)) {
-              throw sendError;
-            }
-
-            if (queueCircuit.isOpen()) {
-              throw sendError;
-            }
-
-            if (!options.json) {
-              console.log(chalk.yellow('⚠️  Primary relay unavailable'));
-              console.log(chalk.yellow('   Falling back to queue system...'));
-            }
-
-            const store = new SchedulerStore();
-            try {
-              const queued = store.enqueue({
-                scheduledForIso: new Date(Date.now() + 60_000).toISOString(),
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-                payload: messageParams,
-              });
-              queueCircuit.recordSuccess();
-              formatter.output(
-                options.json
-                  ? {
-                      status: 'queued',
-                      id: queued.id,
-                      scheduledFor: queued.scheduledForIso,
-                      fallback: 'relay-failure',
-                    }
-                  : `✅ Email queued for retry (ID: ${queued.id})\nWill retry in 60 seconds`
-              );
-              return;
-            } catch (queueError) {
-              queueCircuit.recordFailure();
-              throw queueError;
-            } finally {
-              store.close();
-            }
-          }
+          // Output result
+          const output = formatter.formatSendResponse(result);
+          formatter.output(output);
         }
 
         if (options.profile && !options.json) {
@@ -602,7 +348,7 @@ export function createSendCommand(): Command {
         }
 
         debugLogger.timeEnd(operationId);
-      } catch (error: unknown) {
+      } catch (error: any) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
         metrics.incrementEmail('failed');
@@ -612,7 +358,7 @@ export function createSendCommand(): Command {
         }
 
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(buildRecoveryHint(error)));
+        console.error(formatter.error(error.message));
         process.exit(inferExitCode(error));
       }
     });
