@@ -6,6 +6,8 @@ Related docs:
 - [Architecture](./architecture.md)
 - [Advanced Troubleshooting](./troubleshooting-advanced.md)
 - [FAQ](./faq.md)
+- [Guides Index](./guides/README.md)
+- [Guides: Playwright Testing](./guides/playwright-testing.md)
 - [Guides: Templates](./guides/templates.md)
 
 ## Global Usage
