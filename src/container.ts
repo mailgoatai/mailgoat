@@ -17,6 +17,8 @@ import { PostalClient, PostalClientOptions } from './lib/postal-client';
 import { TemplateManager } from './lib/template-manager';
 import { SchedulerStore } from './lib/scheduler';
 import { InboxStore } from './lib/inbox-store';
+import { ReadMessageUseCase } from './application/use-cases/read-message.use-case';
+import { SendBatchUseCase } from './application/use-cases/send-batch.use-case';
 
 /**
  * Configure the DI container with all application dependencies
@@ -58,6 +60,12 @@ export function configureContainer(config: MailGoatConfig): void {
       new PostalClient(c.resolve<MailGoatConfig>('Config'), {
         enableRetry: false,
       } as PostalClientOptions),
+  });
+  container.register<ReadMessageUseCase>(ReadMessageUseCase, {
+    useClass: ReadMessageUseCase,
+  });
+  container.register<SendBatchUseCase>(SendBatchUseCase, {
+    useClass: SendBatchUseCase,
   });
 
   // Register mail provider

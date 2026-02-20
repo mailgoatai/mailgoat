@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { Formatter } from '../lib/formatter';
 import { inferExitCode } from '../lib/errors';
-import { initializeCommandContext, resolvePostalClient } from './di-context';
-import { InboxStore } from '../lib/inbox-store';
+import { initializeCommandContext } from './di-context';
+import { ReadMessageUseCase } from '../application/use-cases/read-message.use-case';
 
 export function createReadCommand(): Command {
   const cmd = new Command('read');
@@ -16,40 +16,16 @@ export function createReadCommand(): Command {
     .action(async (messageId: string, options) => {
       try {
         const { container } = await initializeCommandContext();
-        const client = resolvePostalClient(container, {
+        const useCase = container.resolve(ReadMessageUseCase);
+        const formatter = new Formatter(options.json);
+        const message = await useCase.execute({
+          messageId,
+          includeFull: Boolean(options.full),
           enableRetry: options.retry !== false,
         });
-        const formatter = new Formatter(options.json);
-
-        // Determine which expansions to request
-        let expansions = ['status', 'details', 'plain_body', 'inspection'];
-
-        if (options.full) {
-          // Request all available expansions
-          expansions = [
-            'status',
-            'details',
-            'inspection',
-            'plain_body',
-            'html_body',
-            'attachments',
-            'headers',
-          ];
-        }
-
-        // Fetch message
-        const message = await client.getMessage(messageId, expansions);
-
-        // Mark message as read in local cache if present
-        const store = container.resolve<InboxStore>('InboxStore');
-        try {
-          store.markAsRead(messageId);
-        } finally {
-          store.close();
-        }
 
         // Output result
-        const output = formatter.formatMessage(message);
+        const output = formatter.formatMessage(message as any);
         formatter.output(output);
       } catch (error: unknown) {
         const formatter = new Formatter(options.json);
