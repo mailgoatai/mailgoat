@@ -46,12 +46,12 @@ export class SendGridProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data;
+      if (axios.isAxiosError(_error)) {
+        const status = _error.response?.status;
+        const data = _error.response?.data;
         throw new Error(`SendGrid API error (${status}): ${JSON.stringify(data)}`);
       }
-      throw error;
+      throw _error;
     }
   }
 
@@ -102,24 +102,24 @@ export class SendGridProvider extends RelayProvider {
 
     // Add CC if provided
     if (params.cc && params.cc.length > 0) {
-      payload.personalizations[0].cc = params.cc.map((email) => ({ email }));
+      (payload.personalizations as any[])[0].cc = params.cc.map((email) => ({ email }));
     }
 
     // Add BCC if provided
     if (params.bcc && params.bcc.length > 0) {
-      payload.personalizations[0].bcc = params.bcc.map((email) => ({ email }));
+      (payload.personalizations as any[])[0].bcc = params.bcc.map((email) => ({ email }));
     }
 
     // Add content
     payload.content = [];
     if (params.plain_body) {
-      payload.content.push({
+      (payload.content as any[]).push({
         type: 'text/plain',
         value: params.plain_body,
       });
     }
     if (params.html_body) {
-      payload.content.push({
+      (payload.content as any[]).push({
         type: 'text/html',
         value: params.html_body,
       });

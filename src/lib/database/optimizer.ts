@@ -102,7 +102,7 @@ export class DatabaseOptimizer {
    * Check database integrity
    */
   checkIntegrity(): { ok: boolean; errors: string[] } {
-    const result = this.db.pragma('integrity_check');
+    const result = this.db.pragma('integrity_check') as Array<{ integrity_check: string }>;
 
     if (result.length === 1 && result[0].integrity_check === 'ok') {
       return { ok: true, errors: [] };

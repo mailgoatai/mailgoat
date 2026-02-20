@@ -97,12 +97,12 @@ export class MailgunProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data;
+      if (axios.isAxiosError(_error)) {
+        const status = _error.response?.status;
+        const data = _error.response?.data;
         throw new Error(`Mailgun API error (${status}): ${JSON.stringify(data)}`);
       }
-      throw error;
+      throw _error;
     }
   }
 
@@ -134,10 +134,12 @@ export class MailgunProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(`Failed to get message: ${error.response?.data?.message || error.message}`);
+      if (axios.isAxiosError(_error)) {
+        throw new Error(
+          `Failed to get message: ${_error.response?.data?.message || _error.message}`
+        );
       }
-      throw error;
+      throw _error;
     }
   }
 

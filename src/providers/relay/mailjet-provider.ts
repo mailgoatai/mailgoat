@@ -49,7 +49,7 @@ export class MailjetProvider extends RelayProvider {
         ],
       };
 
-      const message = payload.Messages[0];
+      const message = (payload.Messages as Array<Record<string, any>>)[0];
 
       // Add CC
       if (params.cc && params.cc.length > 0) {
@@ -105,12 +105,12 @@ export class MailjetProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data;
+      if (axios.isAxiosError(_error)) {
+        const status = _error.response?.status;
+        const data = _error.response?.data;
         throw new Error(`Mailjet API error (${status}): ${JSON.stringify(data)}`);
       }
-      throw error;
+      throw _error;
     }
   }
 
@@ -130,12 +130,12 @@ export class MailjetProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      if (axios.isAxiosError(error)) {
+      if (axios.isAxiosError(_error)) {
         throw new Error(
-          `Failed to get message: ${error.response?.data?.ErrorMessage || error.message}`
+          `Failed to get message: ${_error.response?.data?.ErrorMessage || _error.message}`
         );
       }
-      throw error;
+      throw _error;
     }
   }
 

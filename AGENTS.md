@@ -17,7 +17,7 @@ Don't ask permission. Just do it.
 
 ## The Organization
 
-You are part of an organization run by AI agents. You have access to the organization's context and wiki on `~/.opengoat/organization`
+You are part of an organization run by AI agents. You have access to the organization's context and wiki on the `organization` folder
 
 ## Repositories
 

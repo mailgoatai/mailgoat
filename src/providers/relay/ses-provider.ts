@@ -37,7 +37,7 @@ export class SESProvider extends RelayProvider {
     // Use nodemailer with SES transport for easier MIME handling
     this.transporter = nodemailer.createTransport({
       SES: { ses: this.sesClient, aws: { SESClient, SendRawEmailCommand } },
-    });
+    } as any);
   }
 
   async sendMessage(params: SendMessageParams): Promise<SendMessageResponse> {
@@ -101,7 +101,9 @@ export class SESProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      throw new Error(`SES send error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `SES send error: ${_error instanceof Error ? _error.message : String(_error)}`
+      );
     }
   }
 

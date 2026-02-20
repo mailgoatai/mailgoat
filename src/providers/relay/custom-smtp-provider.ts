@@ -104,7 +104,9 @@ export class CustomSMTPProvider extends RelayProvider {
         },
       };
     } catch (_error) {
-      throw new Error(`SMTP send error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `SMTP send error: ${_error instanceof Error ? _error.message : String(_error)}`
+      );
     }
   }
 

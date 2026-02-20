@@ -87,7 +87,7 @@ export class AccessibilityChecker {
 
     // Check for heading hierarchy
     const headings = $('h1, h2, h3, h4, h5, h6')
-      .map((_, elem) => parseInt($(elem).prop('tagName').substring(1), 10))
+      .map((_, elem) => parseInt((($(elem).prop('tagName') as string) || '').substring(1), 10))
       .get();
 
     for (let i = 1; i < headings.length; i++) {

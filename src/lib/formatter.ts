@@ -14,6 +14,13 @@ export class Formatter {
   }
 
   /**
+   * Static method for outputting JSON (used by CLI commands)
+   */
+  static outputJson(data: any): void {
+    console.log(JSON.stringify(data, null, 2));
+  }
+
+  /**
    * Output data in appropriate format (JSON or human-readable)
    */
   output(data: any): void {

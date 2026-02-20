@@ -105,7 +105,7 @@ export class RelayProviderFactory {
       await provider.validateConfig();
       return { valid: true, errors: [] };
     } catch (_error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      errors.push(_error instanceof Error ? _error.message : String(_error));
       return { valid: false, errors };
     }
   }

@@ -253,7 +253,7 @@ function toCsv(messages: AdminInboxMessage[]): string {
     message.preview || '',
   ]);
   return [header, ...rows]
-    .map((row: any) => row.map((cell) => escapeValue(String(cell))).join(','))
+    .map((row: any) => row.map((cell: any) => escapeValue(String(cell))).join(','))
     .join('\n');
 }
 
