@@ -78,7 +78,7 @@ export interface SendMessageResponse {
   >;
 
   /** Provider-specific metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -145,7 +145,7 @@ export interface MessageDetails {
   headers?: Record<string, string>;
 
   /** Provider-specific metadata */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

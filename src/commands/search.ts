@@ -187,12 +187,12 @@ export function createSearchCommand(): Command {
         }
 
         debugLogger.timeEnd(operationId);
-      } catch (error: any) {
+      } catch (error: unknown) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
 
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });

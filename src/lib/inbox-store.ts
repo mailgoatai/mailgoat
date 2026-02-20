@@ -176,7 +176,7 @@ export class InboxStore {
       LIMIT @limit
     `;
 
-    const rows = this.db.prepare(query).all({ ...params, limit }) as Array<Record<string, any>>;
+    const rows = this.db.prepare(query).all({ ...params, limit }) as Array<Record<string, unknown>>;
     return rows.map(this.mapRow);
   }
 
@@ -216,7 +216,7 @@ export class InboxStore {
     sql += ' ORDER BY timestamp DESC LIMIT @limit';
     params.limit = limit;
 
-    const rows = this.db.prepare(sql).all(params) as Array<Record<string, any>>;
+    const rows = this.db.prepare(sql).all(params) as Array<Record<string, unknown>>;
     return rows.map(this.mapRow);
   }
 
@@ -367,7 +367,7 @@ export class InboxStore {
       WHERE id = ?
     `
       )
-      .get(id) as Record<string, any> | undefined;
+      .get(id) as Record<string, unknown> | undefined;
 
     if (!row) {
       return null;
@@ -387,7 +387,7 @@ export class InboxStore {
     };
   }
 
-  private mapRow(row: Record<string, any>): InboxMessage {
+  private mapRow(row: Record<string, unknown>): InboxMessage {
     return {
       id: String(row.id),
       from: String(row.from_email),

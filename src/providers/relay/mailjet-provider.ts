@@ -49,7 +49,7 @@ export class MailjetProvider extends RelayProvider {
         ],
       };
 
-      const message = (payload.Messages as Array<Record<string, any>>)[0];
+      const message = (payload.Messages as Array<Record<string, unknown>>)[0];
 
       // Add CC
       if (params.cc && params.cc.length > 0) {

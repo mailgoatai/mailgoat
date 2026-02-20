@@ -53,9 +53,9 @@ export function createReadCommand(): Command {
         // Output result
         const output = formatter.formatMessage(message);
         formatter.output(output);
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(inferExitCode(error));
       }
     });

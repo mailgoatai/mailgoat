@@ -92,9 +92,9 @@ export function createTemplateCommand(): Command {
         }
 
         debugLogger.timeEnd('template-create');
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });
@@ -150,9 +150,9 @@ export function createTemplateCommand(): Command {
           console.log();
           console.log(chalk.gray(`Total: ${templates.length} template(s)`));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });
@@ -225,9 +225,9 @@ export function createTemplateCommand(): Command {
             console.log(chalk.gray(`Updated: ${template.updated_at}`));
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });
@@ -272,9 +272,9 @@ export function createTemplateCommand(): Command {
         } else {
           console.log(chalk.green(`✓ Template '${name}' deleted`));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });
@@ -349,9 +349,9 @@ export function createTemplateCommand(): Command {
         } else {
           console.log(chalk.green(`✓ Template '${name}' updated successfully`));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const formatter = new Formatter(options.json);
-        console.error(formatter.error(error.message));
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       }
     });

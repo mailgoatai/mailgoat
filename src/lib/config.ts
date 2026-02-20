@@ -37,7 +37,7 @@ export interface MailGoatConfig {
   };
   relay?: {
     provider: string;
-    credentials?: Record<string, any>;
+    credentials?: Record<string, unknown>;
     from?: string;
   ses?: {
     region: string;

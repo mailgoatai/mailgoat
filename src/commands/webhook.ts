@@ -136,10 +136,15 @@ export function createWebhookCommand(): Command {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ success: true, ...result }));
-          } catch (error: any) {
+          } catch (error: unknown) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: false, error: error.message }));
+            res.end(
+              JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              })
+            );
           }
         });
       };

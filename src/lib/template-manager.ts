@@ -153,9 +153,8 @@ export class TemplateManager {
     try {
       await fsPromises.access(templatePath);
       throw new Error(`Template '${template.name}' already exists`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.message.includes('already exists')) throw err;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('already exists')) throw err;
       // File doesn't exist, continue
     }
 

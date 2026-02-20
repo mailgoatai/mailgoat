@@ -108,7 +108,7 @@ if (isDevelopment || forceConsole) {
 export function logError(
   message: string,
   error: Error | unknown,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   if (error instanceof Error) {
     logger.error(message, {
@@ -127,7 +127,7 @@ export function logError(
 /**
  * Log operation start
  */
-export function logOperationStart(operation: string, meta?: Record<string, any>): void {
+export function logOperationStart(operation: string, meta?: Record<string, unknown>): void {
   logger.info(`${operation}.start`, meta);
 }
 
@@ -137,7 +137,7 @@ export function logOperationStart(operation: string, meta?: Record<string, any>)
 export function logOperationSuccess(
   operation: string,
   duration?: number,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   logger.info(`${operation}.success`, {
     duration_ms: duration,
@@ -152,7 +152,7 @@ export function logOperationFailure(
   operation: string,
   error: Error | unknown,
   duration?: number,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   if (error instanceof Error) {
     logger.error(`${operation}.failure`, {
@@ -176,7 +176,7 @@ export function logOperationFailure(
 /**
  * Log API request
  */
-export function logApiRequest(method: string, url: string, meta?: Record<string, any>): void {
+export function logApiRequest(method: string, url: string, meta?: Record<string, unknown>): void {
   logger.debug('api.request', {
     method,
     url,
@@ -192,7 +192,7 @@ export function logApiResponse(
   url: string,
   status: number,
   duration: number,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   const level = status >= 400 ? 'warn' : 'debug';
   logger.log(level, 'api.response', {
@@ -207,7 +207,7 @@ export function logApiResponse(
 /**
  * Log configuration change
  */
-export function logConfigChange(operation: string, meta?: Record<string, any>): void {
+export function logConfigChange(operation: string, meta?: Record<string, unknown>): void {
   logger.info('config.change', {
     operation,
     ...meta,
@@ -219,7 +219,7 @@ export function logConfigChange(operation: string, meta?: Record<string, any>): 
  */
 export function logEmailEvent(
   event: 'send' | 'receive' | 'delete' | 'search',
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   logger.info(`email.${event}`, meta);
 }
@@ -227,7 +227,11 @@ export function logEmailEvent(
 /**
  * Log validation error
  */
-export function logValidationError(field: string, error: string, meta?: Record<string, any>): void {
+export function logValidationError(
+  field: string,
+  error: string,
+  meta?: Record<string, unknown>
+): void {
   logger.warn('validation.error', {
     field,
     error,
@@ -241,7 +245,7 @@ export function logValidationError(field: string, error: string, meta?: Record<s
 export function logCacheEvent(
   event: 'hit' | 'miss' | 'set' | 'invalidate',
   key: string,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): void {
   logger.debug(`cache.${event}`, {
     key,

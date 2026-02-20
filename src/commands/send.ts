@@ -602,7 +602,7 @@ export function createSendCommand(): Command {
         }
 
         debugLogger.timeEnd(operationId);
-      } catch (error: any) {
+      } catch (error: unknown) {
         debugLogger.timeEnd(operationId);
         debugLogger.logError('main', error);
         metrics.incrementEmail('failed');

@@ -129,9 +129,9 @@ export class PostalProvider implements IMailProvider {
       // Try to get a message (will fail but tests connectivity)
       await this.client.getMessage('test-connection-probe');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If we get a response (even error response), connection works
-      if (error.response) {
+      if (typeof error === 'object' && error !== null && 'response' in error) {
         return true;
       }
       // Network error means no connection

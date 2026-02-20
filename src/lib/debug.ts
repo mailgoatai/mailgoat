@@ -81,7 +81,7 @@ class DebugLogger {
   /**
    * Log a debug message with namespace
    */
-  log(namespace: DebugNamespace, message: string, ...args: any[]): void {
+  log(namespace: DebugNamespace, message: string, ...args: unknown[]): void {
     if (!this.isEnabled(namespace)) return;
 
     const timestamp = new Date().toISOString();
@@ -136,7 +136,7 @@ class DebugLogger {
   /**
    * Log HTTP request details
    */
-  logRequest(method: string, url: string, headers?: Record<string, any>, body?: any): void {
+  logRequest(method: string, url: string, headers?: Record<string, unknown>, body?: any): void {
     if (!this.isEnabled('api')) return;
 
     this.log('api', chalk.bold(`→ ${method.toUpperCase()} ${url}`));
@@ -196,7 +196,7 @@ class DebugLogger {
   /**
    * Sanitize headers to hide sensitive data
    */
-  private sanitizeHeaders(headers: Record<string, any>): Record<string, any> {
+  private sanitizeHeaders(headers: Record<string, unknown>): Record<string, unknown> {
     const sanitized = { ...headers };
 
     const sensitiveKeys = ['x-server-api-key', 'authorization', 'cookie', 'api-key'];

@@ -110,6 +110,13 @@ export class EmailQueue {
   }
 
   /**
+   * Get the underlying database instance (for advanced operations)
+   */
+  getDatabase(): Database.Database {
+    return this.db;
+  }
+
+  /**
    * Add email to queue
    */
   enqueue(

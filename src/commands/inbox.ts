@@ -97,8 +97,8 @@ export function createInboxCommand(): Command {
       } else {
         console.log(renderInboxTable(messages));
       }
-    } catch (error: any) {
-      console.error(formatter.error(error.message));
+    } catch (error: unknown) {
+      console.error(formatter.error(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     } finally {
       store?.close();
@@ -149,8 +149,8 @@ export function createInboxCommand(): Command {
         } else {
           console.log(renderInboxTable(messages));
         }
-      } catch (error: any) {
-        console.error(formatter.error(error.message));
+      } catch (error: unknown) {
+        console.error(formatter.error(error instanceof Error ? error.message : String(error)));
         process.exit(1);
       } finally {
         store?.close();
@@ -189,10 +189,15 @@ export function createInboxCommand(): Command {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ success: true, id: message.id }));
-          } catch (error: any) {
+          } catch (error: unknown) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: false, error: error.message }));
+            res.end(
+              JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              })
+            );
           }
         });
       });

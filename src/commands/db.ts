@@ -26,7 +26,7 @@ export function createDbCommand(): Command {
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       const queue = new EmailQueue();
-      const db = (queue as any).db; // Access private db
+      const db = queue.getDatabase();
       const optimizer = new DatabaseOptimizer(db);
 
       const stats = optimizer.getStats();
@@ -55,7 +55,7 @@ export function createDbCommand(): Command {
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       const queue = new EmailQueue();
-      const db = (queue as any).db;
+      const db = queue.getDatabase();
       const optimizer = new DatabaseOptimizer(db);
 
       console.log(chalk.dim('Optimizing database...\n'));
@@ -118,7 +118,7 @@ export function createDbCommand(): Command {
     .description('Reclaim unused space')
     .action(async () => {
       const queue = new EmailQueue();
-      const db = (queue as any).db;
+      const db = queue.getDatabase();
       const optimizer = new DatabaseOptimizer(db);
 
       console.log(chalk.dim('Running VACUUM...'));
@@ -136,7 +136,7 @@ export function createDbCommand(): Command {
     .description('Update query statistics')
     .action(async () => {
       const queue = new EmailQueue();
-      const db = (queue as any).db;
+      const db = queue.getDatabase();
       const optimizer = new DatabaseOptimizer(db);
 
       console.log(chalk.dim('Running ANALYZE...'));
@@ -155,7 +155,7 @@ export function createDbCommand(): Command {
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       const queue = new EmailQueue();
-      const db = (queue as any).db;
+      const db = queue.getDatabase();
       const optimizer = new DatabaseOptimizer(db);
 
       console.log(chalk.dim('Checking integrity...\n'));
