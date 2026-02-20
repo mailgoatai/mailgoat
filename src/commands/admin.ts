@@ -5,6 +5,8 @@ import rateLimit from 'express-rate-limit';
 import * as path from 'path';
 import * as fs from 'fs';
 import { timingSafeEqual } from 'crypto';
+import * as net from 'net';
+import * as tls from 'tls';
 import chalk from 'chalk';
 import { InboxStore, type InboxMessage } from '../lib/inbox-store';
 import { Pool } from 'pg';
@@ -136,6 +138,33 @@ type AdminSettingsPayload = {
   sessionTimeoutMinutes: number;
 };
 
+export type RelayProvider = 'postal' | 'sendgrid' | 'mailgun' | 'ses' | 'smtp';
+
+export type RelayConfigState = {
+  provider: RelayProvider;
+  sendgridApiKey?: string;
+  mailgunApiKey?: string;
+  mailgunDomain?: string;
+  mailgunRegion?: 'us' | 'eu';
+  sesAccessKeyId?: string;
+  sesSecretAccessKey?: string;
+  sesRegion?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUsername?: string;
+  smtpPassword?: string;
+  smtpUseTls?: boolean;
+  updatedAt?: string;
+  lastTestedAt?: string;
+};
+
+type RelayStatusPayload = {
+  provider: RelayProvider;
+  active: boolean;
+  lastTestedAt: string | null;
+  config: Record<string, unknown>;
+};
+
 type AdminApiKeySummary = {
   id: string;
   name: string;
@@ -262,6 +291,171 @@ function inferNameFromAddress(address: string): string {
     .trim()
     .split('@')[0];
   return localPart || 'Inbox';
+}
+
+export function maskSecret(value: string | undefined, prefix: number = 3): string | null {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const head = trimmed.slice(0, Math.max(1, prefix));
+  return `${head}***`;
+}
+
+export function redactRelayConfig(config: RelayConfigState): Record<string, unknown> {
+  return {
+    provider: config.provider,
+    sendgridApiKey: maskSecret(config.sendgridApiKey, 3),
+    mailgunApiKey: maskSecret(config.mailgunApiKey, 3),
+    mailgunDomain: config.mailgunDomain || null,
+    mailgunRegion: config.mailgunRegion || 'us',
+    sesAccessKeyId: maskSecret(config.sesAccessKeyId, 4),
+    sesSecretAccessKey: maskSecret(config.sesSecretAccessKey, 4),
+    sesRegion: config.sesRegion || null,
+    smtpHost: config.smtpHost || null,
+    smtpPort: config.smtpPort || 587,
+    smtpUsername: config.smtpUsername || null,
+    smtpPassword: config.smtpPassword ? '***' : null,
+    smtpUseTls: config.smtpUseTls !== false,
+  };
+}
+
+export function normalizeRelayProvider(raw: unknown): RelayProvider {
+  const value = String(raw || 'postal')
+    .toLowerCase()
+    .trim();
+  if (value === 'postal' || value === 'sendgrid' || value === 'mailgun' || value === 'ses') {
+    return value;
+  }
+  if (value === 'smtp') return 'smtp';
+  return 'postal';
+}
+
+export function validateRelayConfig(config: RelayConfigState): string | null {
+  switch (config.provider) {
+    case 'postal':
+      return null;
+    case 'sendgrid':
+      return config.sendgridApiKey ? null : 'SendGrid API key is required';
+    case 'mailgun':
+      if (!config.mailgunApiKey) return 'Mailgun API key is required';
+      if (!config.mailgunDomain) return 'Mailgun domain is required';
+      return null;
+    case 'ses':
+      if (!config.sesAccessKeyId) return 'SES Access Key ID is required';
+      if (!config.sesSecretAccessKey) return 'SES Secret Access Key is required';
+      if (!config.sesRegion) return 'SES region is required';
+      return null;
+    case 'smtp':
+      if (!config.smtpHost) return 'SMTP host is required';
+      if (!config.smtpPort || config.smtpPort <= 0 || config.smtpPort > 65535) {
+        return 'SMTP port must be between 1 and 65535';
+      }
+      if (!config.smtpUsername) return 'SMTP username is required';
+      if (!config.smtpPassword) return 'SMTP password is required';
+      return null;
+    default:
+      return 'Unsupported relay provider';
+  }
+}
+
+function mapRelayConfigInput(input: any): RelayConfigState {
+  return {
+    provider: normalizeRelayProvider(input?.provider),
+    sendgridApiKey: String(input?.sendgridApiKey || '').trim() || undefined,
+    mailgunApiKey: String(input?.mailgunApiKey || '').trim() || undefined,
+    mailgunDomain: String(input?.mailgunDomain || '').trim() || undefined,
+    mailgunRegion: String(input?.mailgunRegion || 'us').toLowerCase() === 'eu' ? 'eu' : 'us',
+    sesAccessKeyId: String(input?.sesAccessKeyId || '').trim() || undefined,
+    sesSecretAccessKey: String(input?.sesSecretAccessKey || '').trim() || undefined,
+    sesRegion: String(input?.sesRegion || '').trim() || undefined,
+    smtpHost: String(input?.smtpHost || '').trim() || undefined,
+    smtpPort: Number.isFinite(Number(input?.smtpPort)) ? Number(input.smtpPort) : 587,
+    smtpUsername: String(input?.smtpUsername || '').trim() || undefined,
+    smtpPassword: String(input?.smtpPassword || '').trim() || undefined,
+    smtpUseTls: input?.smtpUseTls !== false,
+  };
+}
+
+async function testSmtpConnection(config: RelayConfigState): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const timeoutMs = 8000;
+    let settled = false;
+    const done = (err?: Error): void => {
+      if (settled) return;
+      settled = true;
+      if (err) reject(err);
+      else resolve();
+    };
+
+    const onConnect = (): void => done();
+
+    if (config.smtpUseTls) {
+      const socket = tls.connect(
+        {
+          host: config.smtpHost,
+          port: config.smtpPort || 587,
+          servername: config.smtpHost,
+          rejectUnauthorized: true,
+        },
+        onConnect
+      );
+      socket.setTimeout(timeoutMs, () => done(new Error('SMTP TLS connection timed out')));
+      socket.once('error', (err) => done(err instanceof Error ? err : new Error(String(err))));
+      socket.once('close', () => socket.destroy());
+      return;
+    }
+
+    const socket = net.connect(
+      { host: config.smtpHost, port: config.smtpPort || 587, timeout: timeoutMs },
+      onConnect
+    );
+    socket.setTimeout(timeoutMs, () => done(new Error('SMTP connection timed out')));
+    socket.once('error', (err) => done(err instanceof Error ? err : new Error(String(err))));
+    socket.once('close', () => socket.destroy());
+  });
+}
+
+async function testRelayConfig(config: RelayConfigState): Promise<void> {
+  const validationError = validateRelayConfig(config);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  if (config.provider === 'postal') {
+    return;
+  }
+
+  if (config.provider === 'sendgrid') {
+    const response = await fetch('https://api.sendgrid.com/v3/user/account', {
+      headers: { Authorization: `Bearer ${config.sendgridApiKey}` },
+    });
+    if (!response.ok) {
+      throw new Error(`SendGrid test failed (${response.status})`);
+    }
+    return;
+  }
+
+  if (config.provider === 'mailgun') {
+    const regionHost = config.mailgunRegion === 'eu' ? 'api.eu.mailgun.net' : 'api.mailgun.net';
+    const auth = Buffer.from(`api:${config.mailgunApiKey}`).toString('base64');
+    const response = await fetch(
+      `https://${regionHost}/v3/domains/${encodeURIComponent(String(config.mailgunDomain))}`,
+      {
+        headers: { Authorization: `Basic ${auth}` },
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Mailgun test failed (${response.status})`);
+    }
+    return;
+  }
+
+  if (config.provider === 'smtp') {
+    await testSmtpConnection(config);
+    return;
+  }
+
+  throw new Error('SES live credential verification is not available in this build yet');
 }
 
 function buildDbPoolFromEnv(): Pool | null {
@@ -597,6 +791,67 @@ export function createAdminCommand(): Command {
         sessionTimeoutMinutes: 24 * 60,
         authVersion: 1,
       };
+      const relayState: RelayConfigState = {
+        provider: 'postal',
+        smtpPort: 587,
+        smtpUseTls: true,
+      };
+      const relayTestLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        max: 5,
+        standardHeaders: true,
+        legacyHeaders: false,
+        handler: (_req, res) => {
+          res.status(429).json({
+            ok: false,
+            error: {
+              code: 'RATE_LIMITED',
+              message: 'Too many relay test attempts. Maximum 5 per minute.',
+            },
+          });
+        },
+      });
+
+      async function loadRelayConfigFromDisk(): Promise<void> {
+        try {
+          const configManager = new ConfigManager();
+          const config = await configManager.load();
+          const relay = (config as any).relay || {};
+          const mapped = mapRelayConfigInput({
+            provider: (config as any).provider || relay.provider || 'postal',
+            ...relay,
+          });
+          Object.assign(relayState, mapped);
+          relayState.updatedAt =
+            relay.updatedAt || relayState.updatedAt || new Date().toISOString();
+          relayState.lastTestedAt = relay.lastTestedAt || relayState.lastTestedAt || undefined;
+        } catch {
+          // Keep defaults when config is unavailable.
+        }
+      }
+
+      async function persistRelayConfig(configToPersist: RelayConfigState): Promise<void> {
+        const configManager = new ConfigManager();
+        let current: any;
+        try {
+          current = await configManager.load();
+        } catch {
+          current = {
+            server: process.env.MAILGOAT_SERVER || 'https://postal.example.com',
+            fromAddress: process.env.MAILGOAT_FROM_ADDRESS || process.env.MAILGOAT_EMAIL || '',
+            api_key: process.env.MAILGOAT_API_KEY || '',
+          };
+        }
+        const next = {
+          ...current,
+          provider: configToPersist.provider,
+          relay: {
+            ...configToPersist,
+            updatedAt: configToPersist.updatedAt || new Date().toISOString(),
+          },
+        } as any;
+        await configManager.save(next);
+      }
       app.disable('x-powered-by');
       app.set('trust proxy', 1);
       app.use(express.json());
@@ -839,6 +1094,87 @@ export function createAdminCommand(): Command {
           sessionTimeoutMinutes: settingsState.sessionTimeoutMinutes,
         };
         res.json({ ok: true, data: payload });
+      });
+
+      app.get('/api/admin/relay/status', requireAuth, async (_req: Request, res: Response) => {
+        await loadRelayConfigFromDisk();
+        const payload: RelayStatusPayload = {
+          provider: relayState.provider,
+          active: true,
+          lastTestedAt: relayState.lastTestedAt || null,
+          config: redactRelayConfig(relayState),
+        };
+        res.json({ ok: true, data: payload });
+      });
+
+      app.post(
+        '/api/admin/relay/test',
+        requireAuth,
+        relayTestLimiter,
+        async (req: Request, res: Response) => {
+          const candidate = mapRelayConfigInput(req.body);
+          try {
+            await testRelayConfig(candidate);
+            relayState.lastTestedAt = new Date().toISOString();
+            res.json({
+              ok: true,
+              data: {
+                tested: true,
+                provider: candidate.provider,
+                lastTestedAt: relayState.lastTestedAt,
+              },
+            });
+          } catch (error) {
+            res.status(400).json({
+              ok: false,
+              error: {
+                code: 'RELAY_TEST_FAILED',
+                message: error instanceof Error ? error.message : 'Relay test failed',
+              },
+            });
+          }
+        }
+      );
+
+      app.post('/api/admin/relay/configure', requireAuth, async (req: Request, res: Response) => {
+        const candidate = mapRelayConfigInput(req.body);
+        const validationError = validateRelayConfig(candidate);
+        if (validationError) {
+          res.status(400).json({
+            ok: false,
+            error: { code: 'INVALID_RELAY_CONFIG', message: validationError },
+          });
+          return;
+        }
+
+        try {
+          const now = new Date().toISOString();
+          const merged: RelayConfigState = {
+            ...relayState,
+            ...candidate,
+            updatedAt: now,
+          };
+          await persistRelayConfig(merged);
+          Object.assign(relayState, merged);
+          res.json({
+            ok: true,
+            data: {
+              configured: true,
+              provider: relayState.provider,
+              updatedAt: relayState.updatedAt,
+              config: redactRelayConfig(relayState),
+              serviceRestartRequired: false,
+            },
+          });
+        } catch (error) {
+          res.status(500).json({
+            ok: false,
+            error: {
+              code: 'RELAY_CONFIG_SAVE_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to save relay config',
+            },
+          });
+        }
       });
 
       app.post('/api/admin/settings/postal', requireAuth, async (req: Request, res: Response) => {

@@ -103,6 +103,33 @@ type SettingsPayload = {
   error?: { code: string; message: string; details?: unknown };
 };
 
+type RelayProvider = 'postal' | 'sendgrid' | 'mailgun' | 'ses' | 'smtp';
+
+type RelayStatusPayload = {
+  ok: boolean;
+  data?: {
+    provider: RelayProvider;
+    active: boolean;
+    lastTestedAt: string | null;
+    config: {
+      provider: RelayProvider;
+      sendgridApiKey: string | null;
+      mailgunApiKey: string | null;
+      mailgunDomain: string | null;
+      mailgunRegion: 'us' | 'eu';
+      sesAccessKeyId: string | null;
+      sesSecretAccessKey: string | null;
+      sesRegion: string | null;
+      smtpHost: string | null;
+      smtpPort: number;
+      smtpUsername: string | null;
+      smtpPassword: string | null;
+      smtpUseTls: boolean;
+    };
+  };
+  error?: { code: string; message: string; details?: unknown };
+};
+
 type ApiKeyRecord = {
   id: string;
   name: string;
@@ -937,6 +964,23 @@ function SettingsPage() {
   const [selectedUsageKeyId, setSelectedUsageKeyId] = useState<string | null>(null);
   const [usageDetails, setUsageDetails] = useState<ApiKeyUsagePayload['data'] | null>(null);
   const [isApiKeysLoading, setIsApiKeysLoading] = useState(false);
+  const [relayProvider, setRelayProvider] = useState<RelayProvider>('postal');
+  const [relayLastTestedAt, setRelayLastTestedAt] = useState<string | null>(null);
+  const [relayIsActive, setRelayIsActive] = useState(true);
+  const [relaySendgridApiKey, setRelaySendgridApiKey] = useState('');
+  const [relayMailgunApiKey, setRelayMailgunApiKey] = useState('');
+  const [relayMailgunDomain, setRelayMailgunDomain] = useState('');
+  const [relayMailgunRegion, setRelayMailgunRegion] = useState<'us' | 'eu'>('us');
+  const [relaySesAccessKeyId, setRelaySesAccessKeyId] = useState('');
+  const [relaySesSecretAccessKey, setRelaySesSecretAccessKey] = useState('');
+  const [relaySesRegion, setRelaySesRegion] = useState('us-east-1');
+  const [relaySmtpHost, setRelaySmtpHost] = useState('');
+  const [relaySmtpPort, setRelaySmtpPort] = useState(587);
+  const [relaySmtpUsername, setRelaySmtpUsername] = useState('');
+  const [relaySmtpPassword, setRelaySmtpPassword] = useState('');
+  const [relaySmtpUseTls, setRelaySmtpUseTls] = useState(true);
+  const [isTestingRelay, setIsTestingRelay] = useState(false);
+  const [isSavingRelay, setIsSavingRelay] = useState(false);
 
   async function loadSettings() {
     setIsLoading(true);
@@ -957,8 +1001,37 @@ function SettingsPage() {
     }
   }
 
+  async function loadRelayStatus() {
+    try {
+      const response = await fetch('/api/admin/relay/status', { credentials: 'include' });
+      const payload = (await response.json()) as RelayStatusPayload;
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message || 'Failed to load relay status');
+      }
+
+      setRelayProvider(payload.data.provider);
+      setRelayIsActive(payload.data.active);
+      setRelayLastTestedAt(payload.data.lastTestedAt);
+      setRelaySendgridApiKey(payload.data.config.sendgridApiKey || '');
+      setRelayMailgunApiKey(payload.data.config.mailgunApiKey || '');
+      setRelayMailgunDomain(payload.data.config.mailgunDomain || '');
+      setRelayMailgunRegion(payload.data.config.mailgunRegion || 'us');
+      setRelaySesAccessKeyId(payload.data.config.sesAccessKeyId || '');
+      setRelaySesSecretAccessKey(payload.data.config.sesSecretAccessKey || '');
+      setRelaySesRegion(payload.data.config.sesRegion || 'us-east-1');
+      setRelaySmtpHost(payload.data.config.smtpHost || '');
+      setRelaySmtpPort(payload.data.config.smtpPort || 587);
+      setRelaySmtpUsername(payload.data.config.smtpUsername || '');
+      setRelaySmtpPassword('');
+      setRelaySmtpUseTls(payload.data.config.smtpUseTls !== false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load relay status');
+    }
+  }
+
   useEffect(() => {
     void loadSettings();
+    void loadRelayStatus();
   }, []);
 
   async function loadApiKeys() {
@@ -1168,6 +1241,68 @@ function SettingsPage() {
     }
   }
 
+  function buildRelayPayload() {
+    return {
+      provider: relayProvider,
+      sendgridApiKey: relaySendgridApiKey,
+      mailgunApiKey: relayMailgunApiKey,
+      mailgunDomain: relayMailgunDomain,
+      mailgunRegion: relayMailgunRegion,
+      sesAccessKeyId: relaySesAccessKeyId,
+      sesSecretAccessKey: relaySesSecretAccessKey,
+      sesRegion: relaySesRegion,
+      smtpHost: relaySmtpHost,
+      smtpPort: relaySmtpPort,
+      smtpUsername: relaySmtpUsername,
+      smtpPassword: relaySmtpPassword,
+      smtpUseTls: relaySmtpUseTls,
+    };
+  }
+
+  async function testRelayConnection() {
+    setIsTestingRelay(true);
+    try {
+      const response = await fetch('/api/admin/relay/test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildRelayPayload()),
+      });
+      const payload = (await response.json()) as RelayStatusPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Relay test failed');
+      }
+      setRelayLastTestedAt(new Date().toISOString());
+      toast.success('Relay connection test succeeded');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Relay test failed');
+    } finally {
+      setIsTestingRelay(false);
+    }
+  }
+
+  async function saveRelayConfiguration() {
+    setIsSavingRelay(true);
+    try {
+      const response = await fetch('/api/admin/relay/configure', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildRelayPayload()),
+      });
+      const payload = (await response.json()) as RelayStatusPayload;
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error?.message || 'Failed to save relay configuration');
+      }
+      toast.success('Relay configuration saved');
+      await loadRelayStatus();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save relay configuration');
+    } finally {
+      setIsSavingRelay(false);
+    }
+  }
+
   const passwordStrength = getPasswordStrengthLabel(newPassword);
 
   return (
@@ -1183,6 +1318,180 @@ function SettingsPage() {
             <CardContent className="p-4 text-sm text-slate-400">Loading settings...</CardContent>
           </Card>
         ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Relay Configuration</CardTitle>
+            <CardDescription>Configure and test outbound relay provider for MailGoat.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border border-border p-3 text-sm text-slate-300">
+              <p>
+                Current Provider:{' '}
+                <span className="font-medium text-slate-100">{relayProvider.toUpperCase()}</span>{' '}
+                {relayIsActive ? (
+                  <span className="text-green-400">✓ Active</span>
+                ) : (
+                  <span className="text-amber-400">Inactive</span>
+                )}
+              </p>
+              <p className="text-xs text-slate-500">
+                Last tested: {relayLastTestedAt ? new Date(relayLastTestedAt).toUTCString() : 'Never'}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-slate-300">Provider</label>
+              <select
+                className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                value={relayProvider}
+                onChange={(event) => setRelayProvider(event.target.value as RelayProvider)}
+              >
+                <option value="postal">Postal</option>
+                <option value="sendgrid">SendGrid</option>
+                <option value="mailgun">Mailgun</option>
+                <option value="ses">Amazon SES</option>
+                <option value="smtp">SMTP (custom)</option>
+                <option disabled>Mailjet (coming later)</option>
+              </select>
+            </div>
+
+            {relayProvider === 'sendgrid' ? (
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">API Key</label>
+                <Input
+                  type="password"
+                  value={relaySendgridApiKey}
+                  onChange={(event) => setRelaySendgridApiKey(event.target.value)}
+                  placeholder="SG.xxxxx"
+                />
+                <p className="text-xs text-slate-500">Generate from SendGrid Settings → API Keys.</p>
+              </div>
+            ) : null}
+
+            {relayProvider === 'mailgun' ? (
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">API Key</label>
+                <Input
+                  type="password"
+                  value={relayMailgunApiKey}
+                  onChange={(event) => setRelayMailgunApiKey(event.target.value)}
+                  placeholder="key-xxxxx"
+                />
+                <label className="text-sm text-slate-300">Domain</label>
+                <Input
+                  value={relayMailgunDomain}
+                  onChange={(event) => setRelayMailgunDomain(event.target.value)}
+                  placeholder="mg.example.com"
+                />
+                <label className="text-sm text-slate-300">Region</label>
+                <select
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                  value={relayMailgunRegion}
+                  onChange={(event) => setRelayMailgunRegion(event.target.value as 'us' | 'eu')}
+                >
+                  <option value="us">US</option>
+                  <option value="eu">EU</option>
+                </select>
+              </div>
+            ) : null}
+
+            {relayProvider === 'ses' ? (
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Access Key ID</label>
+                <Input
+                  value={relaySesAccessKeyId}
+                  onChange={(event) => setRelaySesAccessKeyId(event.target.value)}
+                  placeholder="AKIA..."
+                />
+                <label className="text-sm text-slate-300">Secret Access Key</label>
+                <Input
+                  type="password"
+                  value={relaySesSecretAccessKey}
+                  onChange={(event) => setRelaySesSecretAccessKey(event.target.value)}
+                  placeholder="AWS secret"
+                />
+                <label className="text-sm text-slate-300">Region</label>
+                <select
+                  className="w-full rounded-md border border-border bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                  value={relaySesRegion}
+                  onChange={(event) => setRelaySesRegion(event.target.value)}
+                >
+                  <option value="us-east-1">us-east-1</option>
+                  <option value="us-west-2">us-west-2</option>
+                  <option value="eu-west-1">eu-west-1</option>
+                  <option value="eu-central-1">eu-central-1</option>
+                </select>
+                <p className="text-xs text-slate-500">
+                  SES test currently validates configuration format and save flow.
+                </p>
+              </div>
+            ) : null}
+
+            {relayProvider === 'smtp' ? (
+              <div className="space-y-2">
+                <label className="text-sm text-slate-300">Host</label>
+                <Input
+                  value={relaySmtpHost}
+                  onChange={(event) => setRelaySmtpHost(event.target.value)}
+                  placeholder="smtp.example.com"
+                />
+                <label className="text-sm text-slate-300">Port</label>
+                <Input
+                  type="number"
+                  value={relaySmtpPort}
+                  onChange={(event) => setRelaySmtpPort(Number(event.target.value))}
+                  placeholder="587"
+                />
+                <label className="text-sm text-slate-300">Username</label>
+                <Input
+                  value={relaySmtpUsername}
+                  onChange={(event) => setRelaySmtpUsername(event.target.value)}
+                  placeholder="smtp-user"
+                />
+                <label className="text-sm text-slate-300">Password</label>
+                <Input
+                  type="password"
+                  value={relaySmtpPassword}
+                  onChange={(event) => setRelaySmtpPassword(event.target.value)}
+                  placeholder="smtp-password"
+                />
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={relaySmtpUseTls}
+                    onChange={(event) => setRelaySmtpUseTls(event.target.checked)}
+                  />
+                  Use TLS
+                </label>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={isTestingRelay} onClick={() => void testRelayConnection()}>
+                {isTestingRelay ? 'Testing...' : 'Test Connection'}
+              </Button>
+              <Button disabled={isSavingRelay} onClick={() => void saveRelayConfiguration()}>
+                {isSavingRelay ? 'Saving...' : 'Save Configuration'}
+              </Button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Provider docs: {' '}
+              <a className="underline" href="https://docs.sendgrid.com/" target="_blank" rel="noreferrer">
+                SendGrid
+              </a>{' '}
+              ·{' '}
+              <a className="underline" href="https://documentation.mailgun.com/" target="_blank" rel="noreferrer">
+                Mailgun
+              </a>{' '}
+              ·{' '}
+              <a className="underline" href="https://docs.aws.amazon.com/ses/" target="_blank" rel="noreferrer">
+                Amazon SES
+              </a>
+            </p>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

@@ -1,4 +1,11 @@
-import { mapInboxMessageToAdminMessage, matchesInboxIdentifier, normalizeInboxId } from '../admin';
+import {
+  mapInboxMessageToAdminMessage,
+  matchesInboxIdentifier,
+  normalizeInboxId,
+  normalizeRelayProvider,
+  validateRelayConfig,
+  redactRelayConfig,
+} from '../admin';
 import { InboxMessage } from '../../lib/inbox-store';
 
 describe('admin inbox helpers', () => {
@@ -38,5 +45,41 @@ describe('admin inbox helpers', () => {
     expect(mapped.attachments).toEqual([]);
     expect(mapped.cc).toEqual([]);
     expect(mapped.bcc).toEqual([]);
+  });
+});
+
+describe('admin relay helpers', () => {
+  it('normalizes relay provider with fallback', () => {
+    expect(normalizeRelayProvider('sendgrid')).toBe('sendgrid');
+    expect(normalizeRelayProvider('SMTP')).toBe('smtp');
+    expect(normalizeRelayProvider('unknown')).toBe('postal');
+  });
+
+  it('validates required fields by provider', () => {
+    expect(validateRelayConfig({ provider: 'sendgrid' })).toContain('API key');
+    expect(validateRelayConfig({ provider: 'mailgun', mailgunApiKey: 'k' })).toContain('domain');
+    expect(validateRelayConfig({ provider: 'ses', sesAccessKeyId: 'a' })).toContain('Secret');
+    expect(
+      validateRelayConfig({ provider: 'smtp', smtpHost: 'smtp.example.com', smtpPort: 587 })
+    ).toContain('username');
+    expect(
+      validateRelayConfig({
+        provider: 'smtp',
+        smtpHost: 'smtp.example.com',
+        smtpPort: 587,
+        smtpUsername: 'user',
+        smtpPassword: 'pass',
+      })
+    ).toBeNull();
+  });
+
+  it('redacts relay secrets', () => {
+    const redacted = redactRelayConfig({
+      provider: 'mailgun',
+      mailgunApiKey: 'key-secret',
+      mailgunDomain: 'mg.example.com',
+    }) as Record<string, unknown>;
+    expect(redacted.mailgunApiKey).toBe('key***');
+    expect(redacted.mailgunDomain).toBe('mg.example.com');
   });
 });
