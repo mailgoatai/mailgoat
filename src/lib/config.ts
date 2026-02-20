@@ -29,6 +29,11 @@ export interface MailGoatConfig {
   metrics?: {
     pushgateway?: string;
   };
+  relay?: {
+    provider: string;
+    credentials?: Record<string, any>;
+    from?: string;
+  };
 }
 
 export class ConfigManager {
