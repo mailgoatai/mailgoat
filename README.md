@@ -119,6 +119,18 @@ mailgoat domain verify yourdomain.com
 mailgoat address create myagent
 ```
 
+### Example Scripts
+
+Practical starter scripts are available in `examples/`:
+
+- `examples/simple-send.js`
+- `examples/batch-send.js`
+- `examples/template-email.js`
+- `examples/monitor-inbox.js`
+- `examples/webhook-server.js`
+
+See `examples/README.md` for usage.
+
 ### Send Email
 
 ```bash

@@ -1,86 +1,93 @@
-# MailGoat Example Integrations
+# MailGoat Examples
 
-This directory contains practical examples showing how agents can automate workflows with MailGoat CLI.
+Practical examples showing how to use MailGoat in real applications.
 
-## New full examples
+## Quick Start
 
-### `simple-python-agent/` (Python)
+1. Install MailGoat: `npm install -g mailgoat`
+2. Configure: `mailgoat config init`
+3. Run an example: `node examples/simple-send.js`
 
-- Polls inbox cache every 5 minutes (default)
-- Reads new messages and sends automated acknowledgments
-- Uses `mailgoat inbox list`, `mailgoat read`, and `mailgoat send`
-- Files:
-  - `agent.py`
-  - `README.md`
-  - `.env.example`
+## JavaScript Script Examples
 
-### `nodejs-agent/` (Node.js)
+### 1. `simple-send.js`
 
-- Monitors inbox in a polling loop
-- Parses incoming message data
-- Sends structured auto-responses
-- Files:
-  - `agent.js`
-  - `package.json`
-  - `README.md`
-  - `.env.example`
+Basic email sending for a single recipient.
 
-### `docker-agent/`
-
-- Containerized polling agent with cron inside container
-- Uses mounted MailGoat CLI config from host (`~/.mailgoat`)
-- Includes docker compose deployment
-- Files:
-  - `Dockerfile`
-  - `docker-compose.yml`
-  - `agent.sh`
-  - `entrypoint.sh`
-  - `README.md`
-  - `.env.example`
-
-### `notification-bot/`
-
-- Forwards important emails to Slack/Discord webhooks
-- Includes filtering logic by status and keywords
-- Files:
-  - `agent.js`
-  - `package.json`
-  - `README.md`
-  - `.env.example`
-
-## Existing lightweight scripts
-
-- `notification-agent.sh`
-- `inbox-processor.sh`
-- `auto-responder.sh`
-- `digest-agent.sh`
-- `openclaw-integration.js`
-- `delete-example.sh`
-
-## Integration cookbook
-
-`integrations/` contains practical app-integration blueprints:
-
-- `integrations/express-api/`
-- `integrations/nextjs/`
-- `integrations/github-actions/`
-- `integrations/docker/`
-- `integrations/cron/`
-- `integrations/lambda/`
-
-Start with `integrations/README.md` for prerequisites and smoke tests.
-
-## General prerequisites
-
-1. MailGoat CLI installed and configured.
-2. Inbox cache available (`mailgoat inbox serve` + Postal webhook setup).
-3. Required runtime per example (Python/Node/Docker).
-
-## Quick start
+Usage:
 
 ```bash
-cd examples/simple-agent
-cp .env.example .env
-set -a; source .env; set +a
-python3 agent.py
+node examples/simple-send.js --to user@example.com
+node examples/simple-send.js --to user@example.com --execute
 ```
+
+### 2. `batch-send.js`
+
+Send emails to multiple recipients from a CSV file.
+
+Usage:
+
+```bash
+node examples/batch-send.js examples/recipients.csv
+node examples/batch-send.js examples/recipients.csv --execute
+```
+
+### 3. `template-email.js`
+
+Send a template-based email with variables.
+
+Usage:
+
+```bash
+node examples/template-email.js --template welcome --to user@example.com --var name=Alice
+node examples/template-email.js --template welcome --to user@example.com --var name=Alice --execute
+```
+
+### 4. `monitor-inbox.js`
+
+Monitor inbox cache and print new messages as they appear.
+
+Usage:
+
+```bash
+node examples/monitor-inbox.js --interval 10000 --limit 20
+```
+
+### 5. `webhook-server.js`
+
+Run a simple webhook endpoint for event ingestion.
+
+Usage:
+
+```bash
+node examples/webhook-server.js --port 3000
+# Server starts on port 3000
+```
+
+### 6. `recipients.csv`
+
+Sample CSV input for the batch sender.
+
+Usage:
+
+```bash
+node examples/batch-send.js examples/recipients.csv --execute
+```
+
+## Use Cases
+
+- Transactional emails: order confirmations, password resets
+- Notifications: system alerts and user activity updates
+- Newsletters: batch sending with templates
+- Testing: E2E testing for email-dependent features
+- Integration testing: automated email verification
+
+## Existing Integration Examples
+
+The repository also includes larger integration examples in:
+
+- `examples/simple-python-agent/`
+- `examples/nodejs-agent/`
+- `examples/docker-agent/`
+- `examples/notification-bot/`
+- `examples/integrations/`

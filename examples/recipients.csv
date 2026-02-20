@@ -1,0 +1,4 @@
+email,name,subject,body
+alice@example.com,Alice,Welcome Alice,Hello Alice and welcome to MailGoat.
+bob@example.com,Bob,Weekly Update,Hi Bob this is your weekly update.
+carol@example.com,Carol,Launch Notice,Hi Carol the new feature is live.
