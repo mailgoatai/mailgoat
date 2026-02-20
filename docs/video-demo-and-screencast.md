@@ -27,6 +27,8 @@ This pack is designed to produce a 3-video series with consistent quality, pacin
 - Open script + shot list side by side
 - Do one dry run at 1.25x speaking pace
 
+Execution runbook: `docs/video/recording-session-checklist.md`
+
 ## Timeline Template
 
 - `00:00-00:15` Hook
@@ -84,6 +86,8 @@ Demo path:
   - `README.md`
   - `docs/guides/README.md`
   - `docs/video-demo-and-screencast.md`
+
+YouTube metadata/runbook: `docs/video/youtube-publishing-checklist.md`
 
 ## Social Distribution Checklist
 
