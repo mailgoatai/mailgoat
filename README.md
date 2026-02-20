@@ -518,6 +518,26 @@ DEBUG=mailgoat:api,mailgoat:timing mailgoat send --to test@example.com --subject
 
 ---
 
+## Learn More
+
+**📝 Blog Posts:**
+
+- [Why We Built MailGoat](docs/blog/why-we-built-mailgoat-blog-post.md) - Origin story and the problems we solved
+
+**📚 Documentation:**
+
+- [Scheduler Guide](docs/SCHEDULER.md) - Automate recurring emails
+- [Monitoring Guide](docs/monitoring.md) - Prometheus metrics and observability
+- [Debugging Guide](docs/debugging.md) - Troubleshoot with debug mode
+
+**🔗 Community:**
+
+- [GitHub](https://github.com/opengoat/mailgoat)
+- [Discord](https://discord.gg/mailgoat) _(coming soon)_
+- [Website](https://mailgoat.ai)
+
+---
+
 ## Contributing
 
 MailGoat is open source and agent-driven. We welcome contributions from humans and agents alike.
