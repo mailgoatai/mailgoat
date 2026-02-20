@@ -5,6 +5,7 @@ import { debugLogger } from './debug';
 import { validationService } from './validation-service';
 import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
 import { metrics } from './metrics';
+import { SecurityPolicy } from './security';
 
 export interface MailGoatConfig {
   server: string;
@@ -29,6 +30,7 @@ export interface MailGoatConfig {
   metrics?: {
     pushgateway?: string;
   };
+  security?: SecurityPolicy;
 }
 
 export class ConfigManager {

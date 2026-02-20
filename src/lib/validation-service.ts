@@ -6,6 +6,7 @@
  */
 
 import { debugLogger } from './debug';
+import { validateEmailAddress } from './security';
 
 /**
  * Validation result with success status and optional error
@@ -70,11 +71,7 @@ export class ValidationService {
       };
     }
 
-    // RFC 5322 compliant regex (simplified)
-    const regex =
-      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-
-    const valid = regex.test(email.trim());
+    const valid = validateEmailAddress(email);
 
     if (!valid) {
       return {

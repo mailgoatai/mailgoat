@@ -128,6 +128,13 @@ mailgoat send \
   --subject "Weekly Report" \
   --body "Here's your summary..."
 
+# Send sanitized HTML from file
+mailgoat send \
+  --to user@example.com \
+  --subject "Welcome" \
+  --body-html welcome.html \
+  --sanitize
+
 # With attachments
 mailgoat send \
   --to user@example.com \
@@ -155,6 +162,9 @@ mailgoat send \
   --subject "Follow-up" \
   --body "Checking in tomorrow." \
   --schedule "2026-03-01 09:00"
+
+# Security scan a template before use
+mailgoat security-scan welcome.html
 
 # Or use the API
 curl -X POST https://api.mailgoat.ai/v1/send \

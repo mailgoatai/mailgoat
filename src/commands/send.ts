@@ -11,6 +11,12 @@ import { SchedulerStore, parseScheduleInput } from '../lib/scheduler';
 import { metrics } from '../lib/metrics';
 import { inferExitCode } from '../lib/errors';
 import {
+  sanitizeEmail,
+  sanitizeHeaders,
+  securityPolicyForLevel,
+  validateHeaders,
+} from '../lib/security';
+import {
   formatBytes,
   prepareAttachment,
   validateAttachmentSize,
@@ -72,6 +78,8 @@ export function createSendCommand(): Command {
     .option('--cc <emails...>', 'CC recipients')
     .option('--bcc <emails...>', 'BCC recipients')
     .option('--html', 'Treat body as HTML instead of plain text')
+    .option('--body-html <file>', 'Load HTML body content from file')
+    .option('--sanitize', 'Sanitize HTML body and headers before sending', false)
     .option('--tag <tag>', 'Custom tag for this message')
     .option(
       '--attach <file>',
@@ -181,10 +189,21 @@ export function createSendCommand(): Command {
         }
 
         const renderedSubject = options.subject
-          ? templateManager.renderString(options.subject, variables)
+          ? templateManager.renderString(options.subject, variables, {
+              escapeHtml: true,
+              allowRawHtml: false,
+              strictMode: true,
+            })
           : undefined;
         const renderedBody = options.body
-          ? templateManager.renderString(options.body, variables)
+          ? templateManager.renderString(options.body, variables, {
+              escapeHtml: true,
+              allowRawHtml: false,
+              strictMode: true,
+            })
+          : undefined;
+        const htmlFromFile = options.bodyHtml
+          ? await fs.readFile(options.bodyHtml, 'utf8')
           : undefined;
 
         // Check that required fields are present (either from template or CLI)
@@ -196,8 +215,8 @@ export function createSendCommand(): Command {
           throw new Error('Subject required: use --subject or template with subject');
         }
 
-        if (!options.body && !templateData.body && !templateData.html) {
-          throw new Error('Body required: use --body, --html, or template with body');
+        if (!options.body && !options.bodyHtml && !templateData.body && !templateData.html) {
+          throw new Error('Body required: use --body, --body-html, --html, or template with body');
         }
 
         // Normalize inputs (CLI options override template)
@@ -226,7 +245,7 @@ export function createSendCommand(): Command {
           bcc,
           subject: renderedSubject || templateData.subject,
           body: options.html ? undefined : renderedBody || templateData.body,
-          html: options.html ? renderedBody : templateData.html,
+          html: options.bodyHtml ? htmlFromFile : options.html ? renderedBody : templateData.html,
           from: options.from,
           tag: options.tag,
           attachments: options.attach,
@@ -278,7 +297,9 @@ export function createSendCommand(): Command {
         };
 
         // Set body (plain or HTML)
-        if (options.html) {
+        if (options.bodyHtml) {
+          messageParams.html_body = htmlFromFile;
+        } else if (options.html) {
           messageParams.html_body = renderedBody;
         } else if (renderedBody) {
           messageParams.plain_body = renderedBody;
@@ -297,6 +318,28 @@ export function createSendCommand(): Command {
         }
         if (options.tag || templateData.tag) {
           messageParams.tag = options.tag || templateData.tag;
+        }
+
+        const htmlPolicy = config.security?.sanitization?.html || 'off';
+        const shouldSanitize = options.sanitize || htmlPolicy !== 'off';
+        const headerPolicy = config.security?.sanitization?.headers || 'validate';
+        if (headerPolicy === 'sanitize') {
+          const sanitizedHeaders = sanitizeHeaders({
+            subject: messageParams.subject,
+            from: messageParams.from,
+          });
+          messageParams.subject = sanitizedHeaders.subject;
+          messageParams.from = sanitizedHeaders.from;
+        } else if (headerPolicy === 'validate') {
+          validateHeaders({
+            subject: messageParams.subject,
+            from: messageParams.from,
+          });
+        }
+
+        if (shouldSanitize && messageParams.html_body) {
+          const sanitizeOptions = securityPolicyForLevel(htmlPolicy);
+          messageParams.html_body = sanitizeEmail(messageParams.html_body, sanitizeOptions);
         }
 
         // Process attachments

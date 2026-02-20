@@ -9,6 +9,7 @@ import * as os from 'os';
 import Handlebars from 'handlebars';
 import YAML from 'yaml';
 import { debugLogger } from './debug';
+import { assertSafeTemplate, TemplateRenderOptions } from './security';
 
 export interface EmailTemplate {
   name: string;
@@ -53,9 +54,22 @@ export class TemplateManager {
     TemplateManager.helpersRegistered = true;
   }
 
-  private renderField(template: string, variables: TemplateVariables): string {
+  private renderField(
+    template: string,
+    variables: TemplateVariables,
+    options: TemplateRenderOptions = {}
+  ): string {
     try {
-      const compiled = Handlebars.compile(template, { strict: true });
+      const renderOptions: Required<TemplateRenderOptions> = {
+        escapeHtml: options.escapeHtml !== false,
+        allowRawHtml: options.allowRawHtml === true,
+        strictMode: options.strictMode !== false,
+      };
+      assertSafeTemplate(template, renderOptions);
+      const compiled = Handlebars.compile(template, {
+        strict: renderOptions.strictMode,
+        noEscape: !renderOptions.escapeHtml,
+      });
       return compiled(variables);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -290,7 +304,11 @@ export class TemplateManager {
   /**
    * Render a template with variables
    */
-  render(template: EmailTemplate, variables: TemplateVariables = {}): EmailTemplate {
+  render(
+    template: EmailTemplate,
+    variables: TemplateVariables = {},
+    options: TemplateRenderOptions = {}
+  ): EmailTemplate {
     debugLogger.log('config', `Rendering template: ${template.name}`);
     debugLogger.logObject('config', 'Variables', variables);
 
@@ -300,37 +318,37 @@ export class TemplateManager {
 
     // Compile and render subject
     if (template.subject) {
-      rendered.subject = this.renderField(template.subject, variables);
+      rendered.subject = this.renderField(template.subject, variables, options);
     }
 
     // Compile and render plain body
     if (template.body) {
-      rendered.body = this.renderField(template.body, variables);
+      rendered.body = this.renderField(template.body, variables, options);
     }
 
     // Compile and render HTML body
     if (template.html) {
-      rendered.html = this.renderField(template.html, variables);
+      rendered.html = this.renderField(template.html, variables, options);
     }
 
     // Render from email
     if (template.from) {
-      rendered.from = this.renderField(template.from, variables);
+      rendered.from = this.renderField(template.from, variables, options);
     }
 
     // Render CC emails
     if (template.cc) {
-      rendered.cc = template.cc.map((email) => this.renderField(email, variables));
+      rendered.cc = template.cc.map((email) => this.renderField(email, variables, options));
     }
 
     // Render BCC emails
     if (template.bcc) {
-      rendered.bcc = template.bcc.map((email) => this.renderField(email, variables));
+      rendered.bcc = template.bcc.map((email) => this.renderField(email, variables, options));
     }
 
     // Render tag
     if (template.tag) {
-      rendered.tag = this.renderField(template.tag, variables);
+      rendered.tag = this.renderField(template.tag, variables, options);
     }
 
     debugLogger.log('config', 'Template rendered successfully');
@@ -338,8 +356,12 @@ export class TemplateManager {
     return rendered;
   }
 
-  renderString(template: string, variables: TemplateVariables = {}): string {
-    return this.renderField(template, variables);
+  renderString(
+    template: string,
+    variables: TemplateVariables = {},
+    options: TemplateRenderOptions = {}
+  ): string {
+    return this.renderField(template, variables, options);
   }
 
   /**
