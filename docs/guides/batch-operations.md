@@ -26,10 +26,28 @@ mailgoat send-batch \
   --metrics-output metrics.json
 ```
 
+Campaign pattern (CSV + personalization + tracking):
+
+```bash
+mailgoat campaign send \
+  --template newsletter.html \
+  --subject "Hi {{name}}" \
+  --recipients subscribers.csv \
+  --name "Weekly Newsletter" \
+  --batch-size 100 \
+  --delay 2000
+```
+
 Resume interrupted batch:
 
 ```bash
 mailgoat send-batch --file recipients.json --resume
+```
+
+Resume campaign:
+
+```bash
+mailgoat campaign send --resume <campaign-id>
 ```
 
 ## Scaling Tips

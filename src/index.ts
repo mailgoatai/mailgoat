@@ -16,6 +16,7 @@ import { createMetricsCommand } from './commands/metrics';
 import { createInspectCommand } from './commands/inspect';
 import { createKeysCommand } from './commands/keys';
 import { createAdminCommand } from './commands/admin';
+import { createCampaignCommand } from './commands/campaign';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 import { readFileSync } from 'fs';
@@ -77,6 +78,7 @@ program.addCommand(createMetricsCommand());
 program.addCommand(createInspectCommand());
 program.addCommand(createKeysCommand());
 program.addCommand(createAdminCommand());
+program.addCommand(createCampaignCommand());
 
 // Parse arguments
 program.parse(process.argv);

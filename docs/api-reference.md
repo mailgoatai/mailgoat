@@ -392,6 +392,69 @@ mailgoat send-batch --file recipients.json --concurrency 20 --metrics-output met
 mailgoat send-batch --file recipients.json --resume
 ```
 
+## Command Group: `campaign`
+
+Bulk campaign orchestration with recipient CSV import, personalization, tracking, resume, cancel, and reporting.
+
+### Subcommand: `send`
+
+```bash
+mailgoat campaign send [options]
+```
+
+Flags:
+- `--template <path>`: Template file (`.txt` or `.html`).
+- `--subject <text>`: Subject template (supports `{{var}}`).
+- `--recipients <path>`: Recipient CSV with `email` column.
+- `--name <text>`: Campaign name.
+- `--batch-size <n>`: Batch size (default `100`).
+- `--delay <ms>`: Delay between batches.
+- `--fallback <key=value>`: Fallback values for missing columns (repeatable).
+- `--preview <n>`: Preview first N personalized messages and exit.
+- `--resume <id>`: Resume an interrupted campaign.
+- `--tag <tag>`: Add tag to campaign emails.
+- `--db-path <path>`: Custom campaign state DB path.
+- `--json`: JSON output.
+
+Examples:
+
+```bash
+mailgoat campaign send \
+  --template newsletter.html \
+  --subject "Hi {{name}} - March updates" \
+  --recipients subscribers.csv \
+  --name "March Newsletter" \
+  --batch-size 50 \
+  --delay 2000
+
+mailgoat campaign send --resume camp-123456
+mailgoat campaign send --template newsletter.html --recipients subscribers.csv --preview 5
+```
+
+### Subcommand: `status`
+
+```bash
+mailgoat campaign status <id> [--json]
+```
+
+### Subcommand: `list`
+
+```bash
+mailgoat campaign list --limit 50 [--json]
+```
+
+### Subcommand: `cancel`
+
+```bash
+mailgoat campaign cancel <id> [--json]
+```
+
+### Subcommand: `report`
+
+```bash
+mailgoat campaign report <id> [--export-csv results.csv] [--json]
+```
+
 ### Notes
 
 - Dynamic throttling reacts to rate-limit failures by reducing concurrency temporarily.
