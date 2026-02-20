@@ -22,6 +22,18 @@ function collectAttachment(value: string, previous: string[]): string[] {
   return previous;
 }
 
+function parsePositiveNumberOption(
+  rawValue: string | undefined,
+  flagName: string
+): number | undefined {
+  if (rawValue === undefined) return undefined;
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${flagName} must be a positive number`);
+  }
+  return parsed;
+}
+
 async function loadJsonData(filePath: string): Promise<Record<string, unknown>> {
   try {
     const raw = await fs.readFile(filePath, 'utf8');
@@ -74,6 +86,11 @@ export function createSendCommand(): Command {
     .option('--dry-run', 'Validate and preview message without sending', false)
     .option('--profile', 'Show timing breakdown for this command', false)
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
+    .option('--retry-max <number>', 'Maximum retry attempts for transient failures')
+    .option('--retry-delay <ms>', 'Initial retry delay in milliseconds')
+    .option('--retry-max-delay <ms>', 'Maximum retry delay in milliseconds')
+    .option('--retry-backoff <number>', 'Exponential backoff multiplier')
+    .option('--timeout <ms>', 'Request timeout in milliseconds')
     .option('--json', 'Output result as JSON')
     .action(async (options) => {
       const operationId = `send-${Date.now()}`;
@@ -224,8 +241,24 @@ export function createSendCommand(): Command {
         // Create client after validation
         startProfile('client_init');
         debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
+        const retryMax = parsePositiveNumberOption(options.retryMax, '--retry-max');
+        const retryDelay = parsePositiveNumberOption(options.retryDelay, '--retry-delay');
+        const retryMaxDelay = parsePositiveNumberOption(options.retryMaxDelay, '--retry-max-delay');
+        const retryBackoff = parsePositiveNumberOption(options.retryBackoff, '--retry-backoff');
+        const timeout = parsePositiveNumberOption(options.timeout, '--timeout');
+        const retryConfig = config.retry || {};
         const client = new PostalClient(config, {
           enableRetry: options.retry !== false,
+          maxRetries: retryMax ?? retryConfig.maxRetries,
+          baseDelay: retryDelay ?? retryConfig.initialDelay,
+          maxDelay: retryMaxDelay ?? retryConfig.maxDelay,
+          backoffMultiplier: retryBackoff ?? retryConfig.backoffMultiplier,
+          timeout: timeout ?? retryConfig.timeoutMs,
+          retryableErrors: retryConfig.retryableErrors,
+          nonRetryableErrors: retryConfig.nonRetryableErrors,
+          circuitBreakerThreshold: retryConfig.circuitBreakerThreshold,
+          circuitBreakerCooldownMs: retryConfig.circuitBreakerCooldownMs,
+          jitterRatio: retryConfig.jitterRatio,
           onRetry: ({ attempt, maxRetries, statusCode, errorCode }) => {
             if (options.json) {
               return;

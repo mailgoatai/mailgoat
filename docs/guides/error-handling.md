@@ -24,6 +24,40 @@ mailgoat read abc123 --no-retry
 
 Use this when debugging root-cause behavior.
 
+Tune retry/timeout behavior per command:
+
+```bash
+mailgoat send \
+  --to user@example.com \
+  --subject "Retry tuned" \
+  --body "Body" \
+  --retry-max 5 \
+  --retry-delay 2000 \
+  --retry-max-delay 30000 \
+  --retry-backoff 2 \
+  --timeout 10000
+```
+
+You can also set defaults in `~/.mailgoat/config.json`:
+
+```json
+{
+  "server": "https://postal.example.com",
+  "fromAddress": "agent@example.com",
+  "api_key": "your-api-key",
+  "retry": {
+    "maxRetries": 3,
+    "initialDelay": 1000,
+    "maxDelay": 30000,
+    "backoffMultiplier": 2,
+    "jitterRatio": 0.2,
+    "circuitBreakerThreshold": 5,
+    "circuitBreakerCooldownMs": 30000,
+    "timeoutMs": 30000
+  }
+}
+```
+
 ## Structured Debugging Flow
 
 1. Reproduce with `--debug`.

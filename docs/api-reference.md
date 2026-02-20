@@ -37,6 +37,11 @@ Config overrides (used by config service and docs/examples):
 - `MAILGOAT_EMAIL`
 - `MAILGOAT_API_KEY`
 - `MAILGOAT_PROFILE`
+- `MAILGOAT_TIMEOUT`
+- `MAILGOAT_RETRY_MAX`
+- `MAILGOAT_RETRY_DELAY`
+- `MAILGOAT_RETRY_MAX_DELAY`
+- `MAILGOAT_RETRY_MULTIPLIER`
 
 ## Exit Codes
 
@@ -75,6 +80,11 @@ mailgoat send [options]
 - `--var <key=value...>`: Inline template vars (repeatable).
 - `--data <file>`: JSON file for template vars.
 - `--no-retry`: Disable retry behavior.
+- `--retry-max <number>`: Maximum retry attempts.
+- `--retry-delay <ms>`: Initial retry delay in milliseconds.
+- `--retry-max-delay <ms>`: Maximum retry delay in milliseconds.
+- `--retry-backoff <number>`: Exponential backoff multiplier.
+- `--timeout <ms>`: Request timeout in milliseconds.
 - `--json`: JSON output.
 
 ### Examples
