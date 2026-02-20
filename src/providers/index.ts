@@ -23,7 +23,7 @@ export {
 export { PostalProvider, PostalProviderConfig, PostalProviderOptions } from './postal';
 export { SESProvider, SESProviderConfig } from './ses';
 export { MailgunProvider, MailgunProviderConfig } from './mailgun';
-export { SESProvider, SESProviderConfig } from './ses';
+export { SMTPProvider, SMTPProviderConfig } from './smtp';
 
 // Factory
 export { ProviderFactory, ProviderType } from './provider-factory';

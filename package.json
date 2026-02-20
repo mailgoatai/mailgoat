@@ -93,6 +93,7 @@
     "@types/mime-types": "^3.0.1",
     "@types/nock": "^10.0.3",
     "@types/node": "^20.19.33",
+    "@types/nodemailer": "^7.0.10",
     "@types/pg": "^8.16.0",
     "@types/prompts": "^2.4.9",
     "@typescript-eslint/eslint-plugin": "^8.55.0",

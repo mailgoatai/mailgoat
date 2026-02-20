@@ -9,6 +9,7 @@ import { IMailProvider, ProviderConfig, ProviderOptions } from './mail-provider.
 import { PostalProvider, PostalProviderConfig } from './postal';
 import { SESProvider, SESProviderConfig } from './ses';
 import { MailgunProvider, MailgunProviderConfig } from './mailgun';
+import { SMTPProvider, SMTPProviderConfig } from './smtp';
 import { MailGoatConfig } from '../lib/config';
 
 /**
@@ -52,8 +53,9 @@ export class ProviderFactory {
         return new MailgunProvider(config as MailGoatConfig | MailgunProviderConfig);
 
       case 'smtp':
-        throw new Error(
-          'SMTP provider not yet implemented. ' + 'This will be added in a future update.'
+        return new SMTPProvider(
+          ((config as MailGoatConfig).smtp || config) as SMTPProviderConfig,
+          options
         );
 
       case 'ses':
@@ -103,7 +105,7 @@ export class ProviderFactory {
    * @returns Array of implemented provider type strings
    */
   static getImplementedProviders(): ProviderType[] {
-    return ['postal', 'mailgun', 'ses'];
+    return ['postal', 'mailgun', 'smtp', 'ses'];
   }
 
   /**
