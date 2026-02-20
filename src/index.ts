@@ -17,6 +17,7 @@ import { createInspectCommand } from './commands/inspect';
 import { createKeysCommand } from './commands/keys';
 import { createAdminCommand } from './commands/admin';
 import { createRelayCommand } from './commands/relay';
+import { createQueueCommand } from './commands/queue';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 import { readFileSync } from 'fs';
@@ -79,6 +80,7 @@ program.addCommand(createInspectCommand());
 program.addCommand(createKeysCommand());
 program.addCommand(createAdminCommand());
 program.addCommand(createRelayCommand());
+program.addCommand(createQueueCommand());
 
 // Parse arguments
 program.parse(process.argv);
