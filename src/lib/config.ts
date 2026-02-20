@@ -39,6 +39,7 @@ export interface MailGoatConfig {
     provider: string;
     credentials?: Record<string, unknown>;
     from?: string;
+  };
   ses?: {
     region: string;
     accessKeyId?: string;
