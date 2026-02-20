@@ -18,6 +18,7 @@ import { createKeysCommand } from './commands/keys';
 import { createAdminCommand } from './commands/admin';
 import { createCampaignCommand } from './commands/campaign';
 import { createSecurityScanCommand } from './commands/security-scan';
+import { createCompletionCommand, createInternalCompleteCommand } from './commands/completion';
 import { debugLogger } from './lib/debug';
 import { setConsoleJson, setLogLevel, setLoggerSilent } from './infrastructure/logger';
 import { readFileSync } from 'fs';
@@ -81,6 +82,8 @@ program.addCommand(createKeysCommand());
 program.addCommand(createAdminCommand());
 program.addCommand(createCampaignCommand());
 program.addCommand(createSecurityScanCommand());
+program.addCommand(createCompletionCommand());
+program.addCommand(createInternalCompleteCommand());
 
 // Parse arguments
 program.parse(process.argv);

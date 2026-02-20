@@ -135,6 +135,9 @@ mailgoat send \
   --body-html welcome.html \
   --sanitize
 
+# Enable shell completion
+mailgoat completion install
+
 # With attachments
 mailgoat send \
   --to user@example.com \
