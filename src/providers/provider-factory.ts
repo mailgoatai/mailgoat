@@ -7,6 +7,7 @@
 
 import { IMailProvider, ProviderConfig, ProviderOptions } from './mail-provider.interface';
 import { PostalProvider, PostalProviderConfig } from './postal';
+import { SESProvider, SESProviderConfig } from './ses';
 import { MailGoatConfig } from '../lib/config';
 
 /**
@@ -34,7 +35,7 @@ export class ProviderFactory {
    */
   static create(
     type: ProviderType,
-    config: ProviderConfig | MailGoatConfig,
+    config: ProviderConfig | MailGoatConfig | SESProviderConfig,
     options?: ProviderOptions
   ): IMailProvider {
     switch (type) {
@@ -52,9 +53,7 @@ export class ProviderFactory {
         );
 
       case 'ses':
-        throw new Error(
-          'AWS SES provider not yet implemented. ' + 'This will be added in a future update.'
-        );
+        return new SESProvider(config as unknown as SESProviderConfig);
 
       default:
         throw new Error(
@@ -77,6 +76,10 @@ export class ProviderFactory {
   ): IMailProvider {
     // Default to postal for backwards compatibility
     const providerType = config.provider || 'postal';
+    if (providerType === 'ses') {
+      const sesConfig = config.ses || (config as unknown as SESProviderConfig);
+      return ProviderFactory.create('ses', sesConfig, options);
+    }
     return ProviderFactory.create(providerType, config, options);
   }
 
@@ -95,7 +98,7 @@ export class ProviderFactory {
    * @returns Array of implemented provider type strings
    */
   static getImplementedProviders(): ProviderType[] {
-    return ['postal'];
+    return ['postal', 'ses'];
   }
 
   /**

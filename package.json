@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "mailgoat": "./bin/mailgoat.js"
+    "mailgoat": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -45,14 +45,10 @@
   },
   "keywords": [
     "email",
-    "cli",
     "postal",
-    "ai-agents",
-    "agent-email",
-    "automation",
-    "mailserver",
+    "cli",
     "smtp",
-    "imap"
+    "mail"
   ],
   "author": "MailGoat AI Team <team@mailgoat.io>",
   "license": "MIT",
@@ -61,6 +57,7 @@
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/nodemailer": "^7.0.10",
+    "@aws-sdk/credential-providers": "^3.994.0",
     "axios": "^1.6.5",
     "better-sqlite3": "^12.6.2",
     "chalk": "^4.1.2",
@@ -118,7 +115,6 @@
   },
   "files": [
     "dist/",
-    "bin/",
     "README.md",
     "LICENSE"
   ]

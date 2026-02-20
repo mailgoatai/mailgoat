@@ -7,6 +7,7 @@ import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
 import { metrics } from './metrics';
 
 export interface MailGoatConfig {
+  provider?: 'postal' | 'sendgrid' | 'smtp' | 'ses';
   server: string;
   fromAddress: string;
   fromName?: string;
@@ -33,6 +34,13 @@ export interface MailGoatConfig {
     provider: string;
     credentials?: Record<string, any>;
     from?: string;
+  ses?: {
+    region: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    sessionToken?: string;
+    configurationSetName?: string;
+    fromAddress?: string;
   };
 }
 

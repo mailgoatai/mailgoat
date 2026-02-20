@@ -21,6 +21,7 @@ export {
 
 // Provider implementations
 export { PostalProvider, PostalProviderConfig, PostalProviderOptions } from './postal';
+export { SESProvider, SESProviderConfig } from './ses';
 
 // Factory
 export { ProviderFactory, ProviderType } from './provider-factory';
