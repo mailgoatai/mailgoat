@@ -248,27 +248,20 @@ describe('EmailService', () => {
 });
 ```
 
-## Dependency Injection (Future)
+## Dependency Injection
 
-Services are designed for DI with TSyringe:
+Services are wired through TSyringe today:
 
 ```typescript
-import { container } from 'tsyringe';
+import { initializeCommandContext } from '../commands/di-context';
+import { EmailService } from '../services/email-service';
 
-// Register dependencies
-container.register('IMailProvider', {
-  useFactory: () => ProviderFactory.createFromConfig(config)
-});
-
-container.register('EmailService', {
-  useClass: EmailService
-});
-
-// Resolve
-const emailService = container.resolve<EmailService>('EmailService');
+const { container } = await initializeCommandContext();
+const emailService = container.resolve(EmailService);
 ```
 
-This will be implemented in a future task once the environment supports it.
+Container registration is centralized in `src/container.ts`.
+For tests, use `configureTestContainer()` from `src/container.test.ts`.
 
 ## Adding New Services
 

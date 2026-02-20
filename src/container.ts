@@ -12,6 +12,11 @@ import { EmailService } from './services/email-service';
 import { ILogger, ConsoleLogger } from './services/logger.interface';
 import { ValidationService, validationService } from './lib/validation-service';
 import { MailGoatConfig } from './lib/config';
+import { ConfigManager } from './lib/config';
+import { PostalClient, PostalClientOptions } from './lib/postal-client';
+import { TemplateManager } from './lib/template-manager';
+import { SchedulerStore } from './lib/scheduler';
+import { InboxStore } from './lib/inbox-store';
 
 /**
  * Configure the DI container with all application dependencies
@@ -23,6 +28,9 @@ export function configureContainer(config: MailGoatConfig): void {
   container.register<MailGoatConfig>('Config', {
     useValue: config,
   });
+  container.register<ConfigManager>('ConfigManager', {
+    useFactory: () => new ConfigManager(),
+  });
 
   // Register logger
   container.register<ILogger>('ILogger', {
@@ -32,6 +40,24 @@ export function configureContainer(config: MailGoatConfig): void {
   // Register validation service
   container.register<ValidationService>('ValidationService', {
     useValue: validationService,
+  });
+  container.register<TemplateManager>('TemplateManager', {
+    useFactory: () => new TemplateManager(),
+  });
+  container.register<SchedulerStore>('SchedulerStore', {
+    useFactory: () => new SchedulerStore(),
+  });
+  container.register<InboxStore>('InboxStore', {
+    useFactory: () => new InboxStore(),
+  });
+  container.register<PostalClient>('PostalClient', {
+    useFactory: (c) => new PostalClient(c.resolve<MailGoatConfig>('Config')),
+  });
+  container.register<PostalClient>('PostalClientRetryDisabled', {
+    useFactory: (c) =>
+      new PostalClient(c.resolve<MailGoatConfig>('Config'), {
+        enableRetry: false,
+      } as PostalClientOptions),
   });
 
   // Register mail provider

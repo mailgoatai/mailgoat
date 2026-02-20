@@ -1,8 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { promises as fs } from 'fs';
-import { ConfigManager } from '../lib/config';
-import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
 import { validationService } from '../lib/validation-service';
 import { debugLogger } from '../lib/debug';
@@ -16,6 +14,7 @@ import {
   validateAttachmentSize,
   type PreparedAttachment,
 } from '../lib/attachment-utils';
+import { initializeCommandContext, resolvePostalClient } from './di-context';
 
 function collectAttachment(value: string, previous: string[]): string[] {
   previous.push(value);
@@ -92,8 +91,7 @@ export function createSendCommand(): Command {
       try {
         startProfile('config_load');
         debugLogger.timeStart(`${operationId}-config`, 'Load configuration');
-        const configManager = new ConfigManager();
-        const config = await configManager.load();
+        const { config, container } = await initializeCommandContext();
         debugLogger.timeEnd(`${operationId}-config`);
         endProfile('config_load');
 
@@ -101,7 +99,7 @@ export function createSendCommand(): Command {
 
         // Handle template if specified
         let templateData: any = {};
-        const templateManager = new TemplateManager();
+        const templateManager = container.resolve<TemplateManager>('TemplateManager');
         const cliVariables = options.var
           ? TemplateManager.parseVariables(Array.isArray(options.var) ? options.var : [options.var])
           : {};
@@ -205,7 +203,7 @@ export function createSendCommand(): Command {
         // Create client after validation
         startProfile('client_init');
         debugLogger.timeStart(`${operationId}-client`, 'Initialize Postal client');
-        const client = new PostalClient(config, {
+        const client = resolvePostalClient(container, {
           enableRetry: options.retry !== false,
         });
         debugLogger.timeEnd(`${operationId}-client`);
@@ -296,7 +294,7 @@ export function createSendCommand(): Command {
             throw new Error('Scheduled time must be in the future');
           }
 
-          const store = new SchedulerStore();
+          const store = container.resolve<SchedulerStore>('SchedulerStore');
           const queued = store.enqueue({
             scheduledForIso: scheduledDate.toISOString(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',

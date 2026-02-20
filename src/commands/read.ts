@@ -1,9 +1,8 @@
 import { Command } from 'commander';
-import { ConfigManager } from '../lib/config';
-import { PostalClient } from '../lib/postal-client';
 import { Formatter } from '../lib/formatter';
-import { InboxStore } from '../lib/inbox-store';
 import { inferExitCode } from '../lib/errors';
+import { initializeCommandContext, resolvePostalClient } from './di-context';
+import { InboxStore } from '../lib/inbox-store';
 
 export function createReadCommand(): Command {
   const cmd = new Command('read');
@@ -16,9 +15,8 @@ export function createReadCommand(): Command {
     .option('--no-retry', 'Disable automatic retry on failure (for debugging)')
     .action(async (messageId: string, options) => {
       try {
-        const configManager = new ConfigManager();
-        const config = await configManager.load();
-        const client = new PostalClient(config, {
+        const { container } = await initializeCommandContext();
+        const client = resolvePostalClient(container, {
           enableRetry: options.retry !== false,
         });
         const formatter = new Formatter(options.json);
@@ -43,7 +41,7 @@ export function createReadCommand(): Command {
         const message = await client.getMessage(messageId, expansions);
 
         // Mark message as read in local cache if present
-        const store = new InboxStore();
+        const store = container.resolve<InboxStore>('InboxStore');
         try {
           store.markAsRead(messageId);
         } finally {
