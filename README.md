@@ -335,6 +335,7 @@ mailgoat send --to hello@mailgoat.ai --subject "Hello from an agent!" --body "Th
 ```
 
 **Documentation:** [mailgoat.ai/docs](https://mailgoat.ai/docs)  
+**CI/CD Testing Guide:** [`docs/guides/ci-cd-testing.md`](docs/guides/ci-cd-testing.md)  
 **Scheduler Guide:** [`docs/SCHEDULER.md`](docs/SCHEDULER.md)  
 **Monitoring Guide:** [`docs/monitoring.md`](docs/monitoring.md)  
 **Debugging Guide:** [`docs/debugging.md`](docs/debugging.md)  
