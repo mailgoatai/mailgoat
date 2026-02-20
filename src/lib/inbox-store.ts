@@ -19,6 +19,26 @@ export interface InboxListOptions {
   limit?: number;
 }
 
+export interface InboxSearchOptions {
+  query?: string;
+  from?: string;
+  to?: string;
+  subject?: string;
+  after?: number;
+  before?: number;
+  hasAttachment?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface InboxSearchResult {
+  id: string;
+  from: string;
+  to: string[];
+  subject: string;
+  date: string;
+}
+
 export interface IncomingMessageRecord {
   id: string;
   from: string;
@@ -26,6 +46,7 @@ export interface IncomingMessageRecord {
   subject?: string;
   timestamp: string;
   snippet?: string;
+  hasAttachments?: boolean;
 }
 
 export interface WebhookEventRecord {
@@ -66,6 +87,7 @@ export class InboxStore {
         to_emails TEXT NOT NULL,
         subject TEXT NOT NULL,
         snippet TEXT,
+        has_attachments INTEGER NOT NULL DEFAULT 0,
         timestamp TEXT NOT NULL,
         read INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -86,17 +108,35 @@ export class InboxStore {
       CREATE INDEX IF NOT EXISTS idx_webhook_events_received_at ON webhook_events(received_at DESC);
       CREATE INDEX IF NOT EXISTS idx_webhook_events_type ON webhook_events(type);
     `);
+    this.ensureInboxSchema();
+  }
+
+  private ensureInboxSchema(): void {
+    const columns = this.db.prepare('PRAGMA table_info(inbox_messages)').all() as Array<{
+      name: string;
+    }>;
+    const hasAttachmentsColumn = columns.some((column) => column.name === 'has_attachments');
+    if (!hasAttachmentsColumn) {
+      this.db.exec(
+        'ALTER TABLE inbox_messages ADD COLUMN has_attachments INTEGER NOT NULL DEFAULT 0'
+      );
+    }
   }
 
   upsertMessage(message: IncomingMessageRecord): void {
     const stmt = this.db.prepare(`
-      INSERT INTO inbox_messages (id, from_email, to_emails, subject, snippet, timestamp, read, updated_at)
-      VALUES (@id, @from_email, @to_emails, @subject, @snippet, @timestamp, 0, datetime('now'))
+      INSERT INTO inbox_messages (
+        id, from_email, to_emails, subject, snippet, has_attachments, timestamp, read, updated_at
+      )
+      VALUES (
+        @id, @from_email, @to_emails, @subject, @snippet, @has_attachments, @timestamp, 0, datetime('now')
+      )
       ON CONFLICT(id) DO UPDATE SET
         from_email=excluded.from_email,
         to_emails=excluded.to_emails,
         subject=excluded.subject,
         snippet=excluded.snippet,
+        has_attachments=excluded.has_attachments,
         timestamp=excluded.timestamp,
         updated_at=datetime('now')
     `);
@@ -107,6 +147,7 @@ export class InboxStore {
       to_emails: JSON.stringify(message.to),
       subject: message.subject || '',
       snippet: message.snippet || '',
+      has_attachments: message.hasAttachments ? 1 : 0,
       timestamp: normalizeTimestamp(message.timestamp),
     });
   }
@@ -179,9 +220,89 @@ export class InboxStore {
     return rows.map(this.mapRow);
   }
 
+  searchMessagesAdvanced(options: InboxSearchOptions = {}): {
+    total: number;
+    messages: InboxSearchResult[];
+  } {
+    const conditions: string[] = [];
+    const params: Record<string, unknown> = {};
+
+    if (options.query) {
+      conditions.push(
+        "(lower(subject) LIKE @query OR lower(coalesce(snippet, '')) LIKE @query OR lower(from_email) LIKE @query OR lower(to_emails) LIKE @query)"
+      );
+      params.query = `%${options.query.toLowerCase()}%`;
+    }
+
+    if (options.subject) {
+      conditions.push('lower(subject) LIKE @subject');
+      params.subject = `%${options.subject.toLowerCase()}%`;
+    }
+
+    if (options.from) {
+      conditions.push('lower(from_email) LIKE @fromEmail');
+      params.fromEmail = `%${options.from.toLowerCase()}%`;
+    }
+
+    if (options.to) {
+      conditions.push('lower(to_emails) LIKE @toEmail');
+      params.toEmail = `%${options.to.toLowerCase()}%`;
+    }
+
+    if (options.after) {
+      conditions.push('timestamp >= @afterIso');
+      params.afterIso = new Date(options.after).toISOString();
+    }
+
+    if (options.before) {
+      conditions.push('timestamp <= @beforeIso');
+      params.beforeIso = new Date(options.before).toISOString();
+    }
+
+    if (options.hasAttachment) {
+      conditions.push('has_attachments = 1');
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = options.limit ?? 20;
+    const offset = options.offset ?? 0;
+
+    const totalQuery = `SELECT count(*) as count FROM inbox_messages ${where}`;
+    const totalRow = this.db.prepare(totalQuery).get(params) as { count: number } | undefined;
+    const total = Number(totalRow?.count || 0);
+
+    const dataQuery = `
+      SELECT id, from_email, to_emails, subject, timestamp
+      FROM inbox_messages
+      ${where}
+      ORDER BY timestamp DESC
+      LIMIT @limit OFFSET @offset
+    `;
+    const rows = this.db.prepare(dataQuery).all({ ...params, limit, offset }) as Array<
+      Record<string, unknown>
+    >;
+
+    const messages: InboxSearchResult[] = rows.map((row) => ({
+      id: String(row.id || ''),
+      from: String(row.from_email || ''),
+      to: JSON.parse(String(row.to_emails || '[]')),
+      subject: String(row.subject || ''),
+      date: String(row.timestamp || ''),
+    }));
+
+    return { total, messages };
+  }
+
   markAsRead(id: string): boolean {
     const result = this.db
       .prepare("UPDATE inbox_messages SET read = 1, updated_at = datetime('now') WHERE id = ?")
+      .run(id);
+    return result.changes > 0;
+  }
+
+  markAsUnread(id: string): boolean {
+    const result = this.db
+      .prepare("UPDATE inbox_messages SET read = 0, updated_at = datetime('now') WHERE id = ?")
       .run(id);
     return result.changes > 0;
   }
