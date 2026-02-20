@@ -1,0 +1,8 @@
+{
+  "name": "mailgoat-example-ecommerce",
+  "private": true,
+  "scripts": {
+    "dev": "node app/server.js",
+    "test": "node --test app/tests/checkout.test.js"
+  }
+}

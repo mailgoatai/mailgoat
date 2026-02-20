@@ -1,0 +1,12 @@
+{
+  "name": "mailgoat-example-saas-trial",
+  "private": true,
+  "scripts": {
+    "dev": "node app/server.js",
+    "worker": "node workers/trial-expiry-checker.js",
+    "test": "node --test tests/trial-email.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,7 @@
+services:
+  blog-comments:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install && npm test"

@@ -4,6 +4,16 @@ This directory contains practical examples showing how agents can automate workf
 
 ## New full examples
 
+### `mailgoat-examples/` (multi-project repository)
+
+Complete app-style examples with setup docs, tests, templates, `.env.example`, and Docker Compose:
+
+- `todo-app/` (React + Express): signup, task notifications, digest, password reset
+- `ecommerce/` (Next.js-style): order confirmation, shipping updates, receipts
+- `saas-trial/` (Express + worker): trial start, expiring reminder, expired follow-up
+- `blog-comments/` (blog app): new comment, reply, moderation approval
+- `ci-reporter/` (GitHub Actions): workflow status emails
+
 ### `simple-python-agent/` (Python)
 
 - Polls inbox cache every 5 minutes (default)

@@ -1,0 +1,8 @@
+{
+  "name": "mailgoat-example-blog-comments",
+  "private": true,
+  "scripts": {
+    "dev": "node app/server.js",
+    "test": "node --test tests/comments-email.test.js"
+  }
+}

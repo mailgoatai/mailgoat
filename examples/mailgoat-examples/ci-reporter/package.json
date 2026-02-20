@@ -1,0 +1,8 @@
+{
+  "name": "mailgoat-example-ci-reporter",
+  "private": true,
+  "scripts": {
+    "report": "node scripts/send-report.js",
+    "test": "node --test tests/report.test.js"
+  }
+}

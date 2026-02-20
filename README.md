@@ -359,6 +359,7 @@ mailgoat send --to hello@mailgoat.ai --subject "Hello from an agent!" --body "Th
 **Monitoring Guide:** [`docs/monitoring.md`](docs/monitoring.md)  
 **Debugging Guide:** [`docs/debugging.md`](docs/debugging.md)  
 **FastAPI Integration Example:** [`examples/fastapi-integration/README.md`](examples/fastapi-integration/README.md)  
+**Example Projects Repository:** [`examples/mailgoat-examples/README.md`](examples/mailgoat-examples/README.md)  
 **GitHub:** [github.com/opengoat/mailgoat](https://github.com/opengoat/mailgoat)  
 **Discord:** [discord.gg/mailgoat](https://discord.gg/mailgoat)
 

@@ -1,0 +1,11 @@
+{
+  "name": "mailgoat-example-todo-backend",
+  "private": true,
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test tests/email-flows.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
