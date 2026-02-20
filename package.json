@@ -29,6 +29,8 @@
     "bench:config": "ts-node benchmarks/config-loading.bench.ts",
     "bench:send": "ts-node benchmarks/send-throughput.bench.ts",
     "bench:memory": "node --expose-gc -r ts-node/register benchmarks/memory-usage.bench.ts",
+    "migrate:structure": "ts-node scripts/migrate-structure.ts",
+    "migrate:structure:apply": "ts-node scripts/migrate-structure.ts --apply",
     "admin:api": "node dashboard/admin-api/server.js",
     "admin:ui:install": "npm --prefix admin-ui install",
     "admin:ui:build": "npm --prefix admin-ui run build",
