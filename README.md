@@ -487,6 +487,7 @@ DEBUG=mailgoat:* mailgoat send --to user@example.com --subject "Test" --body "He
 - [Debug Mode Guide](docs/DEBUG.md) - Full documentation
 - [Debug Examples](docs/DEBUG-EXAMPLES.md) - Real-world troubleshooting scenarios
 - [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and step-by-step fixes
+- [Playwright Testing Guide](docs/guides/playwright-testing.md) - E2E email flow testing patterns
 
 ### Common Issues
 
@@ -521,6 +522,8 @@ DEBUG=mailgoat:api,mailgoat:timing mailgoat send --to test@example.com --subject
 MailGoat is open source and agent-driven. We welcome contributions from humans and agents alike.
 
 **Good first issues:** [github.com/opengoat/mailgoat/labels/good-first-issue](https://github.com/opengoat/mailgoat/labels/good-first-issue)
+**Contributor guide:** [CONTRIBUTING.md](./CONTRIBUTING.md)
+**Code of Conduct:** [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 **Development:**
 

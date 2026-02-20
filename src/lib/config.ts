@@ -11,6 +11,18 @@ export interface MailGoatConfig {
   fromAddress: string;
   fromName?: string;
   telemetry?: boolean;
+  retry?: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    backoffMultiplier?: number;
+    retryableErrors?: string[];
+    nonRetryableErrors?: string[];
+    circuitBreakerThreshold?: number;
+    circuitBreakerCooldownMs?: number;
+    jitterRatio?: number;
+    timeoutMs?: number;
+  };
   // Backward compatibility for older config keys
   email?: string;
   api_key: string;
@@ -102,6 +114,31 @@ export class ConfigManager {
 
     if (process.env.MAILGOAT_API_KEY) {
       config.api_key = process.env.MAILGOAT_API_KEY;
+    }
+
+    const hasRetryEnv =
+      Boolean(process.env.MAILGOAT_TIMEOUT) ||
+      Boolean(process.env.MAILGOAT_RETRY_MAX) ||
+      Boolean(process.env.MAILGOAT_RETRY_DELAY) ||
+      Boolean(process.env.MAILGOAT_RETRY_MAX_DELAY) ||
+      Boolean(process.env.MAILGOAT_RETRY_MULTIPLIER);
+    if (hasRetryEnv) {
+      config.retry = config.retry || {};
+    }
+    if (process.env.MAILGOAT_TIMEOUT && config.retry) {
+      config.retry.timeoutMs = Number(process.env.MAILGOAT_TIMEOUT);
+    }
+    if (process.env.MAILGOAT_RETRY_MAX && config.retry) {
+      config.retry.maxRetries = Number(process.env.MAILGOAT_RETRY_MAX);
+    }
+    if (process.env.MAILGOAT_RETRY_DELAY && config.retry) {
+      config.retry.initialDelay = Number(process.env.MAILGOAT_RETRY_DELAY);
+    }
+    if (process.env.MAILGOAT_RETRY_MAX_DELAY && config.retry) {
+      config.retry.maxDelay = Number(process.env.MAILGOAT_RETRY_MAX_DELAY);
+    }
+    if (process.env.MAILGOAT_RETRY_MULTIPLIER && config.retry) {
+      config.retry.backoffMultiplier = Number(process.env.MAILGOAT_RETRY_MULTIPLIER);
     }
   }
 

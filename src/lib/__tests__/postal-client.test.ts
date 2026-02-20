@@ -36,6 +36,15 @@ describe('PostalClient', () => {
     );
   });
 
+  it('uses configured timeout when provided', () => {
+    new PostalClient(config, { timeout: 10000 });
+    expect(mockedAxios.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        timeout: 10000,
+      })
+    );
+  });
+
   it('sends message including attachments', async () => {
     axiosInstance.post.mockResolvedValue({
       data: { data: { message_id: 'm1', messages: { 'a@b.com': { id: 1, token: 't' } } } },
@@ -60,6 +69,24 @@ describe('PostalClient', () => {
     expect(result.message_id).toBe('m1');
     expect(result.rate_limit?.buckets.default?.remaining).toBe(487);
     expect(client.getLastRateLimit()?.buckets.default?.limit).toBe(500);
+  });
+
+  it('injects idempotency key header for send requests', async () => {
+    axiosInstance.post.mockResolvedValue({
+      data: { data: { message_id: 'm1', messages: { 'a@b.com': { id: 1, token: 't' } } } },
+      headers: {},
+    });
+
+    await client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' });
+
+    expect(axiosInstance.post).toHaveBeenCalledWith(
+      '/api/v1/send/message',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Idempotency-Key': expect.any(String),
+        }),
+      })
+    );
   });
 
   it('gets message with default expansions', async () => {
@@ -126,8 +153,59 @@ describe('PostalClient', () => {
 
     await client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' });
     expect(axiosInstance.post).toHaveBeenCalledTimes(2);
-    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+    const delayUsed = (timeoutSpy.mock.calls[0] || [])[1] as number;
+    expect(delayUsed).toBeGreaterThanOrEqual(2000);
+    expect(delayUsed).toBeLessThanOrEqual(2400);
     timeoutSpy.mockRestore();
+  });
+
+  it('applies exponential backoff with max delay', async () => {
+    const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((fn: any) => {
+      if (typeof fn === 'function') fn();
+      return 0 as unknown as NodeJS.Timeout;
+    }) as any);
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+
+    client = new PostalClient(config, {
+      maxRetries: 4,
+      baseDelay: 1000,
+      maxDelay: 1500,
+      backoffMultiplier: 2,
+    });
+
+    axiosInstance.post
+      .mockRejectedValueOnce({ code: 'ECONNRESET', message: 'reset' })
+      .mockRejectedValueOnce({ code: 'ECONNRESET', message: 'reset' })
+      .mockResolvedValueOnce({
+        data: { data: { message_id: 'm2', messages: { 'a@b.com': { id: 1, token: 't' } } } },
+        headers: {},
+      });
+
+    await client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' });
+    expect(timeoutSpy).toHaveBeenNthCalledWith(1, expect.any(Function), 1000);
+    expect(timeoutSpy).toHaveBeenNthCalledWith(2, expect.any(Function), 1500);
+
+    timeoutSpy.mockRestore();
+    jest.restoreAllMocks();
+  });
+
+  it('opens circuit breaker after repeated failures', async () => {
+    client = new PostalClient(config, {
+      enableRetry: false,
+      circuitBreakerThreshold: 2,
+      circuitBreakerCooldownMs: 10000,
+    });
+    axiosInstance.post.mockRejectedValue({ code: 'ECONNRESET', message: 'reset' });
+
+    await expect(
+      client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
+    ).rejects.toThrow();
+    await expect(
+      client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
+    ).rejects.toThrow();
+    await expect(
+      client.sendMessage({ to: ['a@b.com'], subject: 's', plain_body: 'b' })
+    ).rejects.toThrow(/Circuit breaker is open/);
   });
 
   it('captures rate limit headers from error responses', async () => {

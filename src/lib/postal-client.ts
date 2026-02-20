@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
+import { randomUUID } from 'crypto';
 import { MailGoatConfig } from './config';
 import { debugLogger } from './debug';
 import { metrics } from './metrics';
@@ -29,6 +30,24 @@ export interface PostalClientOptions {
   baseDelay?: number;
 
   /**
+   * Maximum delay in milliseconds between retries
+   * @defaultValue 30000
+   */
+  maxDelay?: number;
+
+  /**
+   * Exponential backoff multiplier
+   * @defaultValue 2
+   */
+  backoffMultiplier?: number;
+
+  /**
+   * Random jitter ratio applied to backoff delay (0-1)
+   * @defaultValue 0.2
+   */
+  jitterRatio?: number;
+
+  /**
    * Whether to enable automatic retry on transient failures
    * @defaultValue true
    */
@@ -38,6 +57,29 @@ export interface PostalClientOptions {
    * Optional hook called before a retry wait.
    */
   onRetry?: (info: RetryInfo) => void;
+
+  /**
+   * Request timeout in milliseconds
+   * @defaultValue 30000
+   */
+  timeout?: number;
+
+  /**
+   * Extra retryable error codes for transport/API errors.
+   */
+  retryableErrors?: string[];
+
+  /**
+   * Extra non-retryable error codes for transport/API errors.
+   */
+  nonRetryableErrors?: string[];
+
+  /**
+   * Circuit breaker toggle and tuning.
+   */
+  circuitBreakerEnabled?: boolean;
+  circuitBreakerThreshold?: number;
+  circuitBreakerCooldownMs?: number;
 }
 
 export interface RetryInfo {
@@ -198,16 +240,48 @@ export class PostalClient {
   private config: MailGoatConfig;
   private maxRetries: number;
   private baseDelay: number;
+  private maxDelay: number;
+  private backoffMultiplier: number;
+  private jitterRatio: number;
   private enableRetry: boolean;
   private lastRateLimit?: RateLimitInfo;
   private onRetry?: (info: RetryInfo) => void;
+  private timeout: number;
+  private retryableErrors: Set<string>;
+  private nonRetryableErrors: Set<string>;
+  private circuitBreakerEnabled: boolean;
+  private circuitBreakerThreshold: number;
+  private circuitBreakerCooldownMs: number;
+  private consecutiveFailures = 0;
+  private circuitOpenedAt: number | null = null;
 
   constructor(config: MailGoatConfig, options: PostalClientOptions = {}) {
     this.config = config;
     this.maxRetries = options.maxRetries ?? 3;
     this.baseDelay = options.baseDelay ?? 1000;
+    this.maxDelay = options.maxDelay ?? 30000;
+    this.backoffMultiplier = options.backoffMultiplier ?? 2;
+    this.jitterRatio = options.jitterRatio ?? 0.2;
     this.enableRetry = options.enableRetry ?? true;
     this.onRetry = options.onRetry;
+    this.timeout = options.timeout ?? 30000;
+    this.retryableErrors = new Set([
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNABORTED',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'EAI_AGAIN',
+      ...(options.retryableErrors ?? []),
+    ]);
+    this.nonRetryableErrors = new Set([
+      'AUTH_FAILED',
+      'INVALID_EMAIL',
+      ...(options.nonRetryableErrors ?? []),
+    ]);
+    this.circuitBreakerEnabled = options.circuitBreakerEnabled ?? true;
+    this.circuitBreakerThreshold = options.circuitBreakerThreshold ?? 5;
+    this.circuitBreakerCooldownMs = options.circuitBreakerCooldownMs ?? 30000;
 
     // Build base URL (handle both with/without https://)
     let baseURL = config.server;
@@ -218,7 +292,7 @@ export class PostalClient {
     debugLogger.log('api', `Initializing PostalClient with server: ${baseURL}`);
     debugLogger.log(
       'api',
-      `Retry config: enabled=${this.enableRetry}, maxRetries=${this.maxRetries}, baseDelay=${this.baseDelay}ms`
+      `Retry config: enabled=${this.enableRetry}, maxRetries=${this.maxRetries}, baseDelay=${this.baseDelay}ms, maxDelay=${this.maxDelay}ms, multiplier=${this.backoffMultiplier}, jitter=${this.jitterRatio}, timeout=${this.timeout}ms`
     );
 
     // Configure connection pooling for better performance
@@ -244,7 +318,7 @@ export class PostalClient {
         'X-Server-API-Key': config.api_key,
         'Content-Type': 'application/json',
       },
-      timeout: 30000, // 30 second timeout
+      timeout: this.timeout,
       httpAgent,
       httpsAgent,
     });
@@ -319,11 +393,16 @@ export class PostalClient {
    * @returns Result of the function
    */
   private async retryWithBackoff<T>(fn: () => Promise<T>, operationName: string): Promise<T> {
+    this.assertCircuitClosed(operationName);
+
     if (!this.enableRetry) {
       debugLogger.log('api', `Retry disabled for: ${operationName}`);
       try {
-        return await fn();
+        const result = await fn();
+        this.markSuccess();
+        return result;
       } catch (error: any) {
+        this.markFailure(operationName);
         throw this.categorizeError(error);
       }
     }
@@ -333,9 +412,12 @@ export class PostalClient {
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
         debugLogger.log('api', `Attempt ${attempt + 1}/${this.maxRetries} for: ${operationName}`);
-        return await fn();
+        const result = await fn();
+        this.markSuccess();
+        return result;
       } catch (error: any) {
         lastError = error;
+        this.markFailure(operationName);
         this.captureRateLimit(error?.response?.headers);
 
         // Don't retry on certain errors
@@ -357,10 +439,15 @@ export class PostalClient {
         }
 
         // Calculate delay with exponential backoff. Respect Retry-After for rate-limits.
-        const exponentialDelay = this.baseDelay * Math.pow(2, attempt);
+        const exponentialDelay = Math.min(
+          this.maxDelay,
+          this.baseDelay * Math.pow(this.backoffMultiplier, attempt)
+        );
         const retryAfterSeconds = Number(error?.response?.headers?.['retry-after'] || 0);
         const retryAfterDelay = Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 0;
-        const delay = Math.max(exponentialDelay, retryAfterDelay);
+        const computedDelay = Math.max(exponentialDelay, retryAfterDelay);
+        const jitter = Math.floor(computedDelay * this.jitterRatio * Math.random());
+        const delay = Math.min(this.maxDelay, computedDelay + jitter);
 
         if (error?.response?.status === 429) {
           logger.warn('postal.rate_limit', {
@@ -390,6 +477,44 @@ export class PostalClient {
     }
 
     throw lastError;
+  }
+
+  private assertCircuitClosed(operationName: string): void {
+    if (!this.circuitBreakerEnabled || this.circuitOpenedAt === null) {
+      return;
+    }
+
+    const elapsed = Date.now() - this.circuitOpenedAt;
+    if (elapsed < this.circuitBreakerCooldownMs) {
+      const remainingMs = this.circuitBreakerCooldownMs - elapsed;
+      throw new MailGoatError(
+        `Circuit breaker is open for ${operationName}. Cooldown remaining: ${remainingMs}ms. ` +
+          `Wait and retry, or reduce failure rate by checking server health and credentials.`,
+        'NetworkError',
+        3
+      );
+    }
+
+    this.circuitOpenedAt = null;
+    this.consecutiveFailures = 0;
+  }
+
+  private markFailure(operationName: string): void {
+    if (!this.circuitBreakerEnabled) return;
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures >= this.circuitBreakerThreshold && this.circuitOpenedAt === null) {
+      this.circuitOpenedAt = Date.now();
+      logger.warn('postal.circuit_breaker.open', {
+        operation: operationName,
+        consecutiveFailures: this.consecutiveFailures,
+        cooldownMs: this.circuitBreakerCooldownMs,
+      });
+    }
+  }
+
+  private markSuccess(): void {
+    this.consecutiveFailures = 0;
+    this.circuitOpenedAt = null;
   }
 
   private parseNumericHeader(value: unknown): number | undefined {
@@ -470,6 +595,11 @@ export class PostalClient {
    * Determine if an error should not be retried
    */
   private shouldNotRetry(error: any): boolean {
+    const transportCode = String(error?.code || '').toUpperCase();
+    if (transportCode && this.nonRetryableErrors.has(transportCode)) {
+      return true;
+    }
+
     // Don't retry on auth errors (401, 403)
     if (error.response?.status === 401 || error.response?.status === 403) {
       return true;
@@ -495,9 +625,14 @@ export class PostalClient {
       'FromAddressMissing',
       'UnauthenticatedFromAddress',
       'MessageNotFound',
+      ...Array.from(this.nonRetryableErrors),
     ];
 
     if (errorCode && nonRetryableCodes.includes(errorCode)) {
+      return true;
+    }
+
+    if (transportCode && !this.retryableErrors.has(transportCode) && !error?.response?.status) {
       return true;
     }
 
@@ -522,6 +657,9 @@ export class PostalClient {
    * POST /api/v1/send/message
    */
   async sendMessage(params: SendMessageParams): Promise<SendMessageResponse> {
+    const idempotencyKey =
+      params.headers?.['X-Idempotency-Key'] || params.headers?.['Idempotency-Key'] || randomUUID();
+
     return this.retryWithBackoff(async () => {
       const response = await this.client.post('/api/v1/send/message', {
         to: params.to,
@@ -533,7 +671,10 @@ export class PostalClient {
         html_body: params.html_body,
         reply_to: params.reply_to,
         tag: params.tag,
-        headers: params.headers,
+        headers: {
+          ...(params.headers || {}),
+          'X-Idempotency-Key': idempotencyKey,
+        },
         attachments: params.attachments,
       });
 
