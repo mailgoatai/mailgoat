@@ -1,0 +1,17 @@
+1
+00:00:00,000 --> 00:00:15,000
+Email testing shouldn't be hard.
+In 3 minutes: install MailGoat, send an email, verify in admin.
+
+2
+00:00:15,000 --> 00:00:45,000
+Traditional email setup is slow for developers.
+MailGoat gives fast CLI feedback.
+
+3
+00:00:45,000 --> 00:02:45,000
+[Demo segment: install, config init, health, send, admin panel, key features]
+
+4
+00:02:45,000 --> 00:03:00,000
+Watch the next videos for developer workflow and production deployment.

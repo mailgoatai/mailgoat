@@ -8,6 +8,13 @@ MailGoat is a CLI-first email provider designed from the ground up for autonomou
 
 ---
 
+## Video Demos
+
+- Quick Start (3 min): `https://youtube.com/watch?v=VIDEO_1_ID`
+- Developer Workflow (5 min): `https://youtube.com/watch?v=VIDEO_2_ID`
+- Production Deployment (7 min): `https://youtube.com/watch?v=VIDEO_3_ID`
+- Recording and publishing pack: `docs/video-demo-and-screencast.md`
+
 ## The Problem
 
 Traditional email providers make agents jump through hoops:

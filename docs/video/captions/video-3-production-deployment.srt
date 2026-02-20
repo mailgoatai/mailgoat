@@ -1,0 +1,15 @@
+1
+00:00:00,000 --> 00:00:15,000
+Production deployment for MailGoat in 7 minutes.
+
+2
+00:00:15,000 --> 00:00:45,000
+Reliable email requires configuration, observability, and recovery controls.
+
+3
+00:00:45,000 --> 00:06:45,000
+[Demo segment: Docker setup, relay config, deploy smoke test, monitoring]
+
+4
+00:06:45,000 --> 00:07:00,000
+Use the linked docs for hardening and ongoing operations.

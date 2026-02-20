@@ -1,0 +1,16 @@
+1
+00:00:00,000 --> 00:00:15,000
+Developer workflow with MailGoat: setup, tests, and verification.
+
+2
+00:00:15,000 --> 00:00:45,000
+Email regressions are expensive.
+Reproducible tests and templates are critical.
+
+3
+00:00:45,000 --> 00:04:45,000
+[Demo segment: local setup, unit test run, verification template flow, scan]
+
+4
+00:04:45,000 --> 00:05:00,000
+Adopt this flow in CI to catch email issues before release.
