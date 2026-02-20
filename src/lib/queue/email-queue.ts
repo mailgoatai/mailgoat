@@ -74,6 +74,13 @@ export class EmailQueue {
   }
 
   private initDatabase(): void {
+    // Apply performance tuning
+    this.db.pragma('journal_mode = WAL');
+    this.db.pragma('cache_size = 10000');
+    this.db.pragma('synchronous = NORMAL');
+    this.db.pragma('temp_store = MEMORY');
+    this.db.pragma('mmap_size = 268435456'); // 256MB
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS email_queue (
         id TEXT PRIMARY KEY,
@@ -88,10 +95,17 @@ export class EmailQueue {
         updated_at INTEGER NOT NULL
       );
       
+      -- Optimized indexes
       CREATE INDEX IF NOT EXISTS idx_status ON email_queue(status);
       CREATE INDEX IF NOT EXISTS idx_priority ON email_queue(priority);
       CREATE INDEX IF NOT EXISTS idx_scheduled_at ON email_queue(scheduled_at);
-      CREATE INDEX IF NOT EXISTS idx_created_at ON email_queue(created_at);
+      CREATE INDEX IF NOT EXISTS idx_created_at ON email_queue(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_updated_at ON email_queue(updated_at DESC);
+      
+      -- Composite index for queue processing (most important)
+      CREATE INDEX IF NOT EXISTS idx_queue_processing
+        ON email_queue(status, priority, scheduled_at)
+        WHERE status = 'pending';
     `);
   }
 
