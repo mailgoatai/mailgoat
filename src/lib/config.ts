@@ -7,7 +7,7 @@ import { cacheManager, CacheKeys, CacheTTL } from './cache-manager';
 import { metrics } from './metrics';
 
 export interface MailGoatConfig {
-  provider?: 'postal' | 'sendgrid' | 'smtp' | 'ses';
+  provider?: 'postal' | 'sendgrid' | 'mailgun' | 'smtp' | 'ses';
   server: string;
   fromAddress: string;
   fromName?: string;
@@ -27,6 +27,11 @@ export interface MailGoatConfig {
   // Backward compatibility for older config keys
   email?: string;
   api_key: string;
+  mailgun?: {
+    apiKey: string;
+    domain: string;
+    region?: 'us' | 'eu';
+  };
   metrics?: {
     pushgateway?: string;
   };

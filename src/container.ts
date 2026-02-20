@@ -7,8 +7,7 @@
 
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { IMailProvider } from './providers';
-import { PostalProvider } from './providers/postal';
+import { IMailProvider, ProviderFactory } from './providers';
 import { EmailService } from './services/email-service';
 import { ILogger, ConsoleLogger } from './services/logger.interface';
 import { ValidationService, validationService } from './lib/validation-service';
@@ -39,7 +38,7 @@ export function configureContainer(config: MailGoatConfig): void {
   container.register<IMailProvider>('IMailProvider', {
     useFactory: (c) => {
       const cfg = c.resolve<MailGoatConfig>('Config');
-      return new PostalProvider(cfg);
+      return ProviderFactory.createFromConfig(cfg);
     },
   });
 

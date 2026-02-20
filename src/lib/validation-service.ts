@@ -35,11 +35,28 @@ export interface SendOptions {
  * Configuration object for validation
  */
 export interface Config {
+  provider?: 'postal' | 'sendgrid' | 'mailgun' | 'smtp' | 'ses';
   server: string;
   fromAddress?: string;
   fromName?: string;
   email?: string;
   api_key: string;
+  mailgun?: {
+    apiKey?: string;
+    domain?: string;
+    region?: 'us' | 'eu';
+  };
+  relay?: {
+    provider: 'sendgrid' | 'mailgun' | 'ses' | 'mailjet';
+    credentials: {
+      apiKey?: string;
+      apiSecret?: string;
+      domain?: string;
+      accessKey?: string;
+      secret?: string;
+      region?: string;
+    };
+  };
   webhook?: {
     url?: string;
     secret?: string;
@@ -470,14 +487,29 @@ export class ValidationService {
   validateConfig(config: Config): ValidationResult {
     debugLogger.log('validation', 'Validating configuration');
 
-    // Validate server URL
-    const serverResult = this.validateUrl(config.server);
-    if (!serverResult.valid) {
+    const hasMailgunProvider = config.provider === 'mailgun';
+    const hasRelay = Boolean(config.relay?.provider);
+    const hasPostal = !hasMailgunProvider && Boolean(config.server && config.api_key);
+
+    if (!hasRelay && !hasPostal && !hasMailgunProvider) {
       return {
         valid: false,
-        error: `Invalid server: ${serverResult.error}`,
+        error:
+          'Either Postal config (server + api_key), relay config, or provider=mailgun config is required',
         field: 'server',
       };
+    }
+
+    // Validate server URL when Postal mode is used.
+    if (hasPostal) {
+      const serverResult = this.validateUrl(config.server);
+      if (!serverResult.valid) {
+        return {
+          valid: false,
+          error: `Invalid server: ${serverResult.error}`,
+          field: 'server',
+        };
+      }
     }
 
     // Validate from address (fallback to legacy email key)
@@ -491,14 +523,88 @@ export class ValidationService {
       };
     }
 
-    // Validate API key
-    const apiKeyResult = this.validateApiKey(config.api_key);
-    if (!apiKeyResult.valid) {
-      return {
-        valid: false,
-        error: `Invalid API key: ${apiKeyResult.error}`,
-        field: 'api_key',
-      };
+    // Validate API key in Postal mode
+    if (hasPostal) {
+      const apiKeyResult = this.validateApiKey(config.api_key);
+      if (!apiKeyResult.valid) {
+        return {
+          valid: false,
+          error: `Invalid API key: ${apiKeyResult.error}`,
+          field: 'api_key',
+        };
+      }
+    }
+
+    // Validate relay credentials
+    if (hasRelay) {
+      const relay = config.relay!;
+      const creds = relay.credentials || {};
+      if (relay.provider === 'sendgrid') {
+        if (!creds.apiKey || creds.apiKey.trim().length < 10) {
+          return {
+            valid: false,
+            error: 'Relay sendgrid requires credentials.apiKey',
+            field: 'relay.credentials.apiKey',
+          };
+        }
+      } else if (relay.provider === 'mailgun') {
+        if (!creds.apiKey || creds.apiKey.trim().length < 10) {
+          return {
+            valid: false,
+            error: 'Relay mailgun requires credentials.apiKey',
+            field: 'relay.credentials.apiKey',
+          };
+        }
+        if (!creds.domain) {
+          return {
+            valid: false,
+            error: 'Relay mailgun requires credentials.domain',
+            field: 'relay.credentials.domain',
+          };
+        }
+      } else if (relay.provider === 'ses') {
+        if (!creds.accessKey || !creds.secret || !creds.region) {
+          return {
+            valid: false,
+            error:
+              'Relay ses requires credentials.accessKey, credentials.secret, and credentials.region',
+            field: 'relay.credentials',
+          };
+        }
+      } else if (relay.provider === 'mailjet') {
+        if (!creds.apiKey || !creds.apiSecret) {
+          return {
+            valid: false,
+            error: 'Relay mailjet requires credentials.apiKey and credentials.apiSecret',
+            field: 'relay.credentials',
+          };
+        }
+      }
+    }
+
+    if (hasMailgunProvider) {
+      const mailgun = config.mailgun || {};
+      if (!mailgun.apiKey || mailgun.apiKey.trim().length < 10) {
+        return {
+          valid: false,
+          error: 'Provider mailgun requires mailgun.apiKey',
+          field: 'mailgun.apiKey',
+        };
+      }
+      if (!mailgun.domain || !mailgun.domain.trim()) {
+        return {
+          valid: false,
+          error: 'Provider mailgun requires mailgun.domain',
+          field: 'mailgun.domain',
+        };
+      }
+      if (mailgun.region && !['us', 'eu'].includes(mailgun.region)) {
+        return {
+          valid: false,
+          error: 'Provider mailgun region must be us or eu',
+          field: 'mailgun.region',
+        };
+      }
     }
 
     // Validate webhook URL if provided

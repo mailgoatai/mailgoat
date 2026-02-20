@@ -70,14 +70,14 @@ const provider = new PostalProvider(config, {
 
 ## Supported Providers
 
-| Provider  | Status      | Notes                                    |
-| --------- | ----------- | ---------------------------------------- |
-| Postal    | ✅ Complete | Full implementation using Legacy API     |
-| SendGrid  | 🚧 Planned  | Coming soon                              |
-| SMTP      | 🚧 Planned  | Direct SMTP support                      |
-| AWS SES   | 🚧 Planned  | Amazon Simple Email Service              |
-| Mailgun   | 📋 Future   | Considered for future implementation     |
-| Postmark  | 📋 Future   | Considered for future implementation     |
+| Provider | Status      | Notes                                     |
+| -------- | ----------- | ----------------------------------------- |
+| Postal   | ✅ Complete | Full implementation using Legacy API      |
+| Mailgun  | ✅ Complete | REST API via `mailgun.js` + events lookup |
+| SendGrid | 🚧 Planned  | Coming soon                               |
+| SMTP     | 🚧 Planned  | Direct SMTP support                       |
+| AWS SES  | 🚧 Planned  | Amazon Simple Email Service               |
+| Postmark | 📋 Future   | Considered for future implementation      |
 
 ## Interface: IMailProvider
 

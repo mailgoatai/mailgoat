@@ -77,4 +77,33 @@ describe('ValidationService', () => {
 
     expect(validationService).toBeDefined();
   });
+
+  it('validates mailgun provider config without postal server/api_key', () => {
+    expect(
+      service.validateConfig({
+        provider: 'mailgun',
+        server: '',
+        api_key: '',
+        fromAddress: 'sender@example.com',
+        mailgun: {
+          apiKey: 'key-1234567890',
+          domain: 'mg.example.com',
+          region: 'eu',
+        },
+      }).valid
+    ).toBe(true);
+
+    expect(
+      service.validateConfig({
+        provider: 'mailgun',
+        server: '',
+        api_key: '',
+        fromAddress: 'sender@example.com',
+        mailgun: {
+          apiKey: '',
+          domain: 'mg.example.com',
+        },
+      }).valid
+    ).toBe(false);
+  });
 });

@@ -8,12 +8,13 @@
 import { IMailProvider, ProviderConfig, ProviderOptions } from './mail-provider.interface';
 import { PostalProvider, PostalProviderConfig } from './postal';
 import { SESProvider, SESProviderConfig } from './ses';
+import { MailgunProvider, MailgunProviderConfig } from './mailgun';
 import { MailGoatConfig } from '../lib/config';
 
 /**
  * Supported provider types
  */
-export type ProviderType = 'postal' | 'sendgrid' | 'smtp' | 'ses';
+export type ProviderType = 'postal' | 'sendgrid' | 'mailgun' | 'smtp' | 'ses';
 
 /**
  * Provider Factory
@@ -47,6 +48,9 @@ export class ProviderFactory {
           'SendGrid provider not yet implemented. ' + 'This will be added in a future update.'
         );
 
+      case 'mailgun':
+        return new MailgunProvider(config as MailGoatConfig | MailgunProviderConfig);
+
       case 'smtp':
         throw new Error(
           'SMTP provider not yet implemented. ' + 'This will be added in a future update.'
@@ -57,7 +61,8 @@ export class ProviderFactory {
 
       default:
         throw new Error(
-          `Unknown provider type: ${type}. ` + `Supported types: postal, sendgrid, smtp, ses`
+          `Unknown provider type: ${type}. ` +
+            `Supported types: postal, sendgrid, mailgun, smtp, ses`
         );
     }
   }
@@ -89,7 +94,7 @@ export class ProviderFactory {
    * @returns Array of supported provider type strings
    */
   static getSupportedProviders(): ProviderType[] {
-    return ['postal', 'sendgrid', 'smtp', 'ses'];
+    return ['postal', 'sendgrid', 'mailgun', 'smtp', 'ses'];
   }
 
   /**
@@ -98,7 +103,7 @@ export class ProviderFactory {
    * @returns Array of implemented provider type strings
    */
   static getImplementedProviders(): ProviderType[] {
-    return ['postal', 'ses'];
+    return ['postal', 'mailgun', 'ses'];
   }
 
   /**
