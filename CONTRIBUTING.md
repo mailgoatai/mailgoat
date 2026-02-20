@@ -1,263 +1,206 @@
 # Contributing to MailGoat
 
-Thank you for your interest in contributing to MailGoat! This document provides guidelines and information for contributors.
+Thanks for your interest in contributing.
 
-## Table of Contents
+Before contributing, please read our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Git Hooks](#git-hooks)
-- [Code Quality](#code-quality)
-- [Testing](#testing)
-- [Pull Requests](#pull-requests)
-- [Release Process](#release-process)
+## Ways to Contribute
 
----
+You do not need to start with a large feature. Helpful contributions include:
+
+- Code changes (bug fixes, performance, developer experience)
+- Documentation improvements (clarity, corrections, missing examples)
+- New examples and tutorials
+- Bug reports with clear reproduction steps
+- Feature proposals with use case and expected behavior
 
 ## Getting Started
 
-MailGoat is built by AI agents for AI agents. We welcome contributions from humans and agents alike!
+### Prerequisites
 
-**Prerequisites:**
-
-- Node.js 18+ (check with `node --version`)
-- npm 9+ (check with `npm --version`)
+- Node.js 18+
+- npm 9+
 - Git
 
-**Quick Start:**
+### Fork and Clone
 
 ```bash
-# Clone the repository
-git clone https://github.com/mailgoatai/mailgoat.git
+# 1) Fork in GitHub UI, then clone your fork
+git clone https://github.com/<your-user>/mailgoat.git
 cd mailgoat
 
-# Install dependencies
-npm install
+# 2) Add upstream remote
+git remote add upstream https://github.com/mailgoatai/mailgoat.git
 
-# Build the project
+# 3) Install dependencies
+npm install
+```
+
+### Verify Local Setup
+
+```bash
 npm run build
-
-# Run tests
-npm test
-```
-
----
-
-## Development Setup
-
-### Install Dependencies
-
-```bash
-npm install
-```
-
-This will:
-
-- Install all project dependencies
-- Set up Husky git hooks automatically (via `prepare` script)
-
-### Available Scripts
-
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm run dev` - Watch mode for development
-- `npm test` - Run integration tests
-- `npm run test:unit` - Run unit tests
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run lint` - Check code for linting errors
-- `npm run lint:fix` - Auto-fix linting errors
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
-- `npm run typecheck` - Check TypeScript types
-
----
-
-## Git Hooks
-
-MailGoat uses [Husky](https://typicode.github.io/husky/) to run automated checks before commits and pushes.
-
-### Pre-commit Hook
-
-**Runs automatically before every commit.**
-
-The pre-commit hook uses [lint-staged](https://github.com/okonet/lint-staged) to:
-
-- Run ESLint on staged `.ts` files and auto-fix issues
-- Format staged files with Prettier
-- Only check files you're committing (fast!)
-
-**Configuration:** `.lintstagedrc.json`
-
-**Example:**
-
-```bash
-git add src/my-file.ts
-git commit -m "Add feature"
-# → Husky runs lint-staged
-# → Auto-fixes and formats your code
-# → Commits if successful
-```
-
-**If the hook fails:**
-
-- Review the error messages
-- Fix the issues (or let auto-fix handle it)
-- Stage the fixed files: `git add .`
-- Retry the commit
-
-### Pre-push Hook
-
-**Runs automatically before every push.**
-
-The pre-push hook runs the full test suite (`npm test`) to catch breaking changes before they reach CI.
-
-**Example:**
-
-```bash
-git push origin my-branch
-# → Husky runs npm test
-# → Push succeeds only if tests pass
-```
-
-**If tests fail:**
-
-- Review the test output
-- Fix the failing tests
-- Commit your fixes
-- Retry the push
-
-### Bypassing Hooks (Not Recommended)
-
-In rare cases where you need to bypass hooks:
-
-```bash
-# Skip pre-commit
-git commit --no-verify -m "Emergency fix"
-
-# Skip pre-push
-git push --no-verify
-```
-
-**⚠️ Warning:** Only use `--no-verify` when absolutely necessary. Bypassing hooks can introduce bugs into the codebase.
-
-### Manual Hook Testing
-
-Test hooks without committing:
-
-```bash
-# Test pre-commit
-npm run lint && npm run format:check
-
-# Test pre-push
-npm test
-```
-
----
-
-## Code Quality
-
-### Linting
-
-We use ESLint with TypeScript support:
-
-```bash
-# Check for linting errors
 npm run lint
-
-# Auto-fix linting errors
-npm run lint:fix
+npm run typecheck
+npm test
 ```
 
-**Configuration:** `eslint.config.mjs`
+## Development Workflow
 
-### Formatting
+### Branch Naming
 
-We use Prettier for consistent code formatting:
+Create a feature branch from the default branch:
 
 ```bash
-# Format all TypeScript files
-npm run format
+git checkout master
+git pull upstream master
+git checkout -b feature/add-inbox-filter
+```
 
-# Check formatting without making changes
+Use descriptive branch prefixes:
+
+- `feature/<name>` for new functionality
+- `fix/<name>` for bug fixes
+- `docs/<name>` for documentation-only changes
+- `chore/<name>` for tooling/maintenance work
+
+### Commit Messages
+
+Use clear, conventional commit messages:
+
+- `feat: add inbox filtering by sender domain`
+- `fix: handle empty recipient list in send command`
+- `docs: add Playwright email testing guide`
+- `test: add integration coverage for retry backoff`
+- `chore: update eslint config for TS 5.9`
+
+Bad examples:
+
+- `update stuff`
+- `misc fixes`
+- `WIP`
+
+### Local Quality Checks
+
+Run these before pushing:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm test
+```
+
+MailGoat also uses Husky + lint-staged hooks on commit/push. Treat hook failures as required fixes, not optional warnings.
+
+## Pull Request Process
+
+All changes should go through a pull request.
+
+### Open a PR
+
+```bash
+git push origin feature/add-inbox-filter
+```
+
+Then open a PR in GitHub against `mailgoatai/mailgoat`.
+
+### What Makes a Good PR
+
+- One focused change (avoid unrelated edits in the same PR)
+- Clear title and description (problem, solution, tradeoffs)
+- Tests added or updated for behavior changes
+- Documentation updated for user-facing changes
+- CI green before requesting final review
+
+### Suggested PR Description
+
+Include:
+
+- What changed
+- Why it changed
+- How it was tested
+- Screenshots/output (if relevant)
+- Follow-up tasks (if any)
+
+## Code Style
+
+MailGoat is TypeScript-first and uses ESLint + Prettier.
+
+### Conventions
+
+- Prefer explicit types on public interfaces.
+- Keep functions small and purpose-focused.
+- Avoid dead code and commented-out blocks.
+- Use clear names over abbreviations.
+
+### Formatting and Linting
+
+```bash
+npm run lint
+npm run lint:fix
+npm run format
 npm run format:check
 ```
 
-**Configuration:** `.prettierrc.json`, `.prettierignore`
+Resources:
 
-### Type Checking
-
-TypeScript strict mode is enabled:
-
-```bash
-# Check for type errors
-npm run typecheck
-```
-
-**Configuration:** `tsconfig.json`
-
----
+- ESLint config: `eslint.config.mjs`
+- TypeScript config: `tsconfig.json`
+- Prettier config: `.prettierrc.json`
 
 ## Testing
 
-### Running Tests
+### Run Existing Tests
 
 ```bash
-# Run integration tests (default)
 npm test
-
-# Run unit tests
 npm run test:unit
-
-# Run specific test file
-npx jest src/path/to/test.test.ts
-
-# Run tests in watch mode
-npm run test:watch
-
-# Generate coverage report
+npm run test:integration
+npm run test:e2e
 npm run test:coverage
 ```
 
-### Writing Tests
+### Writing New Tests
 
-- **Unit tests:** Place in `src/__tests__/` next to the code
-- **Integration tests:** Place in `tests/integration/`
-- Use Jest for all tests
-- Follow existing test patterns
+- Unit tests: `src/**/__tests__/*.test.ts` or adjacent test files following existing patterns
+- Integration tests: `tests/integration/*.test.ts`
+- E2E tests: `tests/e2e/*.test.ts`
 
-**Example test:**
+Guidelines:
 
-```typescript
-import { describe, it, expect } from '@jest/globals';
-import { MyFunction } from './my-function';
+- Test behavior, not implementation details.
+- Add regression tests for bug fixes.
+- Keep tests deterministic and isolated.
 
-describe('MyFunction', () => {
-  it('should do something', () => {
-    const result = MyFunction('input');
-    expect(result).toBe('expected');
-  });
-});
-```
+## Documentation
 
----
+If your change affects behavior, commands, flags, APIs, or workflows, update docs in the same PR.
 
-## Pull Requests
+Common docs to update:
 
-### Workflow
+- `README.md` for user-facing workflows
+- `docs/api-reference.md` for command/flag changes
+- `docs/guides/*.md` for new integration patterns
+- `docs/faq.md` when common questions change
 
-We push directly to `main` branch - no PRs needed (as of 2026-02-18).
+## Getting Help
 
-**Process:**
+If you get blocked, ask early:
 
-1. Make your changes
-2. Test locally (hooks will run automatically)
-3. Commit with clear message
-4. Push to main
+- GitHub Discussions: <https://github.com/mailgoatai/mailgoat/discussions>
+- GitHub Issues: <https://github.com/mailgoatai/mailgoat/issues>
+- Community notes: `docs/COMMUNITY.md`
 
-**Before Pushing:**
+When asking for help, include:
 
-- Ensure all tests pass: `npm test`
-- Ensure linting passes: `npm run lint`
-- Ensure formatting is correct: `npm run format:check`
+- What you expected
+- What happened
+- Exact command(s) you ran
+- Error output and environment details
+
+Thanks for helping improve MailGoat.
+
 - Ensure types are correct: `npm run typecheck`
 
 ### Commit Messages

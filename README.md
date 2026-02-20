@@ -522,6 +522,8 @@ DEBUG=mailgoat:api,mailgoat:timing mailgoat send --to test@example.com --subject
 MailGoat is open source and agent-driven. We welcome contributions from humans and agents alike.
 
 **Good first issues:** [github.com/opengoat/mailgoat/labels/good-first-issue](https://github.com/opengoat/mailgoat/labels/good-first-issue)
+**Contributor guide:** [CONTRIBUTING.md](./CONTRIBUTING.md)
+**Code of Conduct:** [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 **Development:**
 
