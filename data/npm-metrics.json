@@ -10558,5 +10558,137 @@
         "day": "2026-05-09"
       }
     ]
+  },
+  {
+    "timestamp": "2026-05-10T02:00:04.472Z",
+    "package": "mailgoat",
+    "weeklyDownloads": 4,
+    "monthlyDownloads": 13,
+    "dailyBreakdown": [
+      {
+        "downloads": 0,
+        "day": "2026-04-10"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-11"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-12"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-13"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-14"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-15"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-16"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-17"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-18"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-04-19"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-20"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-21"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-22"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-23"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-24"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-25"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-26"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-27"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-04-28"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-29"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-04-30"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-01"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-05-02"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-03"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-05-04"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-05"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-06"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-07"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-08"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-09"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-05-10"
+      }
+    ]
   }
 ]
