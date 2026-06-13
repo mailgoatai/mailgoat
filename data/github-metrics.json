@@ -2248,5 +2248,30 @@
     ],
     "openPRs": 11,
     "traffic": null
+  },
+  {
+    "timestamp": "2026-06-13T04:55:52.469Z",
+    "repository": "mailgoatai/mailgoat",
+    "stars": 3,
+    "forks": 0,
+    "watchers": 3,
+    "openIssues": 0,
+    "size": 2060,
+    "language": "TypeScript",
+    "updatedAt": "2026-06-13T02:31:21Z",
+    "pushedAt": "2026-06-13T02:31:16Z",
+    "contributors": 2,
+    "topContributors": [
+      {
+        "login": "marian2js",
+        "contributions": 131
+      },
+      {
+        "login": "mailgoatai",
+        "contributions": 4
+      }
+    ],
+    "openPRs": 11,
+    "traffic": null
   }
 ]
