@@ -1,55 +1,5 @@
 [
   {
-    "timestamp": "2026-04-12T03:49:07.623Z",
-    "repository": "mailgoatai/mailgoat",
-    "stars": 4,
-    "forks": 0,
-    "watchers": 4,
-    "openIssues": 0,
-    "size": 1806,
-    "language": "TypeScript",
-    "updatedAt": "2026-04-12T01:45:04Z",
-    "pushedAt": "2026-04-12T01:44:58Z",
-    "contributors": 2,
-    "topContributors": [
-      {
-        "login": "marian2js",
-        "contributions": 131
-      },
-      {
-        "login": "mailgoatai",
-        "contributions": 4
-      }
-    ],
-    "openPRs": 11,
-    "traffic": null
-  },
-  {
-    "timestamp": "2026-04-13T03:56:00.844Z",
-    "repository": "mailgoatai/mailgoat",
-    "stars": 3,
-    "forks": 0,
-    "watchers": 3,
-    "openIssues": 0,
-    "size": 1814,
-    "language": "TypeScript",
-    "updatedAt": "2026-04-13T01:49:51Z",
-    "pushedAt": "2026-04-13T01:49:48Z",
-    "contributors": 2,
-    "topContributors": [
-      {
-        "login": "marian2js",
-        "contributions": 131
-      },
-      {
-        "login": "mailgoatai",
-        "contributions": 4
-      }
-    ],
-    "openPRs": 11,
-    "traffic": null
-  },
-  {
     "timestamp": "2026-04-14T03:46:15.653Z",
     "repository": "mailgoatai/mailgoat",
     "stars": 3,
@@ -2260,6 +2210,31 @@
     "language": "TypeScript",
     "updatedAt": "2026-07-11T01:47:16Z",
     "pushedAt": "2026-07-11T01:47:12Z",
+    "contributors": 2,
+    "topContributors": [
+      {
+        "login": "marian2js",
+        "contributions": 131
+      },
+      {
+        "login": "mailgoatai",
+        "contributions": 4
+      }
+    ],
+    "openPRs": 11,
+    "traffic": null
+  },
+  {
+    "timestamp": "2026-07-12T04:04:35.683Z",
+    "repository": "mailgoatai/mailgoat",
+    "stars": 3,
+    "forks": 0,
+    "watchers": 3,
+    "openIssues": 0,
+    "size": 1827,
+    "language": "TypeScript",
+    "updatedAt": "2026-07-12T01:49:12Z",
+    "pushedAt": "2026-07-12T01:49:08Z",
     "contributors": 2,
     "topContributors": [
       {
