@@ -1,269 +1,5 @@
 [
   {
-    "timestamp": "2026-08-28T07:59:56.632Z",
-    "package": "mailgoat",
-    "weeklyDownloads": 12,
-    "monthlyDownloads": 25,
-    "dailyBreakdown": [
-      {
-        "downloads": 0,
-        "day": "2026-07-29"
-      },
-      {
-        "downloads": 1,
-        "day": "2026-07-30"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-07-31"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-01"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-02"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-03"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-04"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-05"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-06"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-07"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-08"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-09"
-      },
-      {
-        "downloads": 1,
-        "day": "2026-08-10"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-11"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-12"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-13"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-14"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-15"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-16"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-17"
-      },
-      {
-        "downloads": 5,
-        "day": "2026-08-18"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-19"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-20"
-      },
-      {
-        "downloads": 4,
-        "day": "2026-08-21"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-22"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-23"
-      },
-      {
-        "downloads": 3,
-        "day": "2026-08-24"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-25"
-      },
-      {
-        "downloads": 3,
-        "day": "2026-08-26"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-27"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-28"
-      }
-    ]
-  },
-  {
-    "timestamp": "2026-08-29T04:49:37.068Z",
-    "package": "mailgoat",
-    "weeklyDownloads": 13,
-    "monthlyDownloads": 26,
-    "dailyBreakdown": [
-      {
-        "downloads": 1,
-        "day": "2026-07-30"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-07-31"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-01"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-02"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-03"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-04"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-05"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-06"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-07"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-08"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-09"
-      },
-      {
-        "downloads": 1,
-        "day": "2026-08-10"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-11"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-12"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-13"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-14"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-15"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-16"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-17"
-      },
-      {
-        "downloads": 5,
-        "day": "2026-08-18"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-19"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-20"
-      },
-      {
-        "downloads": 4,
-        "day": "2026-08-21"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-22"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-23"
-      },
-      {
-        "downloads": 3,
-        "day": "2026-08-24"
-      },
-      {
-        "downloads": 2,
-        "day": "2026-08-25"
-      },
-      {
-        "downloads": 3,
-        "day": "2026-08-26"
-      },
-      {
-        "downloads": 1,
-        "day": "2026-08-27"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-28"
-      },
-      {
-        "downloads": 0,
-        "day": "2026-08-29"
-      }
-    ]
-  },
-  {
     "timestamp": "2026-08-30T02:29:30.499Z",
     "package": "mailgoat",
     "weeklyDownloads": 10,
@@ -11876,6 +11612,138 @@
       {
         "downloads": 0,
         "day": "2026-11-26"
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-11-27T05:52:51.419Z",
+    "package": "mailgoat",
+    "weeklyDownloads": 8,
+    "monthlyDownloads": 26,
+    "dailyBreakdown": [
+      {
+        "downloads": 1,
+        "day": "2026-10-28"
+      },
+      {
+        "downloads": 3,
+        "day": "2026-10-29"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-10-30"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-10-31"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-01"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-11-02"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-03"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-04"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-11-05"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-06"
+      },
+      {
+        "downloads": 2,
+        "day": "2026-11-07"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-08"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-11-09"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-10"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-11"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-12"
+      },
+      {
+        "downloads": 3,
+        "day": "2026-11-13"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-14"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-11-15"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-16"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-17"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-11-18"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-19"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-11-20"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-21"
+      },
+      {
+        "downloads": 3,
+        "day": "2026-11-22"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-23"
+      },
+      {
+        "downloads": 1,
+        "day": "2026-11-24"
+      },
+      {
+        "downloads": 3,
+        "day": "2026-11-25"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-26"
+      },
+      {
+        "downloads": 0,
+        "day": "2026-11-27"
       }
     ]
   }
